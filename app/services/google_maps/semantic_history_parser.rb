@@ -44,7 +44,7 @@ class GoogleMaps::SemanticHistoryParser
             {
               latitude: waypoint['latE7'].to_f / 10**7,
               longitude: waypoint['lngE7'].to_f / 10**7,
-              timestamp: DateTime.parse(timeline_object['activitySegment']['duration']['startTimestamp']).to_i,
+              timestamp: parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
               raw_data: timeline_object
             }
           end
@@ -52,7 +52,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: timeline_object['activitySegment']['startLocation']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['activitySegment']['startLocation']['longitudeE7'].to_f / 10**7,
-            timestamp: DateTime.parse(timeline_object['activitySegment']['duration']['startTimestamp']),
+            timestamp: parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         end
@@ -62,7 +62,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
-            timestamp: DateTime.parse(timeline_object['placeVisit']['duration']['startTimestamp']),
+            timestamp: parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         elsif timeline_object['placeVisit']['otherCandidateLocations'].any?
@@ -73,7 +73,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: point['latitudeE7'].to_f / 10**7,
             longitude: point['longitudeE7'].to_f / 10**7,
-            timestamp: DateTime.parse(timeline_object['placeVisit']['duration']['startTimestamp']),
+            timestamp: parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         else
@@ -81,5 +81,20 @@ class GoogleMaps::SemanticHistoryParser
         end
       end
     end.reject(&:blank?)
+  end
+
+  def parse_timestamp(timestamp)
+    begin
+	    # Falls der Zeitstempel im ISO 8601-Format vorliegt, versuche, ihn zu parsen
+      DateTime.parse(timestamp).to_time.to_i
+	  rescue
+      if timestamp.to_s.length > 10
+        # Falls der Zeitstempel in Millisekunden vorliegt, konvertiere ihn in Sekunden
+        timestamp.to_i / 1000
+      else
+        # Falls der Zeitstempel in Sekunden vorliegt, gebe ihn unverändert zurück
+        timestamp.to_i
+	    end
+    end
   end
 end
