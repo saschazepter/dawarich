@@ -1023,19 +1023,23 @@ export default class extends Controller {
         }
       }
     }
-  }  drawRelevantGrid(markers) {
-    const bounds = this.map.getBounds();
-    const southWest = bounds.getSouthWest();
-    const northEast = bounds.getNorthEast();
+  }
+
+  drawRelevantGrid(markers) {
     const squareSizeInMeters = 1000; // 1km square size for tiles mode
 
-    // Calculate the starting latitude and longitude for the grid
-    let latStart = Math.floor(southWest.lat / this.metersToDegreesLat(squareSizeInMeters)) * this.metersToDegreesLat(squareSizeInMeters);
-    let lngStart = Math.floor(southWest.lng / this.metersToDegreesLng(squareSizeInMeters, southWest.lat)) * this.metersToDegreesLng(squareSizeInMeters, southWest.lat);
+    // Calculate the bounds based on markers
+    const latitudes = markers.map(marker => marker[0]);
+    const longitudes = markers.map(marker => marker[1]);
 
-    // Draw squares aligned to the grid
-    for (let lat = latStart; lat <= northEast.lat; lat += this.metersToDegreesLat(squareSizeInMeters)) {
-      for (let lng = lngStart; lng <= northEast.lng; lng += this.metersToDegreesLng(squareSizeInMeters, lat)) {
+    const latStart = Math.floor(Math.min(...latitudes) / this.metersToDegreesLat(squareSizeInMeters)) * this.metersToDegreesLat(squareSizeInMeters);
+    const latEnd = Math.ceil(Math.max(...latitudes) / this.metersToDegreesLat(squareSizeInMeters)) * this.metersToDegreesLat(squareSizeInMeters);
+    const lngStart = Math.floor(Math.min(...longitudes) / this.metersToDegreesLng(squareSizeInMeters, latStart)) * this.metersToDegreesLng(squareSizeInMeters, latStart);
+    const lngEnd = Math.ceil(Math.max(...longitudes) / this.metersToDegreesLng(squareSizeInMeters, latStart)) * this.metersToDegreesLng(squareSizeInMeters, latStart);
+
+    // Draw squares aligned to the grid only within the calculated bounds
+    for (let lat = latStart; lat <= latEnd; lat += this.metersToDegreesLat(squareSizeInMeters)) {
+      for (let lng = lngStart; lng <= lngEnd; lng += this.metersToDegreesLng(squareSizeInMeters, lat)) {
         // Calculate the square's bounds
         const squareBounds = [
           [lat, lng],
@@ -1044,8 +1048,12 @@ export default class extends Controller {
 
         // Check if the square contains any markers
         let containsMarker = markers.some(marker => {
-          return lat <= marker[0] && marker[0] <= lat + this.metersToDegreesLat(squareSizeInMeters) &&
-                 lng <= marker[1] && marker[1] <= lng + this.metersToDegreesLng(squareSizeInMeters, lat);
+          return (
+            marker[0] >= lat &&
+            marker[0] <= lat + this.metersToDegreesLat(squareSizeInMeters) &&
+            marker[1] >= lng &&
+            marker[1] <= lng + this.metersToDegreesLng(squareSizeInMeters, lat)
+          );
         });
 
         // If the square contains a marker, draw it
