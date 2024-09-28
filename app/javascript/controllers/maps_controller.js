@@ -129,6 +129,8 @@ export default class extends Controller {
         this.map.removeControl(this.drawControl);
       }
     });
+
+    this.drawRelevantGrid(this.markers);
   }
 
   disconnect() {
@@ -137,7 +139,7 @@ export default class extends Controller {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-console.log(selectedLayerName);
+
     return {
       OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
       "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
@@ -986,4 +988,88 @@ console.log(selectedLayerName);
     });
   }
 
+    drawRelevantGrid(markers) {
+    const bounds = this.map.getBounds();
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+    const squareSizeInMeters = 1000; // 1km square size for tiles mode
+
+    // Calculate the starting latitude and longitude for the grid
+    let latStart = Math.floor(southWest.lat / this.metersToDegreesLat(squareSizeInMeters)) * this.metersToDegreesLat(squareSizeInMeters);
+    let lngStart = Math.floor(southWest.lng / this.metersToDegreesLng(squareSizeInMeters, southWest.lat)) * this.metersToDegreesLng(squareSizeInMeters, southWest.lat);
+
+    // Draw squares aligned to the grid
+    for (let lat = latStart; lat <= northEast.lat; lat += this.metersToDegreesLat(squareSizeInMeters)) {
+      for (let lng = lngStart; lng <= northEast.lng; lng += this.metersToDegreesLng(squareSizeInMeters, lat)) {
+        // Calculate the square's bounds
+        const squareBounds = [
+          [lat, lng],
+          [lat + this.metersToDegreesLat(squareSizeInMeters), lng + this.metersToDegreesLng(squareSizeInMeters, lat)]
+        ];
+
+        // Check if the square contains any markers
+        let containsMarker = markers.some(marker => {
+          return lat <= marker[0] && marker[0] <= lat + this.metersToDegreesLat(squareSizeInMeters) &&
+                 lng <= marker[1] && marker[1] <= lng + this.metersToDegreesLng(squareSizeInMeters, lat);
+        });
+
+        // If the square contains a marker, draw it
+        if (containsMarker) {
+          L.rectangle(squareBounds, {
+            color: '#3388ff',
+            weight: 1,
+            fillOpacity: 0.1 // Set fill opacity to make squares visible
+          }).addTo(this.map);
+        }
+      }
+    }
+  }  drawRelevantGrid(markers) {
+    const bounds = this.map.getBounds();
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+    const squareSizeInMeters = 1000; // 1km square size for tiles mode
+
+    // Calculate the starting latitude and longitude for the grid
+    let latStart = Math.floor(southWest.lat / this.metersToDegreesLat(squareSizeInMeters)) * this.metersToDegreesLat(squareSizeInMeters);
+    let lngStart = Math.floor(southWest.lng / this.metersToDegreesLng(squareSizeInMeters, southWest.lat)) * this.metersToDegreesLng(squareSizeInMeters, southWest.lat);
+
+    // Draw squares aligned to the grid
+    for (let lat = latStart; lat <= northEast.lat; lat += this.metersToDegreesLat(squareSizeInMeters)) {
+      for (let lng = lngStart; lng <= northEast.lng; lng += this.metersToDegreesLng(squareSizeInMeters, lat)) {
+        // Calculate the square's bounds
+        const squareBounds = [
+          [lat, lng],
+          [lat + this.metersToDegreesLat(squareSizeInMeters), lng + this.metersToDegreesLng(squareSizeInMeters, lat)]
+        ];
+
+        // Check if the square contains any markers
+        let containsMarker = markers.some(marker => {
+          return lat <= marker[0] && marker[0] <= lat + this.metersToDegreesLat(squareSizeInMeters) &&
+                 lng <= marker[1] && marker[1] <= lng + this.metersToDegreesLng(squareSizeInMeters, lat);
+        });
+
+        // If the square contains a marker, draw it
+        if (containsMarker) {
+          L.rectangle(squareBounds, {
+            color: '#3388ff',
+            weight: 1,
+            fillOpacity: 0.1 // Set fill opacity to make squares visible
+          }).addTo(this.map);
+        }
+      }
+    }
+  }
+
+  // Convert meters to degrees (latitude)
+  metersToDegreesLat(meters) {
+    const earthRadius = 6378137; // Earth's radius in meters
+    return (meters / earthRadius) * (180 / Math.PI); // Conversion factor for latitude
+  }
+
+  // Convert meters to degrees (longitude)
+  metersToDegreesLng(meters, latitude) {
+    const earthRadius = 6378137; // Earth's radius in meters
+    const lat = latitude * Math.PI / 180; // Convert latitude to radians
+    return (meters / (earthRadius * Math.cos(lat))) * (180 / Math.PI); // Conversion factor for longitude
+  }
 }
