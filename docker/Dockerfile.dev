@@ -24,6 +24,9 @@ RUN apk -U add --no-cache \
     yaml-dev \
     gcompat \
     linux-headers \
+    musl-dev \
+    gcc \
+    make \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
@@ -36,7 +39,9 @@ WORKDIR $APP_PATH
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
 # Install all gems into the image
-RUN bundle config set --local path 'vendor/bundle' \
+RUN bundle config force_ruby_platform true \
+    && bundle config specific_platform true \
+    && bundle config set --local path 'vendor/bundle' \
     && bundle config build.pg --with-pg-config=/usr/bin/pg_config \
     && bundle install --jobs 4 --retry 3 \
     && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
