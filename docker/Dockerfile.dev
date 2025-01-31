@@ -6,6 +6,8 @@ ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
+ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
+ENV BUNDLE_FORCE_RUBY_PLATFORM=1
 
 # Install dependencies for application
 RUN apk -U add --no-cache \
@@ -24,6 +26,16 @@ RUN apk -U add --no-cache \
     yaml-dev \
     gcompat \
     linux-headers \
+    zlib-dev \
+    readline-dev \
+    libffi-dev \
+    bash \
+    gcc \
+    make \
+    g++ \
+    libc-dev \
+    linux-headers \
+    ruby-dev \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
@@ -37,8 +49,7 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
 # Install all gems into the image
 RUN bundle config set --local path 'vendor/bundle' \
-    && bundle config build.pg --with-pg-config=/usr/bin/pg_config \
-    && bundle install --jobs 4 --retry 3 \
+    && bundle install --jobs 2 --retry 3 \
     && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
 
 # Copy the rest of the application
