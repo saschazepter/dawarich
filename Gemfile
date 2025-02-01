@@ -16,7 +16,7 @@ gem 'httparty'
 gem 'importmap-rails'
 gem 'kaminari'
 gem 'lograge'
-gem 'oj'
+gem 'oj', platform: :ruby
 gem 'pg'
 gem 'prometheus_exporter'
 gem 'activerecord-postgis-adapter', github: 'StoneGod/activerecord-postgis-adapter', branch: 'rails-8'

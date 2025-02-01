@@ -7,7 +7,12 @@ ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
+ENV NOKOGIRI_SYSTEM_GEM_PATH=/usr/lib/
+ENV PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/local/lib/pkgconfig
 ENV BUNDLE_FORCE_RUBY_PLATFORM=1
+ENV CFLAGS="-O2"
+ENV CXXFLAGS="-O2"
+ENV MAKEFLAGS="-j1"
 
 # Install dependencies for application
 RUN apk -U add --no-cache \
@@ -36,6 +41,7 @@ RUN apk -U add --no-cache \
     libc-dev \
     linux-headers \
     ruby-dev \
+    libc6-compat \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
@@ -47,7 +53,15 @@ WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
-# Install all gems into the image
+# Pre-compile problematic gems separately
+RUN apk add --no-cache libxml2 libxslt && \
+    bundle config build.nokogiri --use-system-libraries \
+    --with-xml2-include=/usr/include/libxml2 \
+    --with-xslt-include=/usr/include/libxslt && \
+    gem install nokogiri -v '1.18.2' -- --use-system-libraries && \
+    gem install oj -v '3.14.3' -- --with-cflags="-O2" --with-opt-dir="/usr/local"
+
+# Then proceed with the rest of the bundle install
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle install --jobs 2 --retry 3 \
     && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
