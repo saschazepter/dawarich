@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Confirmed and declined visits inside an area or assigned to a place are no longer reverted to "suggested" — and any name you gave them is no longer overwritten — by the nightly visit-recompute job. (#2048, #2484)
 - GPX import now streams the file rather than loading the entire XML into memory, so multi-hundred-MB GPX files (e.g. long-running activity exports) no longer OOM the Sidekiq worker. (#2296)
 - Viewing an import on Map v2 or the Points page now selects the import's full date range, instead of defaulting to today or the last month. #1857
+- Imports (GPX, KML, GeoJSON, FIT, TCX, Google Timeline, OwnTracks .rec, CSV, Polarsteps) now generate tracks for the imported point range. Previously, only points coming through the real-time APIs (OwnTracks, Overland, generic Points) had tracks built automatically; bulk imports left their points untracked until a separate manual recalculation was run. Track generation triggered by imports is non-destructive: tracks already built from real-time data (with their per-segment transportation-mode corrections) are preserved, and only points that weren't already part of a track are segmented. To rebuild every track in a range — including manually-corrected ones — use Map v2 → Settings → **Recalculate tracks & stats**. (#2224)
 
 ## [1.7.7] - 2026-05-09
 
