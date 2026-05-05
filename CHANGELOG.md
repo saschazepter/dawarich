@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Imports (GPX, KML, GeoJSON, FIT, TCX, Google Timeline, OwnTracks .rec, CSV, Polarsteps) now generate tracks for the imported point range. Previously, only points coming through the real-time APIs (OwnTracks, Overland, generic Points) had tracks built automatically; bulk imports left their points untracked until a separate manual recalculation was run. (#2224)
+- Imports (GPX, KML, GeoJSON, FIT, TCX, Google Timeline, OwnTracks .rec, CSV, Polarsteps) now generate tracks for the imported point range.#2224
+- The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. #2566
 
 ## [1.7.5] - 2026-05-04
 
