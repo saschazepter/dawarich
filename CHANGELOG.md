@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Monthly statistics no longer leak distance from points that fall into the next month in the user's timezone. Imports that cross midnight UTC near a month boundary (e.g. an overnight transatlantic flight) previously produced a phantom bar on day 1 of the chart and inflated the monthly total by thousands of kilometres. Re-run stats calculation for any affected month to refresh the saved totals. #2546
+
 ## [1.7.5] - 2026-05-04
 
 ### Added

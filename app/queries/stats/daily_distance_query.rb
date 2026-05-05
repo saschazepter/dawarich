@@ -22,16 +22,18 @@ class Stats::DailyDistanceQuery
     sql = <<-SQL.squish
       WITH points_with_distances AS (
         SELECT
+          EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as year_local,
+          EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as month_local,
           EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as day_of_month,
           CASE
             WHEN LAG(lonlat) OVER (
-              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1))
+              PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
               ORDER BY timestamp
             ) IS NOT NULL THEN
               ST_Distance(
                 lonlat::geography,
                 LAG(lonlat) OVER (
-                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1))
+                  PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
                   ORDER BY timestamp
                 )::geography
               )
@@ -43,12 +45,16 @@ class Stats::DailyDistanceQuery
         day_of_month,
         ROUND(COALESCE(SUM(segment_distance), 0)) as distance_meters
       FROM points_with_distances
+      WHERE year_local = $2 AND month_local = $3
       GROUP BY day_of_month
       ORDER BY day_of_month
     SQL
 
+    target = timespan.first
     binds = [
-      ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new)
+      ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new),
+      ActiveRecord::Relation::QueryAttribute.new('year', target.year, ActiveRecord::Type::Integer.new),
+      ActiveRecord::Relation::QueryAttribute.new('month', target.month, ActiveRecord::Type::Integer.new)
     ]
 
     Stat.connection.exec_query(sql, 'DailyDistanceQuery', binds).to_a
