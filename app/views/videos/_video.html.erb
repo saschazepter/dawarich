@@ -1,0 +1,30 @@
+<tr id="<%= dom_id(video) %>" class="hover">
+  <td class="font-medium"><%= video.display_name %></td>
+  <td>
+    <% case video.status %>
+    <% when 'created', 'processing' %>
+      <span class="badge badge-info gap-1">
+        <span class="loading loading-spinner loading-xs"></span>
+        <%= video.status.titleize %>
+      </span>
+    <% when 'completed' %>
+      <span class="badge badge-success">Ready</span>
+    <% when 'failed' %>
+      <span class="badge badge-error tooltip" data-tip="<%= video.error_message %>">Failed</span>
+    <% end %>
+  </td>
+  <td><%= time_ago_in_words(video.created_at) %> ago</td>
+  <td class="text-right space-x-2">
+    <% if video.completed? && video.file.attached? %>
+      <%= link_to 'Download',
+                  rails_blob_path(video.file, disposition: 'attachment',
+                                              filename: video.download_filename),
+                  class: 'btn btn-xs btn-primary' %>
+    <% end %>
+    <%= button_to 'Delete', video_path(video),
+                  method: :delete,
+                  data: { turbo_confirm: 'Delete this video?' },
+                  class: 'btn btn-xs btn-ghost text-error',
+                  form: { class: 'inline' } %>
+  </td>
+</tr>

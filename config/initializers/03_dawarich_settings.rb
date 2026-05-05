@@ -73,6 +73,10 @@ class DawarichSettings
         ENV['OTP_ENCRYPTION_KEY_DERIVATION_SALT'].present?
     end
 
+    def video_service_enabled?
+      @video_service_enabled ||= ENV['VIDEO_SERVICE_URL'].present?
+    end
+
     def registration_enabled?
       Rails.cache.fetch('dawarich/registration_enabled') { ALLOW_EMAIL_PASSWORD_REGISTRATION }
     end

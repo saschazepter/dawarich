@@ -114,6 +114,7 @@ Rails.application.routes.draw do
     end
   end
   resources :exports, only: %i[index create destroy]
+  resources :videos, only: %i[index create destroy]
   resources :trips
   resources :tags, except: [:show]
 
@@ -328,6 +329,7 @@ Rails.application.routes.draw do
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
+      post 'videos/:id/callback', to: 'videos#callback', as: :video_callback
       post 'users/exist', to: 'users#exist'
 
       namespace :auth do

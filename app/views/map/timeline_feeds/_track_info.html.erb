@@ -41,6 +41,17 @@
       <%= icon 'pause', id: 'track-replay-pause-icon', class: 'w-3 h-3 hidden' %>
       <span id="track-replay-label">Replay</span>
     </button>
+    <% if DawarichSettings.video_service_enabled? && !current_user.plan_restricted? %>
+      <%= button_to videos_path(track_id: track.id),
+                    method: :post,
+                    data: { turbo_stream: true },
+                    class: 'btn btn-xs btn-ghost gap-1 px-2',
+                    title: 'Generate replay video',
+                    form: { class: 'inline' } do %>
+        <%= icon 'video', class: 'w-3 h-3' %>
+        <span>Video</span>
+      <% end %>
+    <% end %>
   </div>
 
   <%= turbo_frame_tag "track-#{track.id}-segments",

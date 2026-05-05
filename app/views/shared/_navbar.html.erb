@@ -29,6 +29,9 @@
               <li><%= link_to 'Places', places_url, class: "#{active_class?(places_url)}" %></li>
               <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
               <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
+              <% if user_signed_in? && DawarichSettings.video_service_enabled? && !current_user.plan_restricted? %>
+                <li><%= link_to 'Videos', videos_path %></li>
+              <% end %>
               <li><%= link_to 'Tags', tags_url, class: "#{active_class?(tags_url)}" %></li>
             </ul>
           </details>
@@ -99,6 +102,9 @@
             <li><%= link_to 'Places', places_url, class: "mx-1 #{active_class?(places_url)}" %></li>
             <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
             <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
+            <% if user_signed_in? && DawarichSettings.video_service_enabled? && !current_user.plan_restricted? %>
+              <li><%= link_to 'Videos', videos_path %></li>
+            <% end %>
             <li><%= link_to 'Tags', tags_url, class: "#{active_class?(tags_url)}" %></li>
           </ul>
         </details>

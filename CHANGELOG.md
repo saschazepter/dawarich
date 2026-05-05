@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Added route replay video export. Click "Video" on a timeline track card or day header to queue a render. Available on Pro plans (Cloud) and self-hosted instances with `VIDEO_SERVICE_URL` configured.
 - Manual transportation-mode correction per segment in the map view, with a one-click reset to auto-detection. Manually-corrected segments are preserved across re-classification. #2405
 - Per-user transportation-mode allowlist in the map settings panel. Disabled modes are excluded from auto-detection going forward; existing tracks stay as they are until you press "Re-classify my history". #2405
 
