@@ -77,39 +77,58 @@ module Tracks::TrackBuilder
     track.elevation_max  = elevation_stats[:max]
     track.elevation_min  = elevation_stats[:min]
 
-    if track.save
-      Point.where(id: points.map(&:id)).update_all(track_id: track.id)
+    saved_track = nil
 
-      detect_and_create_segments(track, points)
-
-      track
-    else
-      Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
-      nil
+    # `requires_new: true` forces a savepoint even when called from inside a
+    # wrapping transaction (e.g. BoundaryDetector#merge_boundary_tracks). Without
+    # it, a unique-violation on `track.save` aborts the outer transaction, and
+    # subsequent queries (including the `find_by` in `reuse_existing_track`) fail
+    # with InFailedSqlTransaction before the rescue path can run.
+    ActiveRecord::Base.transaction(requires_new: true) do
+      if track.save
+        Point.where(id: points.map(&:id)).update_all(track_id: track.id)
+        detect_and_create_segments(track, points)
+        saved_track = track
+      else
+        Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
+      end
     end
-  rescue ActiveRecord::RecordNotUnique
-    reuse_existing_track(track, points)
+
+    saved_track
+  rescue ActiveRecord::RecordNotUnique => e
+    reuse_existing_track(track, points, e)
   end
 
-  def reuse_existing_track(track, points)
-    existing = nil
-    3.times do
-      existing = Track.find_by(user_id: user.id, start_at: track.start_at, end_at: track.end_at)
-      break if existing
-
-      sleep 0.05
-    end
+  def reuse_existing_track(track, points, original_error)
+    existing = Track.find_by(user_id: user.id, start_at: track.start_at, end_at: track.end_at)
 
     unless existing
+      # Under READ COMMITTED the conflicting row should be visible immediately
+      # after RecordNotUnique. If we still can't find it, something is wrong
+      # (replication lag, snapshot weirdness) — let the caller retry rather
+      # than silently dropping the points from the user's timeline.
       Rails.logger.warn(
-        "Race winner not found for user #{user.id} #{track.start_at}..#{track.end_at}; skipping"
+        "event=tracks.race_winner_not_visible user_id=#{user.id} " \
+        "start_at=#{track.start_at} end_at=#{track.end_at}"
       )
-      return nil
+      raise original_error
     end
 
-    Point.where(id: points.map(&:id), track_id: nil).update_all(track_id: existing.id)
+    # Constrain reassignment to the winner's time window so we don't attach
+    # points outside the existing track's start_at..end_at — the winner's
+    # path/distance were computed from its own point set, and stretching it
+    # silently corrupts the track's metadata. Points outside the window stay
+    # orphaned (track_id: nil) and get picked up by the next generation pass.
+    Point.where(
+      id: points.map(&:id),
+      track_id: nil,
+      timestamp: existing.start_at.to_i..existing.end_at.to_i
+    ).update_all(track_id: existing.id)
+
     Rails.logger.info(
-      "Reused existing track id=#{existing.id} for user #{user.id} #{track.start_at}..#{track.end_at}"
+      'event=tracks.unique_violation_rescued service=track_builder ' \
+      "track_id=#{existing.id} user_id=#{user.id} " \
+      "start_at=#{existing.start_at} end_at=#{existing.end_at}"
     )
     existing
   end

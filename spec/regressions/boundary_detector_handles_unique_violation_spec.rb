@@ -36,7 +36,7 @@ RSpec.describe 'BoundaryDetector under unique-index conflict', :non_transactiona
     end
   end
 
-  it 'leaves originals intact when the merged span collides with an existing track and create returns nil' do
+  it 'preserves boundary tracks when merged span collides with a third-party track' do
     older_points = [
       make_point(timestamp: p1_ts, lat: 52.5, lon: 13.4),
       make_point(timestamp: p2_ts, lat: 52.51, lon: 13.41)
@@ -48,7 +48,7 @@ RSpec.describe 'BoundaryDetector under unique-index conflict', :non_transactiona
     older = make_track(points: older_points)
     newer = make_track(points: newer_points)
 
-    Track.create!(
+    third_party = Track.create!(
       user_id: user.id,
       start_at: p1_ts,
       end_at: p4_ts,
@@ -61,12 +61,16 @@ RSpec.describe 'BoundaryDetector under unique-index conflict', :non_transactiona
     detector = Tracks::BoundaryDetector.new(user)
     result = detector.send(:merge_boundary_tracks, [older, newer])
 
-    expect(result).to be true
-    expect(Track.where(id: older.id)).not_to exist
-    expect(Track.where(id: newer.id)).not_to exist
-    expect(
-      Track.where(user_id: user.id, start_at: p1_ts, end_at: p4_ts).count
-    ).to eq(1)
+    expect(result).to be false
+    expect(Track.where(id: older.id)).to exist
+    expect(Track.where(id: newer.id)).to exist
+    expect(Track.where(id: third_party.id)).to exist
+
+    older_point_ids = older_points.map(&:id)
+    newer_point_ids = newer_points.map(&:id)
+    expect(Point.where(id: older_point_ids).pluck(:track_id).uniq).to eq([older.id])
+    expect(Point.where(id: newer_point_ids).pluck(:track_id).uniq).to eq([newer.id])
+    expect(third_party.reload.points.count).to eq(0)
   end
 
   it 'preserves originals if the merged track creation produces nothing' do

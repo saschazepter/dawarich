@@ -169,6 +169,7 @@ class Tracks::BoundaryDetector
     return false if track_group.size < 2
 
     sorted_tracks = track_group.sort_by(&:start_at)
+    boundary_ids = sorted_tracks.map(&:id)
 
     all_points = sorted_tracks.flat_map { |track| track.points.order(:timestamp).to_a }
     unique_points = all_points.uniq(&:id).sort_by(&:timestamp)
@@ -182,8 +183,22 @@ class Tracks::BoundaryDetector
 
       unless merged_track
         Rails.logger.warn(
-          "Boundary merge skipped for tracks #{sorted_tracks.map(&:id).join(',')}: " \
+          "Boundary merge skipped for tracks #{boundary_ids.join(',')}: " \
           'no merged track produced'
+        )
+        raise ActiveRecord::Rollback
+      end
+
+      # If the merged span collided with the unique index and reuse_existing_track
+      # returned a pre-existing track (not the freshly inserted one), absorbing
+      # older+newer into it would corrupt that track's metadata — its path,
+      # distance, segments were computed from a different point set. Bail and
+      # preserve the boundary tracks for the next pass.
+      unless merged_track.previously_new_record? || boundary_ids.include?(merged_track.id)
+        Rails.logger.warn(
+          'event=tracks.boundary_merge_skipped reason=third_party_collision ' \
+          "user_id=#{user.id} boundary_ids=#{boundary_ids.join(',')} " \
+          "existing_track_id=#{merged_track.id}"
         )
         raise ActiveRecord::Rollback
       end
@@ -193,6 +208,12 @@ class Tracks::BoundaryDetector
     end
 
     success
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.warn(
+      'event=tracks.boundary_merge_failed reason=race_winner_not_visible ' \
+      "user_id=#{user.id} boundary_ids=#{sorted_tracks.map(&:id).join(',')}"
+    )
+    false
   end
 
   # Required by Tracks::Segmentation module

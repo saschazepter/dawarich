@@ -37,9 +37,9 @@ RSpec.describe Tracks::PerUserLock, :non_transactional, threads: 4 do
         end
       end
 
-      ready_latch.wait
+      Timeout.timeout(10) { ready_latch.wait }
       start_latch.count_down
-      [t1, t2].each(&:join)
+      [t1, t2].each { |t| t.join(10) }
 
       expect(order.to_a).to eq(%i[t1_in t1_out t2_in t2_out])
         .or eq(%i[t2_in t2_out t1_in t1_out])
@@ -69,9 +69,9 @@ RSpec.describe Tracks::PerUserLock, :non_transactional, threads: 4 do
         end
       end
 
-      ready_latch.wait
+      Timeout.timeout(10) { ready_latch.wait }
       start_latch.count_down
-      [t1, t2].each(&:join)
+      [t1, t2].each { |t| t.join(10) }
 
       expect(events).to contain_exactly(:a_in, :b_in, :a_out, :b_out)
       expect(events.first(2)).to contain_exactly(:a_in, :b_in)

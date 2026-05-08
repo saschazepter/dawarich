@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'ParallelGenerator under concurrent runs', :non_transactional, threads: 4 do
+  include ActiveJob::TestHelper
+
   let(:user) { create(:user) }
 
   def seed_points(count: 30)
@@ -48,9 +50,9 @@ RSpec.describe 'ParallelGenerator under concurrent runs', :non_transactional, th
       end
     end
 
-    ready_latch.wait
+    Timeout.timeout(10) { ready_latch.wait }
     start_latch.count_down
-    threads.each(&:join)
+    threads.each { |t| t.join(20) }
 
     drain_track_jobs
 

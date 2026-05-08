@@ -12,6 +12,7 @@ class Users::ImportData::Tracks
     Rails.logger.info "Importing #{tracks_data.size} tracks for user: #{user.email}"
 
     tracks_created = 0
+    tracks_skipped = 0
 
     tracks_data.each do |track_data|
       next unless track_data.is_a?(Hash)
@@ -20,6 +21,7 @@ class Users::ImportData::Tracks
 
       if existing_track
         Rails.logger.debug "Track already exists: #{track_data['start_at']}"
+        tracks_skipped += 1
         next
       end
 
@@ -29,8 +31,10 @@ class Users::ImportData::Tracks
         tracks_created += 1
       rescue ActiveRecord::RecordNotUnique
         Rails.logger.info(
-          "Track already exists (race): user=#{user.id} #{track_data['start_at']}..#{track_data['end_at']}"
+          'event=tracks.unique_violation_rescued service=import_data ' \
+          "user_id=#{user.id} start_at=#{track_data['start_at']} end_at=#{track_data['end_at']}"
         )
+        tracks_skipped += 1
         next
       rescue ActiveRecord::RecordInvalid => e
         Rails.logger.error "Failed to create track: #{e.message}"
@@ -43,7 +47,9 @@ class Users::ImportData::Tracks
       end
     end
 
-    Rails.logger.info "Tracks import completed. Created: #{tracks_created}"
+    Rails.logger.info(
+      "Tracks import completed. Created: #{tracks_created}, Skipped (already exists): #{tracks_skipped}"
+    )
     tracks_created
   end
 
@@ -51,10 +57,15 @@ class Users::ImportData::Tracks
 
   attr_reader :user, :tracks_data
 
+  # Match on distance as well as the time window so re-imports of an export
+  # with a recomputed distance create a fresh row instead of being silently
+  # treated as a duplicate. The unique index on (user_id, start_at, end_at)
+  # still prevents the same physical row from being inserted twice.
   def find_existing_track(track_data)
     user.tracks.find_by(
       start_at: track_data['start_at'],
-      end_at: track_data['end_at']
+      end_at: track_data['end_at'],
+      distance: track_data['distance']
     )
   end
 

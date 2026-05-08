@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
-- Track generation no longer produces duplicate tracks under concurrent daily, realtime, recalculation, boundary-resolution, or import runs. Adds a `(user_id, start_at, end_at)` unique index on `tracks`, a per-user advisory lock around generation, and idempotent rescue paths in `TrackBuilder`, `Merger`, `BoundaryDetector`, and `Users::ImportData::Tracks`.
+- Track generation no longer creates duplicate tracks. Previously, parallel runs (daily generation, realtime tracking, recalculation, and import) could each produce the same track for the same time window, leaving you with two or three copies of the same trip on your map. (#2677)
+  - Internals: tracks now have a `(user_id, start_at, end_at)` unique index, generation runs under a per-user PostgreSQL advisory lock, and racing inserts fall back to attaching the loser's points to the winning track. A pre-migration deduplicates any existing duplicates so the unique index can apply cleanly.
+  - **Self-hosters with very large databases (>10 GB tracks)**: the deduplication migration runs in batches, but if you have a long history of duplicates the run may take several minutes. If a previous attempt failed and left an `INVALID` index behind, the migration is now safe to re-run.
+- Google sign-in now works correctly for self-hosters who have multiple Google client IDs configured (web + iOS + Android). Previously, only tokens issued by the first configured client ID would validate; iOS or Android tokens were rejected with an audience mismatch error. (#2677)
 
 ## [1.7.5] - 2026-05-04
 

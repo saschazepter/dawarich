@@ -52,9 +52,9 @@ RSpec.describe 'TrackBuilder under concurrent creation', :non_transactional, thr
       end
     end
 
-    ready_latch.wait
+    Timeout.timeout(10) { ready_latch.wait }
     start_latch.count_down
-    threads.each(&:join)
+    threads.each { |t| t.join(20) }
 
     track_count = Track.where(
       user_id: user.id,
