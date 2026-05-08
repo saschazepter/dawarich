@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Monthly statistics no longer leak distance from points that fall into the next month in the user's timezone. Imports that cross midnight UTC near a month boundary (e.g. an overnight transatlantic flight) previously produced a phantom bar on day 1 of the chart and inflated the monthly total by thousands of kilometres. Re-run stats calculation for any affected month to refresh the saved totals. #2546
+- Monthly statistics now bucket points by the user's local timezone instead of UTC, so points are counted on the calendar day they actually happened. Imports that crossed midnight UTC near a month boundary (e.g. an overnight transatlantic flight) previously produced a phantom bar on day 1 of the chart and inflated the monthly total by thousands of kilometres; symmetrically, points near the start of a local month whose UTC timestamp fell in the previous month were silently dropped. Both directions are now correct across DST and non-DST timezones, year boundaries, and DST transitions. To refresh saved totals for affected months, re-run stats calculation (`Stats::CalculatingJob.perform_later(user_id, year, month)`). #2546
 
 ## [1.7.5] - 2026-05-04
 

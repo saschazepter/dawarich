@@ -22,9 +22,7 @@ class Stats::DailyDistanceQuery
     sql = <<-SQL.squish
       WITH points_with_distances AS (
         SELECT
-          EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as year_local,
-          EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as month_local,
-          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as day_of_month,
+          (to_timestamp(timestamp) AT TIME ZONE $1)::date as local_date,
           CASE
             WHEN LAG(lonlat) OVER (
               PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
@@ -42,12 +40,13 @@ class Stats::DailyDistanceQuery
         FROM (#{monthly_points.to_sql}) as points
       )
       SELECT
-        day_of_month,
+        EXTRACT(day FROM local_date)::int as day_of_month,
         ROUND(COALESCE(SUM(segment_distance), 0)) as distance_meters
       FROM points_with_distances
-      WHERE year_local = $2 AND month_local = $3
-      GROUP BY day_of_month
-      ORDER BY day_of_month
+      WHERE EXTRACT(year FROM local_date) = $2
+        AND EXTRACT(month FROM local_date) = $3
+      GROUP BY local_date
+      ORDER BY local_date
     SQL
 
     target = timespan.first

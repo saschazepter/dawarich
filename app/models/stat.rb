@@ -29,7 +29,7 @@ class Stat < ApplicationRecord
     user.points
         .not_anomaly
         .without_raw_data
-        .where(timestamp: timespan)
+        .where(timestamp: widened_timespan)
         .order(timestamp: :asc)
   end
 
@@ -140,6 +140,10 @@ class Stat < ApplicationRecord
 
   def timespan
     DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
+  end
+
+  def widened_timespan
+    (timespan.first - 1.day)..(timespan.last + 1.day)
   end
 
   def calculate_daily_distances(monthly_points)
