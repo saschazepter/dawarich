@@ -106,22 +106,11 @@ Rails.application.configure do
   config.host_authorization = { exclude: ->(request) { request.path == '/api/v1/health' } }
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)
 
-  config.action_mailer.default_url_options = {
-    host:     ENV['DOMAIN'],
-    protocol: ENV.fetch('APPLICATION_PROTOCOL', 'https')
-  }
+  require_relative '../../lib/smtp_config'
+
+  config.action_mailer.default_url_options = SmtpConfig.mailer_url_options
   config.hosts.concat(hosts) if hosts.present?
 
   config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = {
-    address:         ENV['SMTP_SERVER'],
-    port:            ENV['SMTP_PORT'],
-    domain:          ENV['SMTP_DOMAIN'],
-    user_name:       ENV['SMTP_USERNAME'],
-    password:        ENV['SMTP_PASSWORD'],
-    authentication:  ENV.fetch('SMTP_AUTHENTICATION', 'plain').to_sym,
-    enable_starttls: ENV.fetch('SMTP_STARTTLS', 'true') == 'true',
-    open_timeout:    ENV.fetch('SMTP_OPEN_TIMEOUT', '5').to_i,
-    read_timeout:    ENV.fetch('SMTP_READ_TIMEOUT', '5').to_i
-  }
+  config.action_mailer.smtp_settings = SmtpConfig.smtp_settings
 end
