@@ -228,12 +228,14 @@ RSpec.describe Users::ImportData::Tracks, type: :service do
       it 'replaces stale segments with the imported ones' do
         existing = create(:track, user: user, start_at: start_at, end_at: end_at, distance: 100)
         create(:track_segment, track: existing, transportation_mode: :driving)
+        allow(Rails.logger).to receive(:info)
 
         described_class.new(user, tracks_data).call
 
         existing.reload
         expect(existing.distance).to eq(2500)
         expect(existing.track_segments.pluck(:transportation_mode)).to contain_exactly('walking', 'cycling')
+        expect(Rails.logger).to have_received(:info).with(/Updated: 1/)
       end
     end
 
@@ -270,9 +272,27 @@ RSpec.describe Users::ImportData::Tracks, type: :service do
           original.call(*args)
         end
         allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:info)
 
         expect { described_class.new(user, tracks_data).call }.not_to raise_error
         expect(user.tracks.where(start_at: Time.zone.parse('2024-04-02T08:00:00Z'))).to exist
+        expect(Rails.logger).to have_received(:info).with(/Failed refresh: 1/)
+      end
+
+      it 'rescues a fresh RecordNotUnique raised from update! and continues' do
+        create(:track, user: user, start_at: start_at, end_at: end_at, distance: 100)
+
+        allow_any_instance_of(Track).to receive(:update!).and_wrap_original do |original, *args|
+          raise ActiveRecord::RecordNotUnique, 'collision' if args.first.is_a?(Hash) && args.first['distance'] == 9999
+
+          original.call(*args)
+        end
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:info)
+
+        expect { described_class.new(user, tracks_data).call }.not_to raise_error
+        expect(user.tracks.where(start_at: Time.zone.parse('2024-04-02T08:00:00Z'))).to exist
+        expect(Rails.logger).to have_received(:info).with(/Failed refresh: 1/)
       end
     end
 

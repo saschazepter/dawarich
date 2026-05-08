@@ -93,5 +93,28 @@ RSpec.describe Tracks::PerUserLock, :non_transactional, threads: 4 do
       result = described_class.with_user_lock(user_a.id) { 42 }
       expect(result).to eq(42)
     end
+
+    it 'raises AcquisitionTimeout when another holder keeps the lock past the timeout' do
+      holder_acquired = Concurrent::CountDownLatch.new(1)
+      holder_release = Concurrent::CountDownLatch.new(1)
+
+      holder = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          described_class.with_user_lock(user_a.id) do
+            holder_acquired.count_down
+            holder_release.wait(5)
+          end
+        end
+      end
+
+      Timeout.timeout(5) { holder_acquired.wait }
+
+      expect do
+        described_class.with_user_lock(user_a.id, timeout: 0.3) { :unreachable }
+      end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
+
+      holder_release.count_down
+      holder.join(5)
+    end
   end
 end

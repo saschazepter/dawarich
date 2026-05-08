@@ -29,7 +29,8 @@ class Users::ImportData::Tracks
 
     tracks_created = 0
     tracks_updated = 0
-    tracks_skipped = 0
+    tracks_skipped_existing = 0
+    tracks_failed_refresh = 0
 
     tracks_data.each do |track_data|
       next unless track_data.is_a?(Hash)
@@ -38,7 +39,7 @@ class Users::ImportData::Tracks
 
       if existing_track
         Rails.logger.debug "Track already exists: #{track_data['start_at']}"
-        tracks_skipped += 1
+        tracks_skipped_existing += 1
         next
       end
 
@@ -50,7 +51,7 @@ class Users::ImportData::Tracks
         if refresh_existing_track(track_data)
           tracks_updated += 1
         else
-          tracks_skipped += 1
+          tracks_failed_refresh += 1
         end
         next
       rescue ActiveRecord::RecordInvalid => e
@@ -67,7 +68,8 @@ class Users::ImportData::Tracks
     Rails.logger.info(
       'Tracks import completed. ' \
       "Created: #{tracks_created}, Updated: #{tracks_updated}, " \
-      "Skipped (already exists): #{tracks_skipped}"
+      "Skipped (already exists): #{tracks_skipped_existing}, " \
+      "Failed refresh: #{tracks_failed_refresh}"
     )
     tracks_created
   end
@@ -128,10 +130,12 @@ class Users::ImportData::Tracks
     )
     true
   rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-    # Ruby's outer rescue handler doesn't re-catch exceptions of the same type
-    # raised from inside it. If `update!` fails validation or a fresh unique
-    # collision (e.g. corrupt payload), let the importer skip this track and
-    # keep iterating instead of aborting the whole archive.
+    # The outer `rescue` at #call already fired for the original `create!`
+    # collision; a second exception of the same type raised from inside this
+    # method (e.g. validation failure on `update!`, or a fresh `RecordNotUnique`
+    # if the payload's start_at/end_at somehow collide with another row) is
+    # NOT re-caught by that outer handler. Catch it locally and return false
+    # so #call records this row as a failed refresh and keeps iterating.
     Rails.logger.error(
       'event=tracks.unique_violation_rescued service=import_data action=update_failed ' \
       "user_id=#{user.id} track_id=#{existing&.id} " \
