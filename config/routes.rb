@@ -114,7 +114,11 @@ Rails.application.routes.draw do
     end
   end
   resources :exports, only: %i[index create destroy]
-  resources :trips
+  resources :trips do
+    member do
+      post :recalculate
+    end
+  end
   resources :tags, except: [:show]
 
   # Family management routes (only if feature is enabled)

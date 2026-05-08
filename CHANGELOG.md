@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Trip pages now have a **Recalculate** button to refresh path, distance, and visited countries on demand. Useful after re-importing points or cleaning up a trip's underlying data. The page updates automatically when the recalculation finishes; repeated clicks within 60 seconds are ignored while it's running. (#2478)
+
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
