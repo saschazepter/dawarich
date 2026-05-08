@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Map v2 timeline panel: bulk Confirm, Decline, and Delete in selection mode (alongside the existing Merge action). **Delete is non-destructive — it only removes the visit grouping, not your location points.** Bulk actions are capped at 500 visits per request.
+- Trip pages now have a **Recalculate** button to refresh path, distance, and visited countries on demand. Useful after re-importing points or cleaning up a trip's underlying data. The page updates automatically when the recalculation finishes; repeated clicks within 60 seconds are ignored while it's running. (#2478)
 
 ### Fixed
 
