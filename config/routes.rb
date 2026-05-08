@@ -104,6 +104,7 @@ Rails.application.routes.draw do
   resources :visits, only: %i[update destroy] do
     collection do
       patch :bulk_update
+      delete :bulk_destroy
       post :merge
     end
   end
