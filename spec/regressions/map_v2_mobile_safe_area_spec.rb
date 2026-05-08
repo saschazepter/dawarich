@@ -19,16 +19,22 @@ RSpec.describe 'Map V2 mobile viewport / safe-area handling', type: :request do
                           'iOS Safari treats env(safe-area-inset-*) as zero'
     end
 
-    it 'uses dynamic viewport height for the map body so the iOS URL bar does not clip content' do
+    it 'uses dynamic viewport height with an h-screen fallback for older browsers' do
       body_class = response.body.match(/<body[^>]*class=['"]([^'"]+)['"]/)&.[](1)
 
       expect(body_class).to be_present
-      expect(body_class).not_to include('h-screen'),
-                                "body class is '#{body_class}' — h-screen (100vh) is the largest viewport " \
-                                'on iOS Safari; use h-dvh / h-[100dvh] so dynamic browser chrome does ' \
-                                'not overlap content'
       expect(body_class).to match(/h-(?:dvh|\[100dvh\])/),
-                            "body class is '#{body_class}' — expected h-dvh or h-[100dvh]"
+                            "body class is '#{body_class}' — expected h-dvh or h-[100dvh] " \
+                            'so dynamic browser chrome does not overlap content'
+      expect(body_class).to include('h-screen'),
+                            "body class is '#{body_class}' — keep h-screen alongside h-[100dvh] so " \
+                            'browsers without dvh support (Safari <15.4, Chrome <108) still render a sized body'
+    end
+
+    it 'pushes the fixed navbar below the iOS notch via env(safe-area-inset-top)' do
+      expect(response.body).to include('pt-[env(safe-area-inset-top)]'),
+                               'fixed navbar must reserve top padding for the notch when viewport-fit=cover ' \
+                               'is active, otherwise the notch overlays navbar content'
     end
   end
 end
