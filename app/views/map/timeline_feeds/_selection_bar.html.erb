@@ -1,10 +1,4 @@
-<form data-timeline-feed-target="selectionForm"
-      data-action="submit->timeline-feed#submitMerge"
-      action="<%= merge_visits_path %>"
-      method="post"
-      class="selection-bar"
-      hidden>
-  <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+<div data-timeline-feed-target="selectionBar" class="selection-bar" hidden>
   <span class="selection-bar__count" data-timeline-feed-target="selectionCount">0 selected</span>
   <span class="selection-bar__actions">
     <button type="button"
@@ -12,11 +6,55 @@
             data-action="click->timeline-feed#exitSelection">
       Cancel
     </button>
-    <button type="submit"
-            class="selection-bar__merge"
-            data-timeline-feed-target="mergeButton"
-            disabled>
-      Merge
-    </button>
+
+    <%= form_with url: bulk_update_visits_path, method: :patch,
+                  data: { timeline_feed_target: 'confirmForm',
+                          action: 'submit->timeline-feed#submitBulkConfirm' },
+                  class: 'selection-bar__form' do |f| %>
+      <%= f.hidden_field :status, value: 'confirmed' %>
+      <button type="submit"
+              class="selection-bar__action selection-bar__confirm"
+              data-timeline-feed-target="confirmButton"
+              disabled>
+        Confirm
+      </button>
+    <% end %>
+
+    <%= form_with url: bulk_update_visits_path, method: :patch,
+                  data: { timeline_feed_target: 'declineForm',
+                          action: 'submit->timeline-feed#submitBulkDecline' },
+                  class: 'selection-bar__form' do |f| %>
+      <%= f.hidden_field :status, value: 'declined' %>
+      <button type="submit"
+              class="selection-bar__action selection-bar__decline"
+              data-timeline-feed-target="declineButton"
+              disabled>
+        Decline
+      </button>
+    <% end %>
+
+    <%= form_with url: merge_visits_path, method: :post,
+                  data: { timeline_feed_target: 'selectionForm',
+                          action: 'submit->timeline-feed#submitMerge' },
+                  class: 'selection-bar__form' do |_f| %>
+      <button type="submit"
+              class="selection-bar__action selection-bar__merge"
+              data-timeline-feed-target="mergeButton"
+              disabled>
+        Merge
+      </button>
+    <% end %>
+
+    <%= form_with url: bulk_destroy_visits_path, method: :delete,
+                  data: { timeline_feed_target: 'deleteForm',
+                          action: 'submit->timeline-feed#submitBulkDelete' },
+                  class: 'selection-bar__form' do |_f| %>
+      <button type="submit"
+              class="selection-bar__action selection-bar__delete"
+              data-timeline-feed-target="deleteButton"
+              disabled>
+        Delete
+      </button>
+    <% end %>
   </span>
-</form>
+</div>

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Map v2 timeline panel: in selection mode you can now Confirm, Decline, or Delete the selected visits in one click, alongside the existing Merge action. Delete prompts for confirmation and nullifies points' visit attribution rather than deleting the points themselves.
+
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)

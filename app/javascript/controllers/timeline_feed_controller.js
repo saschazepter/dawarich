@@ -16,9 +16,16 @@ export default class extends Controller {
     "searchInput",
     "emptyFiltered",
     "rowCheck",
+    "selectionBar",
     "selectionForm",
     "selectionCount",
     "mergeButton",
+    "confirmForm",
+    "confirmButton",
+    "declineForm",
+    "declineButton",
+    "deleteForm",
+    "deleteButton",
   ]
 
   connect() {
@@ -697,8 +704,8 @@ export default class extends Controller {
     this.activeDayElement = day
     day.dataset.selectionMode = "true"
 
-    const form = this.activeSelectionForm()
-    if (form) form.hidden = false
+    const bar = this.activeSelectionBar()
+    if (bar) bar.hidden = false
     this.syncSelectionUI()
   }
 
@@ -716,8 +723,8 @@ export default class extends Controller {
       cb.checked = false
     }
 
-    const form = this.activeSelectionForm()
-    if (form) form.hidden = true
+    const bar = this.activeSelectionBar()
+    if (bar) bar.hidden = true
 
     this.syncSelectionUI()
     this.activeDayElement = null
@@ -754,22 +761,52 @@ export default class extends Controller {
     event.stopPropagation()
   }
 
-  activeSelectionForm() {
+  activeSelectionBar() {
     const scope = this.activeDayElement
     if (!scope) return null
-    return scope.querySelector('[data-timeline-feed-target="selectionForm"]')
+    return scope.querySelector('[data-timeline-feed-target="selectionBar"]')
+  }
+
+  activeSelectionForm() {
+    return this.scopedQuery('[data-timeline-feed-target="selectionForm"]')
   }
 
   activeSelectionCount() {
-    const scope = this.activeDayElement
-    if (!scope) return null
-    return scope.querySelector('[data-timeline-feed-target="selectionCount"]')
+    return this.scopedQuery('[data-timeline-feed-target="selectionCount"]')
   }
 
   activeMergeButton() {
+    return this.scopedQuery('[data-timeline-feed-target="mergeButton"]')
+  }
+
+  activeConfirmForm() {
+    return this.scopedQuery('[data-timeline-feed-target="confirmForm"]')
+  }
+
+  activeConfirmButton() {
+    return this.scopedQuery('[data-timeline-feed-target="confirmButton"]')
+  }
+
+  activeDeclineForm() {
+    return this.scopedQuery('[data-timeline-feed-target="declineForm"]')
+  }
+
+  activeDeclineButton() {
+    return this.scopedQuery('[data-timeline-feed-target="declineButton"]')
+  }
+
+  activeDeleteForm() {
+    return this.scopedQuery('[data-timeline-feed-target="deleteForm"]')
+  }
+
+  activeDeleteButton() {
+    return this.scopedQuery('[data-timeline-feed-target="deleteButton"]')
+  }
+
+  scopedQuery(selector) {
     const scope = this.activeDayElement
     if (!scope) return null
-    return scope.querySelector('[data-timeline-feed-target="mergeButton"]')
+    return scope.querySelector(selector)
   }
 
   syncSelectionUI() {
@@ -783,15 +820,67 @@ export default class extends Controller {
       mergeBtn.disabled = n < 2
       mergeBtn.textContent = n >= 2 ? `Merge ${n}` : "Merge"
     }
+    for (const [getter, label] of [
+      [this.activeConfirmButton.bind(this), "Confirm"],
+      [this.activeDeclineButton.bind(this), "Decline"],
+      [this.activeDeleteButton.bind(this), "Delete"],
+    ]) {
+      const btn = getter()
+      if (!btn) continue
+      btn.disabled = n < 1
+      btn.textContent = n >= 1 ? `${label} ${n}` : label
+    }
   }
 
   submitMerge(event) {
-    const form = this.activeSelectionForm()
+    this.submitBulkAction(event, {
+      formGetter: this.activeSelectionForm.bind(this),
+      buttonGetter: this.activeMergeButton.bind(this),
+      minSelected: 2,
+    })
+  }
+
+  submitBulkConfirm(event) {
+    this.submitBulkAction(event, {
+      formGetter: this.activeConfirmForm.bind(this),
+      buttonGetter: this.activeConfirmButton.bind(this),
+      minSelected: 1,
+    })
+  }
+
+  submitBulkDecline(event) {
+    this.submitBulkAction(event, {
+      formGetter: this.activeDeclineForm.bind(this),
+      buttonGetter: this.activeDeclineButton.bind(this),
+      minSelected: 1,
+    })
+  }
+
+  submitBulkDelete(event) {
+    const n = this.selectedVisitIds.size
+    if (n < 1) {
+      event.preventDefault()
+      return
+    }
+    const noun = n === 1 ? "visit" : "visits"
+    if (!window.confirm(`Delete ${n} ${noun}? This cannot be undone.`)) {
+      event.preventDefault()
+      return
+    }
+    this.submitBulkAction(event, {
+      formGetter: this.activeDeleteForm.bind(this),
+      buttonGetter: this.activeDeleteButton.bind(this),
+      minSelected: 1,
+    })
+  }
+
+  submitBulkAction(event, { formGetter, buttonGetter, minSelected }) {
+    const form = formGetter()
     if (!form || form !== event.currentTarget) {
       event.preventDefault()
       return
     }
-    if (this.selectedVisitIds.size < 2) {
+    if (this.selectedVisitIds.size < minSelected) {
       event.preventDefault()
       return
     }
@@ -807,8 +896,8 @@ export default class extends Controller {
       form.appendChild(input)
     }
 
-    const mergeBtn = this.activeMergeButton()
-    if (mergeBtn) mergeBtn.disabled = true
+    const btn = buttonGetter()
+    if (btn) btn.disabled = true
 
     const onEnd = (e) => {
       if (e.target !== form) return

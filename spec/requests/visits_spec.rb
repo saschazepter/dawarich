@@ -382,4 +382,95 @@ RSpec.describe '/visits', type: :request do
       expect(Rails.cache.read(cache_key)).to be_nil
     end
   end
+
+  describe 'PATCH /bulk_update with visit_ids (selection mode)' do
+    let!(:visit_a) { create(:visit, user:, status: :suggested) }
+    let!(:visit_b) { create(:visit, user:, status: :suggested) }
+    let!(:visit_c) { create(:visit, user:, status: :suggested) }
+
+    it 'confirms only the selected visits, not the rest' do
+      patch bulk_update_visits_url, params: { status: 'confirmed', visit_ids: [visit_a.id, visit_b.id] }
+
+      expect(visit_a.reload.status).to eq('confirmed')
+      expect(visit_b.reload.status).to eq('confirmed')
+      expect(visit_c.reload.status).to eq('suggested')
+    end
+
+    it 'declines only the selected visits' do
+      patch bulk_update_visits_url, params: { status: 'declined', visit_ids: [visit_a.id] }
+
+      expect(visit_a.reload.status).to eq('declined')
+      expect(visit_b.reload.status).to eq('suggested')
+    end
+
+    it 'ignores ids that belong to another user' do
+      other_user_visit = create(:visit, user: create(:user), status: :suggested)
+
+      patch bulk_update_visits_url,
+            params: { status: 'confirmed', visit_ids: [visit_a.id, other_user_visit.id] }
+
+      expect(visit_a.reload.status).to eq('confirmed')
+      expect(other_user_visit.reload.status).to eq('suggested')
+    end
+
+    it 'falls back to source_status scoping when visit_ids is absent' do
+      patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('confirmed'))
+    end
+  end
+
+  describe 'DELETE /bulk_destroy' do
+    let!(:visit_a) { create(:visit, user:, status: :suggested) }
+    let!(:visit_b) { create(:visit, user:, status: :confirmed) }
+    let!(:visit_c) { create(:visit, user:, status: :suggested) }
+
+    it 'destroys the selected visits' do
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id, visit_b.id] }
+
+      expect(response).to have_http_status(:ok)
+      expect(Visit.where(id: [visit_a.id, visit_b.id])).to be_empty
+      expect(Visit.where(id: visit_c.id)).to exist
+    end
+
+    it 'rejects when no visit_ids are submitted' do
+      delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: [] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect { visit_a.reload }.not_to raise_error
+    end
+
+    it 'rejects when an id belongs to another user' do
+      other_user_visit = create(:visit, user: create(:user))
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id, other_user_visit.id] }
+
+      expect(response).to have_http_status(:not_found)
+      expect { visit_a.reload }.not_to raise_error
+      expect { other_user_visit.reload }.not_to raise_error
+    end
+
+    it 'busts the month-summary cache for affected months' do
+      month_start = visit_a.started_at.beginning_of_month.to_date
+      cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
+      Rails.cache.write(cache_key, 'sentinel')
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id] }
+
+      expect(Rails.cache.read(cache_key)).to be_nil
+    end
+
+    it 'nullifies points\' visit_id rather than deleting them' do
+      point = create(:point, user: user, visit: visit_a)
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id] }
+
+      expect(Point.where(id: point.id)).to exist
+      expect(point.reload.visit_id).to be_nil
+    end
+  end
 end
