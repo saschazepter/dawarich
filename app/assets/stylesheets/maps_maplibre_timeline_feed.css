@@ -817,12 +817,13 @@
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
   margin: 0 0 8px 0;
-  background: oklch(var(--p) / 0.08);
+  background: oklch(var(--b2));
   border: 1px solid oklch(var(--p) / 0.3);
   border-radius: 8px;
   font-size: 12px;
@@ -839,7 +840,9 @@
 
 .selection-bar__actions {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  column-gap: 8px;
 }
 
 .selection-bar__form {
