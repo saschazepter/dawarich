@@ -17,9 +17,10 @@ class Tracks::ParallelGenerator
   end
 
   def call
-    clean_existing_tracks if mode.in?(%i[bulk daily])
+    if mode.in?(%i[bulk daily])
+      Tracks::PerUserLock.with_user_lock(user.id) { clean_existing_tracks }
+    end
 
-    # Generate time chunks
     time_chunks = generate_time_chunks
     return 0 if time_chunks.empty?
 
