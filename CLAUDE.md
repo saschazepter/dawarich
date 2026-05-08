@@ -107,7 +107,7 @@ This file contains essential information for Claude to work effectively with the
 
 ### Default Credentials
 - Username: `demo@dawarich.app`
-- Password: `password`
+- Password: `safepassword`
 
 ## Testing
 
