@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Password-reset and other transactional emails now build links with HTTPS by default and respect a new `APPLICATION_PROTOCOL` env var, instead of always sending `http://` URLs through reverse proxies. (#1469)
+- SMTP authentication mechanism (`SMTP_AUTHENTICATION`) and connection timeouts (`SMTP_OPEN_TIMEOUT`, `SMTP_READ_TIMEOUT`) are now configurable via environment variables. Office 365 and other providers that require `login` authentication or longer timeouts no longer need a custom Rails initializer. (#1469)
 
 ## [1.7.5] - 2026-05-04
 

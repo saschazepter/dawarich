@@ -106,7 +106,10 @@ Rails.application.configure do
   config.host_authorization = { exclude: ->(request) { request.path == '/api/v1/health' } }
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)
 
-  config.action_mailer.default_url_options = { host: ENV['DOMAIN'] }
+  config.action_mailer.default_url_options = {
+    host:     ENV['DOMAIN'],
+    protocol: ENV.fetch('APPLICATION_PROTOCOL', 'https')
+  }
   config.hosts.concat(hosts) if hosts.present?
 
   config.action_mailer.delivery_method = :smtp
@@ -116,9 +119,9 @@ Rails.application.configure do
     domain:          ENV['SMTP_DOMAIN'],
     user_name:       ENV['SMTP_USERNAME'],
     password:        ENV['SMTP_PASSWORD'],
-    authentication:  'plain',
+    authentication:  ENV.fetch('SMTP_AUTHENTICATION', 'plain').to_sym,
     enable_starttls: ENV.fetch('SMTP_STARTTLS', 'true') == 'true',
-    open_timeout:    5,
-    read_timeout:    5
+    open_timeout:    ENV.fetch('SMTP_OPEN_TIMEOUT', '5').to_i,
+    read_timeout:    ENV.fetch('SMTP_READ_TIMEOUT', '5').to_i
   }
 end
