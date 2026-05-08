@@ -32,3 +32,4 @@ pin 'leaflet.control.layers.tree' # @1.2.0
 pin 'emoji-mart' # @5.6.0
 pin 'maplibre-gl' # @5.12.0
 pin 'fflate' # @0.8.2
+pin 'h3-js' # @4.4.0

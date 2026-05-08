@@ -273,6 +273,50 @@ export class RoutesManager {
   }
 
   /**
+   * Toggle hexagons visibility
+   */
+  async toggleHexagons(event) {
+    const toggle = event.target
+    let hexagonLayer = this.layerManager.getLayer("hexagons")
+
+    const showHexagons = async () => {
+      if (!hexagonLayer) {
+        hexagonLayer = this.layerManager._addHexagonLayer()
+      }
+      hexagonLayer.show()
+      const start_at = this.controller.startDateValue
+      const end_at = this.controller.endDateValue
+      await hexagonLayer.load({ start_at, end_at })
+    }
+
+    const hideHexagons = () => {
+      if (hexagonLayer) {
+        hexagonLayer.cancel()
+        hexagonLayer.hide()
+      }
+    }
+
+    const intercepted = gatedToggle({
+      layerName: "Hexagons",
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn: showHexagons,
+      hideFn: hideHexagons,
+      upgradeUrl: this.controller.upgradeUrlValue,
+    })
+    if (intercepted) return
+
+    const enabled = toggle.checked
+    SettingsManager.updateSetting("hexagonsEnabled", enabled)
+
+    if (enabled) {
+      await showHexagons()
+    } else {
+      hideHexagons()
+    }
+  }
+
+  /**
    * Toggle fog of war layer
    */
   async toggleFog(event) {

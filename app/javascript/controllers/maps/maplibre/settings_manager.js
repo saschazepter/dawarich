@@ -55,6 +55,7 @@ export class SettingsController {
       pointsToggle: "pointsVisible",
       routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
+      hexagonsToggle: "hexagonsEnabled",
       visitsToggle: "visitsEnabled",
       photosToggle: "photosEnabled",
       areasToggle: "areasEnabled",
@@ -70,6 +71,7 @@ export class SettingsController {
     // Gated layer toggles that Lite users cannot persist
     const gatedToggles = new Set([
       "heatmapToggle",
+      "hexagonsToggle",
       "fogToggle",
       "scratchToggle",
     ])

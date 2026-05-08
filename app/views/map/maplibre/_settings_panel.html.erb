@@ -155,6 +155,22 @@
 
           <div class="divider"></div>
 
+          <!-- Hexagons Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-testid="hexagons-toggle"
+                     data-maps--maplibre-target="hexagonsToggle"
+                     data-action="change->maps--maplibre#toggleHexagons" />
+              <span class="label-text font-medium">Hexagons</span>
+              <%= pro_badge_tag %>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show density hexagons</p>
+          </div>
+
+          <div class="divider"></div>
+
           <!-- Visits Layer -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">

@@ -19,35 +19,34 @@ export class ProgressiveLoader {
     const {
       batchSize = 1000,
       maxConcurrent = 3,
-      maxPoints = 100000, // Limit for safety
+      maxPoints = 100000,
+      resumeFrom = 1,
     } = options
 
     this.abortController = new AbortController()
     const allData = []
-    let page = 1
+    let page = resumeFrom
     let totalPages = 1
     const activeRequests = []
 
     try {
       do {
-        // Check abort
         if (this.abortController.signal.aborted) {
           throw new Error("Load cancelled")
         }
 
-        // Check max points limit
         if (allData.length >= maxPoints) {
           console.warn(`Reached max points limit: ${maxPoints}`)
           break
         }
 
-        // Limit concurrent requests
         while (activeRequests.length >= maxConcurrent) {
           await Promise.race(activeRequests)
         }
 
+        const currentPage = page
         const requestPromise = fetchFn({
-          page,
+          page: currentPage,
           per_page: batchSize,
           signal: this.abortController.signal,
         }).then((result) => {
@@ -59,13 +58,13 @@ export class ProgressiveLoader {
 
           this.onProgress?.({
             loaded: allData.length,
+            newData: result.data,
             total: Math.min(totalPages * batchSize, maxPoints),
-            currentPage: page,
+            currentPage,
             totalPages,
-            progress: page / totalPages,
+            progress: currentPage / totalPages,
           })
 
-          // Remove from active
           const idx = activeRequests.indexOf(requestPromise)
           if (idx > -1) activeRequests.splice(idx, 1)
 
@@ -76,7 +75,6 @@ export class ProgressiveLoader {
         page++
       } while (page <= totalPages && allData.length < maxPoints)
 
-      // Wait for remaining
       await Promise.all(activeRequests)
 
       this.onComplete?.(allData)
@@ -84,7 +82,7 @@ export class ProgressiveLoader {
     } catch (error) {
       if (error.name === "AbortError" || error.message === "Load cancelled") {
         console.log("Progressive load cancelled")
-        return allData // Return partial data
+        return allData
       }
       throw error
     }
