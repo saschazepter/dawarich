@@ -67,7 +67,7 @@ RSpec.describe Api::PhotoSerializer do
           id: '7fe486e3-c3ba-4b54-bbf9-1281b39ed15c',
           latitude: 52.11,
           longitude: 13.22,
-          localDateTime: '2023-06-08T09:58:45.637Z',
+          localDateTime: '2023-06-08T07:58:45.637Z',
           originalFileName: 'IMG_9913.jpeg',
           city: 'Johannisthal',
           state: 'Berlin',

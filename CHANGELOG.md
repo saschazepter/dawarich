@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Photos imported from Immich now display at the correct time on Map v2 and import with the correct UTC timestamp, regardless of the host server's timezone or the photo's capture timezone. Previously, photos taken outside the server's timezone could appear up to 24 hours off. (#2253)
 
 ## [1.7.5] - 2026-05-04
 
