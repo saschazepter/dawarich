@@ -134,7 +134,9 @@ class Immich::EnrichScan
   end
 
   def parse_photo_timestamp(photo)
-    time_str = photo.dig('exifInfo', 'dateTimeOriginal') || photo['localDateTime']
+    time_str = photo['fileCreatedAt'] ||
+               photo.dig('exifInfo', 'dateTimeOriginal') ||
+               photo['localDateTime']
     return nil if time_str.blank?
 
     Time.parse(time_str).utc.to_i
