@@ -322,8 +322,8 @@ export default class extends Controller {
     }
 
     if (this.hasVisitListFrameTarget) {
-      const start = `${date}T00:00:00Z`
-      const end = `${date}T23:59:59Z`
+      const start = `${date}T00:00:00`
+      const end = `${date}T23:59:59`
       const newSrc = `/map/timeline_feeds?start_at=${encodeURIComponent(
         start,
       )}&end_at=${encodeURIComponent(end)}`

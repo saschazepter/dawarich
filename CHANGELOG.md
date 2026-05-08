@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Selecting a day in the Maps v2 timeline calendar now shows that day's visits in the user's profile timezone, instead of leaking the previous day's late-evening visits into the selected tab and hiding the selected day's late-evening visits under the next tab. (#2619)
 
 ## [1.7.5] - 2026-05-04
 
