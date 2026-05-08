@@ -3,16 +3,29 @@
 class VisitsController < ApplicationController
   include FlashStreamable
 
+  MAX_BULK_VISIT_IDS = Visits::BulkDestroy::MAX_VISIT_IDS
+
   before_action :authenticate_user!
   before_action :set_visit, only: %i[update destroy]
-  after_action :bust_timeline_month_cache, only: %i[update bulk_update destroy merge]
+  after_action :bust_timeline_month_cache, only: %i[update bulk_update bulk_destroy destroy merge]
 
   def bulk_update
     status = params[:status]
     source_status = params[:source_status] || 'suggested'
+    explicit_visit_ids = parse_visit_ids(params[:visit_ids])
 
-    scope = current_user.scoped_visits.where(status: source_status)
-    scope = apply_date_scope(scope) if params[:date].present?
+    if explicit_visit_ids.any?
+      return render_unprocessable(too_many_visits_message) if explicit_visit_ids.length > MAX_BULK_VISIT_IDS
+
+      scope = current_user.scoped_visits.where(id: explicit_visit_ids)
+      if scope.count != explicit_visit_ids.length
+        return render_not_found(message_for_missing_visits(explicit_visit_ids))
+      end
+    else
+      scope = current_user.scoped_visits.where(status: source_status)
+      scope = apply_date_scope(scope) if params[:date].present?
+      return render_unprocessable(too_many_visits_message) if scope.count > MAX_BULK_VISIT_IDS
+    end
 
     @affected_started_at = scope.pluck(:started_at)
     visit_ids = scope.pluck(:id)
@@ -40,9 +53,39 @@ class VisitsController < ApplicationController
     end
   end
 
+  def bulk_destroy
+    visit_ids = parse_visit_ids(params[:visit_ids])
+    return render_unprocessable('Select at least one visit to delete.') if visit_ids.empty?
+    return render_unprocessable(too_many_visits_message) if visit_ids.length > MAX_BULK_VISIT_IDS
+
+    visits = current_user.scoped_visits.where(id: visit_ids)
+    return render_not_found(message_for_missing_visits(visit_ids)) if visits.count != visit_ids.length
+
+    @affected_started_at = visits.pluck(:started_at)
+
+    service = Visits::BulkDestroy.new(current_user, visit_ids)
+    result = service.call
+
+    if result
+      respond_to do |format|
+        format.turbo_stream { render turbo_stream: build_bulk_destroy_streams(result[:count]) }
+        format.html do
+          redirect_back(fallback_location: build_timeline_url(date: 'today'),
+                        notice: bulk_destroy_success_message(result[:count]),
+                        status: :see_other)
+        end
+      end
+    else
+      render_unprocessable(service.errors.join(', ').presence || 'Failed to delete visits.')
+    end
+  end
+
   def update
     params_to_update = visit_params.to_h
     params_to_update.delete(:name) if params_to_update[:name].is_a?(String) && params_to_update[:name].strip.empty?
+
+    auto_confirm_result = maybe_auto_confirm_with_user_place!(params_to_update)
+    return render_unprocessable('Could not save the typed name as a place.') if auto_confirm_result == :place_invalid
 
     # Cross-tenant IDOR guard: place_id must belong to current_user.
     # Suggested places (visit.suggested_places) are also acceptable since
@@ -100,11 +143,11 @@ class VisitsController < ApplicationController
   end
 
   def merge
-    visit_ids = Array(params[:visit_ids]).map(&:to_i).reject(&:zero?).uniq
+    visit_ids = parse_visit_ids(params[:visit_ids])
     return render_unprocessable('Select at least 2 visits to merge.') if visit_ids.length < 2
 
     visits = current_user.scoped_visits.where(id: visit_ids).order(:started_at)
-    return render_not_found('One or more visits not found.') if visits.length != visit_ids.length
+    return render_not_found(message_for_missing_visits(visit_ids)) if visits.length != visit_ids.length
 
     return render_unprocessable('Visits must be on the same day.') unless same_day?(visits)
 
@@ -127,6 +170,10 @@ class VisitsController < ApplicationController
 
   def set_visit
     @visit = current_user.scoped_visits.find(params[:id])
+  end
+
+  def parse_visit_ids(raw)
+    Array(raw).map(&:to_i).reject(&:zero?).uniq
   end
 
   def apply_date_scope(scope)
@@ -257,6 +304,45 @@ class VisitsController < ApplicationController
     params_to_update[:status] == 'confirmed' && @visit.suggested? && params_to_update[:name].blank?
   end
 
+  PLACE_NAME_MAX_LENGTH = 200
+
+  def maybe_auto_confirm_with_user_place!(params_to_update)
+    return :noop unless @visit.suggested?
+    return :noop if params_to_update[:place_id].present?
+    return :noop if params_to_update[:status].present? && params_to_update[:status] != 'suggested'
+
+    name = params_to_update[:name].to_s.strip
+    return :noop if name.blank?
+
+    name = name[0, PLACE_NAME_MAX_LENGTH]
+    params_to_update[:name] = name
+
+    place = find_or_create_user_place_for_rename(name)
+    return :place_invalid unless place
+
+    params_to_update[:place_id] = place.id
+    params_to_update[:status] = 'confirmed'
+    :auto_confirmed
+  end
+
+  def find_or_create_user_place_for_rename(name)
+    lat, lon = @visit.center
+    return nil if lat.blank? || lon.blank?
+    return nil if lat.to_f.zero? && lon.to_f.zero?
+
+    existing = current_user.places.where(name: name).near([lat, lon], 50, :m).first
+    return existing if existing
+
+    current_user.places.create!(
+      name: name,
+      latitude: lat,
+      longitude: lon,
+      source: :manual
+    )
+  rescue ActiveRecord::RecordInvalid
+    nil
+  end
+
   def auto_name_on_confirm
     place = @visit.place || @visit.suggested_places.first
     @visit.name = place.name if place&.name.present?
@@ -316,6 +402,55 @@ class VisitsController < ApplicationController
     streams
   end
 
+  def build_bulk_destroy_streams(count)
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    affected_dates = Time.use_zone(tz) do
+      Array(@affected_started_at).compact.map { |t| t.in_time_zone.to_date }.uniq
+    end
+    visible_date = affected_dates.first if affected_dates.length == 1
+    counts_date_str = (visible_date || Time.use_zone(tz) { Date.current }).to_s
+
+    streams = []
+    day_stream = build_day_frame_stream(visible_date, tz)
+    streams << day_stream if day_stream
+    streams.concat(filter_count_streams(counts_date_str))
+    streams << stream_flash(:notice, bulk_destroy_success_message(count))
+    streams
+  end
+
+  # When all deleted visits fall on the same user-local date, we can rebuild
+  # that day's frame from fresh data. For cross-day deletions (e.g. via API),
+  # we leave the frame alone — the controller can't know which day the user
+  # is currently viewing.
+  def build_day_frame_stream(date, time_zone)
+    return nil unless date
+
+    day_range = Time.use_zone(time_zone) { date.in_time_zone.all_day }
+    day = Timeline::DayAssembler.new(
+      current_user,
+      start_at: day_range.begin.iso8601,
+      end_at: day_range.end.iso8601,
+      distance_unit: current_user.safe_settings.distance_unit
+    ).call.first
+
+    if day
+      turbo_stream.update('timeline-feed-frame',
+                          partial: 'map/timeline_feeds/day',
+                          locals: { day: day })
+    else
+      turbo_stream.update('timeline-feed-frame', '')
+    end
+  end
+
+  def filter_count_streams(date_str)
+    status_counts = month_status_counts(date_str)
+    %w[confirmed suggested declined].map do |status|
+      turbo_stream.replace("filter-count-#{status}",
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: status, count: status_counts[status].to_i })
+    end
+  end
+
   def render_unprocessable(message)
     respond_to do |format|
       format.turbo_stream { render turbo_stream: stream_flash(:error, message), status: :unprocessable_content }
@@ -327,6 +462,34 @@ class VisitsController < ApplicationController
     Time.zone.parse(value.to_s)
   rescue ArgumentError, TypeError
     nil
+  end
+
+  def too_many_visits_message
+    "You can act on up to #{MAX_BULK_VISIT_IDS} visits at once. Narrow your selection and try again."
+  end
+
+  def message_for_missing_visits(ids)
+    return missing_visits_message unless current_user.plan_restricted?
+
+    archived_count = current_user.visits.where(id: ids)
+                                 .where('started_at < ?', current_user.data_window_start)
+                                 .count
+    return missing_visits_message if archived_count.zero?
+
+    plan_window_visits_message
+  end
+
+  def missing_visits_message
+    "Some of those visits aren't here anymore — probably edited in another tab. Refresh and try again."
+  end
+
+  def plan_window_visits_message
+    'Some of those visits are outside your Lite plan’s 12-month window. Upgrade to Pro to manage older data.'
+  end
+
+  def bulk_destroy_success_message(count)
+    noun = 'visit'.pluralize(count)
+    "#{count} #{noun} removed. Your location points are still here."
   end
 
   def bust_timeline_month_cache

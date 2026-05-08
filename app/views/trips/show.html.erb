@@ -1,11 +1,12 @@
 <% content_for :title, @trip.name %>
 
-<%= turbo_stream_from "trip_#{@trip.id}" %>
+<%= turbo_stream_from @trip %>
 
 <div class="w-full my-5">
   <%# Header %>
   <%= render layout: 'shared/page_header', locals: { title: @trip.name } do %>
     <div class="flex items-center gap-2">
+      <%= render "trips/recalculate_button", trip: @trip %>
       <%= link_to edit_trip_path(@trip), class: "btn btn-outline btn-sm" do %>
         <%= icon 'square-pen', class: 'w-4 h-4' %> Edit
       <% end %>
