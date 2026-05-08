@@ -42,6 +42,13 @@ class Api::V1::VisitsController < ApiController
   def update
     visit = current_api_user.visits.find(params[:id])
 
+    if visit_params[:place_id].present?
+      place = current_api_user.places.find_by(id: visit_params[:place_id]) ||
+              visit.suggested_places.find_by(id: visit_params[:place_id])
+      return render json: { error: 'Invalid place' }, status: :unprocessable_content if place.nil?
+    end
+
+    area = nil
     if visit_params[:area_id].present?
       area = current_api_user.areas.find_by(id: visit_params[:area_id])
       return render json: { error: 'Invalid area' }, status: :unprocessable_content if area.nil?

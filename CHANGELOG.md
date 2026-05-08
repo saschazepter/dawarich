@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- API and web routes for updating a visit now accept `area_id`, so a visit can be manually assigned to one of your own areas. The visit's name is auto-set from the area name unless an explicit name is provided. (#2577)
+- Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
 
 ### Fixed
 

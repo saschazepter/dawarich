@@ -70,6 +70,27 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
 
       expect(visit.reload.area_id).to be_nil
     end
+
+    it 'rejects a non-numeric area_id with 422' do
+      patch "/api/v1/visits/#{visit.id}",
+            params: { visit: { area_id: 'banana' } },
+            headers: auth_headers
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(visit.reload.area_id).to be_nil
+    end
+
+    it 'rejects a foreign place with 422' do
+      foreign_user = create(:user)
+      foreign_place = create(:place, user: foreign_user, name: 'Stranger Place')
+
+      patch "/api/v1/visits/#{visit.id}",
+            params: { visit: { place_id: foreign_place.id } },
+            headers: auth_headers
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(visit.reload.place_id).to be_nil
+    end
   end
 
   describe 'PATCH /visits/:id (web controller)' do
@@ -106,6 +127,29 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
       expect(visit.place_id).to eq(place.id)
       expect(visit.area_id).to eq(area.id)
       expect(visit.name).to eq('Coffee Shop')
+    end
+
+    it 'confirms a suggested visit and uses the area name when status and area_id are sent together' do
+      visit.update!(status: :suggested, name: 'before')
+
+      patch "/visits/#{visit.id}",
+            params: { visit: { area_id: area.id, status: 'confirmed' } }
+
+      visit.reload
+      expect(visit.status).to eq('confirmed')
+      expect(visit.area_id).to eq(area.id)
+      expect(visit.name).to eq('Home')
+    end
+
+    it 'busts the timeline month cache for an area-only update' do
+      month_start = visit.started_at.in_time_zone('Etc/UTC').to_date.beginning_of_month
+      cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
+      Rails.cache.write(cache_key, 'cached-value')
+
+      patch "/visits/#{visit.id}",
+            params: { visit: { area_id: area.id } }
+
+      expect(Rails.cache.read(cache_key)).to be_nil
     end
   end
 end
