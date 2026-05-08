@@ -60,9 +60,11 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def load_chunk_points
-    user.points
-        .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
-        .order(:timestamp)
+    relation = user.points
+                   .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
+                   .order(:timestamp)
+    relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
+    relation
   end
 
   def segment_chunk_points(points)
