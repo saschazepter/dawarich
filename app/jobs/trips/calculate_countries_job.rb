@@ -7,11 +7,9 @@ class Trips::CalculateCountriesJob < ApplicationJob
     trip = Trip.find(trip_id)
 
     trip.calculate_countries
-    trip.last_recalculated_at = nil if trip.last_recalculated_at.present?
     trip.save!
 
     broadcast_update(trip, distance_unit)
-    broadcast_recalculate_button(trip)
   end
 
   private
@@ -22,15 +20,6 @@ class Trips::CalculateCountriesJob < ApplicationJob
       target: 'trip_countries',
       partial: 'trips/countries',
       locals: { trip: trip, distance_unit: distance_unit }
-    )
-  end
-
-  def broadcast_recalculate_button(trip)
-    Turbo::StreamsChannel.broadcast_replace_to(
-      "trip_#{trip.id}",
-      target: 'trip_recalculate_frame',
-      partial: 'trips/recalculate_button',
-      locals: { trip: trip }
     )
   end
 end

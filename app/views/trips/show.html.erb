@@ -6,9 +6,7 @@
   <%# Header %>
   <%= render layout: 'shared/page_header', locals: { title: @trip.name } do %>
     <div class="flex items-center gap-2">
-      <%= turbo_frame_tag "trip_recalculate_frame" do %>
-        <%= render "trips/recalculate_button", trip: @trip %>
-      <% end %>
+      <%= render "trips/recalculate_button", trip: @trip %>
       <%= link_to edit_trip_path(@trip), class: "btn btn-outline btn-sm" do %>
         <%= icon 'square-pen', class: 'w-4 h-4' %> Edit
       <% end %>

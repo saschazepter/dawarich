@@ -19,13 +19,24 @@ RSpec.describe 'Manual recalculation of a trip after underlying points change',
   before { sign_in user }
 
   describe 'POST /trips/:id/recalculate' do
-    it 'enqueues Trips::CalculateAllJob with the trip id' do
+    it 'enqueues Trips::CalculateAllJob with the trip id and stamps last_recalculated_at' do
       expect do
         post recalculate_trip_path(trip)
       end.to have_enqueued_job(Trips::CalculateAllJob).with(trip.id, anything)
+
+      expect(trip.reload.last_recalculated_at).to be_within(5.seconds).of(Time.current)
     end
 
-    it 'redirects back to the trip page with a notice' do
+    it 'responds with a turbo_stream that swaps the recalculate frame' do
+      post recalculate_trip_path(trip), headers: { 'Accept' => Mime[:turbo_stream].to_s }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq(Mime[:turbo_stream].to_s)
+      expect(response.body).to include('turbo-stream')
+      expect(response.body).to include('trip_recalculate_frame')
+    end
+
+    it 'falls back to an HTML redirect with a notice for non-turbo requests' do
       allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
       allow_any_instance_of(Trip).to receive(:photo_sources).and_return([])
 
@@ -53,6 +64,16 @@ RSpec.describe 'Manual recalculation of a trip after underlying points change',
       end.not_to have_enqueued_job(Trips::CalculateAllJob)
 
       expect(response).to have_http_status(:not_found)
+    end
+
+    it 'rejects inactive users via authenticate_active_user!' do
+      user.update!(active_until: 1.day.ago)
+
+      expect do
+        post recalculate_trip_path(trip)
+      end.not_to have_enqueued_job(Trips::CalculateAllJob)
+
+      expect(response).to redirect_to(root_path)
     end
   end
 

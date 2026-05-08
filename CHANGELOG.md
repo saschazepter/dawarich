@@ -6,10 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Trip pages now have a **Recalculate** button to refresh path, distance and visited countries on demand. Useful after re-importing points or cleaning up a trip's underlying data. The page updates automatically when the recalculation finishes; subsequent clicks within 60 seconds are debounced.
+
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
-- Trip pages now have a "Recalculate map" button to refresh path, distance and visited countries after points are added or deleted within the trip's date range. (#2291)
 
 ## [1.7.5] - 2026-05-04
 

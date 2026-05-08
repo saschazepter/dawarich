@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 class TripsController < ApplicationController
+  include FlashStreamable
+
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[new create]
+  before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate]
   before_action :set_coordinates, only: %i[show edit]
 
@@ -50,18 +52,45 @@ class TripsController < ApplicationController
   end
 
   def recalculate
-    if @trip.recalculating?
-      redirect_to trip_path(@trip),
-                  notice: 'Recalculation already in progress. The map will update automatically.'
+    authorize @trip, :recalculate?
+
+    affected = current_user.trips
+                           .where(id: @trip.id)
+                           .where('last_recalculated_at IS NULL OR last_recalculated_at < ?', Trip::RECALCULATE_COOLDOWN.ago)
+                           .update_all(last_recalculated_at: Time.current)
+
+    if affected.zero?
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: stream_flash(:notice,
+                                            'Already recalculating — the map will update automatically when it\'s done.')
+        end
+        format.html do
+          redirect_to trip_path(@trip),
+                      notice: 'Already recalculating — the map will update automatically when it\'s done.'
+        end
+      end
       return
     end
 
-    @trip.update_column(:last_recalculated_at, Time.current)
+    @trip.reload
     Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
     Rails.logger.info("trip_recalculate trip_id=#{@trip.id} user_id=#{current_user.id}")
 
-    redirect_to trip_path(@trip),
-                notice: 'Recalculating trip map. The page will update automatically when ready.'
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.replace('trip_recalculate_frame',
+                               partial: 'trips/recalculate_button',
+                               locals: { trip: @trip }),
+          stream_flash(:notice, 'Recalculating — the page will update automatically when it\'s ready.')
+        ]
+      end
+      format.html do
+        redirect_to trip_path(@trip),
+                    notice: 'Recalculating — the page will update automatically when it\'s ready.'
+      end
+    end
   end
 
   private
