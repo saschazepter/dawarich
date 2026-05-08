@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module SmtpConfig
-  ALLOWED_AUTHENTICATIONS = %i[plain login cram_md5].freeze
+  ALLOWED_AUTHENTICATIONS = %i[plain login cram_md5 digest_md5 gssapi ntlm xoauth2].freeze
   DEFAULT_TIMEOUT = 5
 
   def self.smtp_settings(env = ENV)
@@ -27,6 +27,8 @@ module SmtpConfig
 
   def self.authentication(env)
     raw = env.fetch('SMTP_AUTHENTICATION', 'plain').to_s.strip
+    return :plain if raw.empty?
+
     sym = raw.downcase.to_sym
     return sym if ALLOWED_AUTHENTICATIONS.include?(sym)
 

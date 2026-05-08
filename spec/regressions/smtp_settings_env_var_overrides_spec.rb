@@ -29,14 +29,22 @@ RSpec.describe SmtpConfig do
       expect(described_class.smtp_settings({})[:authentication]).to eq(:plain)
     end
 
-    it 'casts SMTP_AUTHENTICATION to a symbol from a whitelist' do
-      expect(described_class.smtp_settings('SMTP_AUTHENTICATION' => 'login')[:authentication]).to eq(:login)
-      expect(described_class.smtp_settings('SMTP_AUTHENTICATION' => 'cram_md5')[:authentication]).to eq(:cram_md5)
+    it 'casts SMTP_AUTHENTICATION to a symbol from the Mail-gem-supported whitelist' do
+      %w[plain login cram_md5 digest_md5 gssapi ntlm xoauth2].each do |value|
+        expect(
+          described_class.smtp_settings('SMTP_AUTHENTICATION' => value)[:authentication]
+        ).to eq(value.to_sym)
+      end
     end
 
-    it 'rejects unsupported SMTP_AUTHENTICATION values at boot rather than at SMTP-connect time' do
+    it 'treats an empty SMTP_AUTHENTICATION as the :plain default (back-compat)' do
+      expect(described_class.smtp_settings('SMTP_AUTHENTICATION' => '')[:authentication]).to eq(:plain)
+      expect(described_class.smtp_settings('SMTP_AUTHENTICATION' => '   ')[:authentication]).to eq(:plain)
+    end
+
+    it 'rejects truly unsupported SMTP_AUTHENTICATION values at boot rather than at SMTP-connect time' do
       expect do
-        described_class.smtp_settings('SMTP_AUTHENTICATION' => 'gssapi')
+        described_class.smtp_settings('SMTP_AUTHENTICATION' => 'oauth1')
       end.to raise_error(ArgumentError, /SMTP_AUTHENTICATION/)
     end
 
