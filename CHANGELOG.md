@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Map v2 heatmap layer now stays visible when you zoom in to city or street level, instead of fading to nothing once you cross zoom 12. (#2087)
 
 ## [1.7.5] - 2026-05-04
 
