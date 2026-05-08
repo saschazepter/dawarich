@@ -214,4 +214,74 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
       expect(stat).to be_present
     end
   end
+
+  context 'toponyms when a city visit straddles local midnight at month boundary' do
+    let(:tz) { 'Europe/Berlin' }
+    let(:user) do
+      create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 60, 'max_gap_minutes_in_city' => 120 })
+    end
+    let(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+
+    before do
+      [
+        Time.utc(2026, 2, 28, 21, 0, 0),
+        Time.utc(2026, 2, 28, 22, 0, 0),
+        Time.utc(2026, 2, 28, 22, 30, 0),
+        Time.utc(2026, 2, 28, 23, 30, 0),
+        Time.utc(2026, 3, 1, 0, 30, 0),
+        Time.utc(2026, 3, 1, 1, 30, 0)
+      ].each_with_index do |t, i|
+        create(:point, user: user, lonlat: "POINT(#{13.4 + i * 0.001} 52.5)",
+                       city: 'Berlin', country_name: 'Germany', country_id: germany.id,
+                       velocity: '0', timestamp: t.to_i)
+      end
+    end
+
+    it 'attributes the post-midnight portion to March (current behaviour: split-bucket)' do
+      stat = calculate_and_load(user, 2026, 3)
+
+      country_names = (stat.toponyms || []).map { |c| c['country'] }
+      expect(country_names).to include('Germany')
+    end
+  end
+
+  context 'calculate_data_bounds is timezone-aware' do
+    let(:tz) { 'Europe/Berlin' }
+    let(:user) { create(:user, settings: { 'timezone' => tz }) }
+
+    let!(:point_utc_late_local_march) do
+      create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
+                     timestamp: Time.utc(2026, 2, 28, 23, 30, 0).to_i)
+    end
+    let!(:point_local_march_mid) do
+      create(:point, user: user, latitude: 52.6, longitude: 13.5, lonlat: 'POINT(13.5 52.6)',
+                     timestamp: Time.utc(2026, 3, 15, 12, 0, 0).to_i)
+    end
+
+    it 'includes the UTC-Feb point in March bounds when local time is March 1' do
+      stat = create(:stat, user: user, year: 2026, month: 3)
+      bounds = stat.calculate_data_bounds
+
+      expect(bounds[:point_count]).to eq(2)
+      expect(bounds[:min_lat]).to eq(52.5)
+      expect(bounds[:max_lat]).to eq(52.6)
+    end
+  end
+
+  context 'daily_distance tuple shape' do
+    let(:tz) { 'Europe/Berlin' }
+    let(:user) { create(:user, settings: { 'timezone' => tz }) }
+
+    let!(:p1) { create_point(user, 13.4, 52.5, Time.utc(2026, 3, 15, 9, 0, 0)) }
+    let!(:p2) { create_point(user, 13.5, 52.6, Time.utc(2026, 3, 15, 9, 30, 0)) }
+
+    it 'returns [day_of_month, distance_meters] pairs covering every day in the month' do
+      stat = calculate_and_load(user, 2026, 3)
+
+      expect(stat.daily_distance.length).to eq(31)
+      expect(stat.daily_distance.first.first).to eq(1)
+      expect(stat.daily_distance.last.first).to eq(31)
+      expect(stat.daily_distance.find { |day, _| day == 15 }&.last).to be > 0
+    end
+  end
 end

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Monthly stats (distance, daily chart, toponyms, map bounds) now bucket points by your local timezone instead of UTC, fixing a phantom day-1 spike from overnight imports and the matching undercount near month boundaries. To refresh saved totals, re-run stats per month: `Stats::CalculatingJob.perform_later(user_id, year, month)`. #2546
+- Monthly stats (distance, daily chart, toponyms, map bounds) now bucket points by your local timezone instead of UTC, fixing a phantom day-1 spike from overnight imports and the matching undercount near month boundaries. Self-hosters: enqueue `Stats::BackfillTimezoneRebucketJob` once to refresh saved totals for all months. #2546
 
 ## [1.7.5] - 2026-05-04
 

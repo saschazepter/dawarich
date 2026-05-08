@@ -10,7 +10,7 @@ class Stat < ApplicationRecord
   before_create :generate_sharing_uuid
 
   def distance_by_day
-    monthly_points = points
+    monthly_points = points_for_distance_query
     calculate_daily_distances(monthly_points)
   end
 
@@ -29,7 +29,7 @@ class Stat < ApplicationRecord
     user.points
         .not_anomaly
         .without_raw_data
-        .where(timestamp: widened_timespan)
+        .where(timestamp: timespan)
         .order(timestamp: :asc)
   end
 
@@ -100,8 +100,8 @@ class Stat < ApplicationRecord
   end
 
   def calculate_data_bounds
-    widened_start = (Date.new(year, month, 1).beginning_of_day - 1.day).to_i
-    widened_end = (Date.new(year, month, 1).end_of_month.end_of_day + 1.day).to_i
+    widened_start = (Date.new(year, month, 1).beginning_of_day - 2.days).to_i
+    widened_end = (Date.new(year, month, 1).end_of_month.end_of_day + 2.days).to_i
     tz = user_timezone_iana
 
     bounds_result = ActiveRecord::Base.connection.exec_query(
@@ -145,7 +145,15 @@ class Stat < ApplicationRecord
   end
 
   def widened_timespan
-    (timespan.first - 1.day)..(timespan.last + 1.day)
+    (timespan.first - 2.days)..(timespan.last + 2.days)
+  end
+
+  def points_for_distance_query
+    user.points
+        .not_anomaly
+        .without_raw_data
+        .where(timestamp: widened_timespan)
+        .order(timestamp: :asc)
   end
 
   def calculate_daily_distances(monthly_points)

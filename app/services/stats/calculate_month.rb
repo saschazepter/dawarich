@@ -23,10 +23,10 @@ class Stats::CalculateMonth
 
   attr_reader :user, :year, :month
 
-  def start_timestamp = (DateTime.new(year, month, 1) - 1.day).to_i
+  def start_timestamp = (DateTime.new(year, month, 1) - 2.days).to_i
 
   def end_timestamp
-    (DateTime.new(year, month, -1).end_of_day + 1.day).to_i
+    (DateTime.new(year, month, -1).end_of_day + 2.days).to_i
   end
 
   def update_month_stats(year, month)
