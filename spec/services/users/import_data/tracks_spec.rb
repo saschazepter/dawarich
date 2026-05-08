@@ -154,6 +154,53 @@ RSpec.describe Users::ImportData::Tracks, type: :service do
       end
     end
 
+    context 'when import data tries to override sensitive attributes' do
+      let(:other_user) { create(:user) }
+      let(:malicious_data) do
+        [
+          {
+            'user_id' => other_user.id,
+            'id' => 999_999,
+            'created_at' => '2000-01-01T00:00:00Z',
+            'updated_at' => '2000-01-01T00:00:00Z',
+            'start_at' => '2024-02-01T08:00:00Z',
+            'end_at' => '2024-02-01T09:00:00Z',
+            'original_path' => 'LINESTRING(-74.006 40.7128, -74.007 40.713)',
+            'distance' => 1500,
+            'avg_speed' => 25.0,
+            'duration' => 3600
+          }
+        ]
+      end
+
+      it 'ignores user_id, id, and timestamp attributes on create' do
+        described_class.new(user, malicious_data).call
+
+        track = user.tracks.find_by(start_at: '2024-02-01T08:00:00Z')
+        expect(track).to be_present
+        expect(track.user_id).to eq(user.id)
+        expect(track.id).not_to eq(999_999)
+        expect(track.created_at).to be > 1.year.ago
+      end
+
+      it 'ignores user_id and id attributes when refreshing on RecordNotUnique race' do
+        existing = create(
+          :track,
+          user: user,
+          start_at: '2024-02-01T08:00:00Z',
+          end_at: '2024-02-01T09:00:00Z',
+          distance: 100
+        )
+
+        described_class.new(user, malicious_data).call
+
+        existing.reload
+        expect(existing.user_id).to eq(user.id)
+        expect(existing.id).not_to eq(999_999)
+        expect(existing.distance).to eq(1500)
+      end
+    end
+
     context 'with tracks without segments' do
       let(:tracks_data) do
         [

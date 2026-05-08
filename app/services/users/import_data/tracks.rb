@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Tracks
+  # Allowlist of Track columns the importer is permitted to set from the
+  # user-supplied JSON. Anything else (user_id, id, created_at, updated_at,
+  # arbitrary unknown columns) is silently dropped to prevent the import
+  # archive from transferring the track to another user, rewriting its id,
+  # or backdating its timestamps.
+  IMPORTABLE_ATTRIBUTES = %w[
+    start_at end_at original_path distance avg_speed duration
+    elevation_gain elevation_loss elevation_max elevation_min dominant_mode
+  ].freeze
+
   def initialize(user, tracks_data)
     @user = user
     @tracks_data = tracks_data
@@ -96,8 +106,8 @@ class Users::ImportData::Tracks
       return false
     end
 
-    ActiveRecord::Base.transaction do
-      existing.update!(track_data.except('segments'))
+    ActiveRecord::Base.transaction(requires_new: true) do
+      existing.update!(track_data.slice(*IMPORTABLE_ATTRIBUTES))
 
       if track_data['segments'].present?
         existing.track_segments.delete_all
@@ -114,9 +124,7 @@ class Users::ImportData::Tracks
   end
 
   def create_track_record(track_data)
-    attributes = track_data.except('segments')
-
-    user.tracks.create!(attributes)
+    user.tracks.create!(track_data.slice(*IMPORTABLE_ATTRIBUTES))
   end
 
   def create_segments(track, segments_data)
