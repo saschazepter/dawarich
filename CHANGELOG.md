@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - "Re-run detection on full history" button under Settings → Visits. Confirmed visits and named places are preserved.
 - Account lockout after 10 failed 2FA attempts (30-minute auto-unlock or password reset). Applies to both the mobile API (`POST /api/v1/auth/otp_challenge`) and the web sign-in flow. Backup codes still work during a lockout so users with one stored can recover immediately. A notification email is sent to the account owner when a lockout is triggered. #2575
 
+### Changed
+
+- Places are now strictly per-user. Suggestion, photo-geotagging, and reverse-geocoding all use your own place catalogue exclusively; no places are shared across users. Existing shared places have been backfilled to their most-active owner. Self-hosted single-user instances see no behaviour change.
+- Internal: `places.user_id` is now NOT NULL at the database level, completing the per-user ownership migration. No user-visible effect.
+
 ### Fixed
 
 - Fix support of FIT files from Garmin Connect. #2686

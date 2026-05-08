@@ -242,7 +242,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.bigint "user_id"
+    t.bigint "user_id", null: false
     t.text "note"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist

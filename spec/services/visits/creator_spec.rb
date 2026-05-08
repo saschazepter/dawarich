@@ -27,7 +27,7 @@ RSpec.describe Visits::Creator do
     context 'when a confirmed visit already exists at the same location' do
       let(:place) do
         create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
-                      latitude: 40.7128, longitude: -74.0060, user_id: nil)
+                      latitude: 40.7128, longitude: -74.0060, user: user)
       end
       let!(:existing_visit) do
         create(
@@ -79,7 +79,7 @@ RSpec.describe Visits::Creator do
         create(
           :place,
           lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
-          latitude: 40.7128, longitude: -74.0060, user_id: nil
+          latitude: 40.7128, longitude: -74.0060, user: user
         )
       end
       let!(:existing_visit) do
@@ -108,7 +108,7 @@ RSpec.describe Visits::Creator do
         create(
           :place,
           lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
-          latitude: 40.7128, longitude: -74.0060, user_id: nil
+          latitude: 40.7128, longitude: -74.0060, user: user
         )
       end
       let!(:existing_visit) do
@@ -139,7 +139,7 @@ RSpec.describe Visits::Creator do
         create(
           :place,
           lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
-          latitude: 40.7128, longitude: -74.0060, user_id: nil
+          latitude: 40.7128, longitude: -74.0060, user: user
         )
       end
       let!(:existing_visit) do
@@ -200,7 +200,7 @@ RSpec.describe Visits::Creator do
           name: 'New York Place',
           latitude: 40.7128,
           longitude: -74.0060,
-          user_id: nil
+          user: user
         )
       end
       let(:area) do # Berlin

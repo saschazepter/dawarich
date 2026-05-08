@@ -417,7 +417,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
     describe '#save_places' do
       it 'saves new places when places_to_create is present' do
         place # Ensure place exists
-        new_place = build(:place)
+        new_place = build(:place, user: place.user)
         places_to_create = [new_place]
         places_to_update = []
 
@@ -426,7 +426,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       it 'saves updated places when places_to_update is present' do
-        existing_place = create(:place, name: 'Old Name')
+        existing_place = create(:place, user: place.user, name: 'Old Name')
         existing_place.name = 'New Name'
         places_to_create = []
         places_to_update = [existing_place]
@@ -441,7 +441,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       context 'when a deadlock occurs' do
-        let(:new_place) { build(:place) }
+        let(:new_place) { build(:place, user: place.user) }
 
         it 'retries on ActiveRecord::Deadlocked and succeeds' do
           call_count = 0

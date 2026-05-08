@@ -142,17 +142,18 @@ class ReverseGeocoding::Places::FetchData
 
     return unless places_to_update.any?
 
-    update_attributes = places_to_update.uniq(&:id).map do |place|
+    update_attributes = places_to_update.uniq(&:id).map do |existing|
       {
-        id: place.id,
-        name: place.name,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        lonlat: place.lonlat,
-        city: place.city,
-        country: place.country,
-        geodata: place.geodata,
-        source: place.source,
+        id: existing.id,
+        user_id: existing.user_id,
+        name: existing.name,
+        latitude: existing.latitude,
+        longitude: existing.longitude,
+        lonlat: existing.lonlat,
+        city: existing.city,
+        country: existing.country,
+        geodata: existing.geodata,
+        source: existing.source,
         updated_at: Time.current
       }
     end
