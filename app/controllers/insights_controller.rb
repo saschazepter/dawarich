@@ -188,11 +188,22 @@ class InsightsController < ApplicationController
                                   .monthly
                                   .find_by(year: @selected_year, month: @selected_month)
 
-    return unless @monthly_digest.nil? && @available_months.include?(@selected_month)
+    return unless @available_months.include?(@selected_month)
+
+    return unless @monthly_digest.nil? || monthly_digest_stale?(@monthly_digest)
 
     @monthly_digest = Users::Digests::CalculateMonth
                       .new(current_user.id, @selected_year, @selected_month)
                       .call
+  end
+
+  def monthly_digest_stale?(digest)
+    latest_stat_update = current_user.scoped_stats
+                                     .where(year: digest.year, month: digest.month)
+                                     .maximum(:updated_at)
+    return false if latest_stat_update.nil?
+
+    digest.updated_at < latest_stat_update
   end
 
   def determine_selected_month

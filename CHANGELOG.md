@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- The Insights weekly pattern now refreshes when stats for the selected month have been updated, instead of showing a stale snapshot until the next monthly digest job runs. (#2478)
 
 ## [1.7.5] - 2026-05-04
 
