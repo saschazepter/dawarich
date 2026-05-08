@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Monthly stats (distance, daily chart, toponyms, map bounds) now bucket points by your local timezone instead of UTC, fixing a phantom day-1 spike from overnight imports and the matching undercount near month boundaries. Self-hosters: enqueue `Stats::BackfillTimezoneRebucketJob` once to refresh saved totals for all months. #2546
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
 - Renaming a suggested visit in the timeline now confirms it and saves the typed name as a place under your account. (#2621)
 
