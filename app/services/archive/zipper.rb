@@ -19,7 +19,7 @@ module Archive
       begin
         ::Zip::OutputStream.open(output.path) do |zos|
           entry = ::Zip::Entry.new(zos, entry_name)
-          entry.time = Time.zone.now
+          entry.time = Time.current
           zos.put_next_entry(entry)
           while (chunk = source_tempfile.read(64 * 1024))
             zos.write(chunk)

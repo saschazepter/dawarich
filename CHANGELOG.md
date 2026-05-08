@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
-- Files extracted from a downloaded export zip no longer show a wrong "modified" timestamp shifted by your timezone offset (e.g. seven hours into the future on a US Pacific machine). The zip now embeds a UTC mtime that modern extractors honour. (#2639)
+- Fixed wrong "modified" timestamps on files extracted from export zips across timezones (e.g. appearing seven hours into the future on a US Pacific machine). Applies to both per-export downloads and the full user-data archive. (#2639)
 
 ## [1.7.5] - 2026-05-04
 
