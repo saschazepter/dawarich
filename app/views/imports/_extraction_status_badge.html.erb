@@ -1,0 +1,14 @@
+<% case import.additional_data_extraction_status
+   when 'not_attempted' %>
+  <span class="badge badge-ghost badge-sm">Not extracted</span>
+<% when 'pending' %>
+  <span class="badge badge-info badge-sm">Queued</span>
+<% when 'running' %>
+  <span class="badge badge-info badge-sm gap-1"><span class="loading loading-spinner loading-xs"></span>Extracting</span>
+<% when 'completed' %>
+  <span class="badge badge-success badge-sm">Extracted</span>
+<% when 'failed' %>
+  <span class="badge badge-error badge-sm">Failed</span>
+<% when 'unsupported' %>
+  <span class="badge badge-ghost badge-sm">Not available</span>
+<% end %>

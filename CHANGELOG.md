@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Imports of Google Takeout (phone takeout, Semantic Location History) and Polarsteps now optionally extract **visits**, **named places**, **tracks**, and the source app's **transportation-mode classification** (driving, walking, cycling, transit, …) in addition to raw GPS points. Frequent places named by Google Takeout (Home, Work, etc.) are imported as Place records with their original names. Open an import in the Imports list and click **Extract additional data** to add this to existing imports; new imports run extraction automatically. Untick **Trust the source app's classification** in the Extract dialog to have Dawarich re-detect transportation modes using your settings. Existing visits detected by Dawarich's smart detection are kept side-by-side with the imported ones.
+
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)

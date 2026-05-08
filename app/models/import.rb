@@ -28,6 +28,18 @@ class Import < ApplicationRecord
     csv: 10, tcx: 11, fit: 12, polarsteps: 13
   }, allow_nil: true
 
+  enum :additional_data_extraction_status, {
+    not_attempted: 0,
+    pending: 1,
+    running: 2,
+    completed: 3,
+    failed: 4,
+    unsupported: 5
+  }, prefix: :additional_data_extraction
+
+  after_commit :enqueue_additional_data_extraction, on: :update,
+               if: :should_enqueue_additional_data_extraction?
+
   def process!
     if user_data_archive?
       process_user_data_archive!
@@ -60,6 +72,22 @@ class Import < ApplicationRecord
     raw_file = File.new(raw_data)
 
     file.attach(io: raw_file, filename: name, content_type: 'application/json')
+  end
+
+  def additional_data_extraction_supported?
+    EnhancedImport::Translator.supported?(source)
+  end
+
+  def extraction_counts
+    additional_data_extraction.fetch('counts', {}).transform_keys(&:to_sym)
+  end
+
+  def extraction_error_message
+    additional_data_extraction['error_message']
+  end
+
+  def trust_source_for_extraction?
+    additional_data_extraction.dig('options', 'trust_source') != false
   end
 
   private
@@ -97,5 +125,21 @@ class Import < ApplicationRecord
     years_and_months_tracked.each do |year, month|
       Stats::CalculatingJob.perform_later(user.id, year, month)
     end
+  end
+
+  def should_enqueue_additional_data_extraction?
+    return false unless saved_change_to_status? && completed?
+    return false unless additional_data_extraction_supported?
+    return false unless additional_data_extraction_not_attempted?
+
+    true
+  end
+
+  def enqueue_additional_data_extraction
+    update_column(
+      :additional_data_extraction_status,
+      Import.additional_data_extraction_statuses[:pending]
+    )
+    EnhancedImport::ExtractJob.perform_later(id)
   end
 end

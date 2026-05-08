@@ -23,7 +23,12 @@
     <%= number_with_delimiter import.processed %>
   </td>
   <td class="px-4 py-3" data-status-display>
-    <%= status_badge(import) %>
+    <div class="flex flex-col gap-1 items-start">
+      <%= status_badge(import) %>
+      <% unless import.additional_data_extraction_not_attempted? || import.additional_data_extraction_unsupported? %>
+        <%= render 'imports/extraction_status_badge', import: import %>
+      <% end %>
+    </div>
   </td>
   <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, current_user.safe_settings.timezone) %></td>
   <td class="px-4 py-3 text-right">

@@ -56,11 +56,15 @@ module Tracks::TrackBuilder
   # but bad data is rarely useful.
   MAX_DISTANCE_METERS = 100_000_000
 
-  def create_track_from_points(points, pre_calculated_distance)
+  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil,
+                               skip_segment_detection: false)
     return nil if points.size < 2
+
+    resolved_tracker_id = tracker_id || points.first.tracker_id
 
     track = Track.new(
       user_id: user.id,
+      tracker_id: resolved_tracker_id,
       start_at: Time.zone.at(points.first.timestamp),
       end_at: Time.zone.at(points.last.timestamp),
       original_path: build_path(points)
@@ -80,7 +84,7 @@ module Tracks::TrackBuilder
     if track.save
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
 
-      detect_and_create_segments(track, points)
+      detect_and_create_segments(track, points) unless skip_segment_detection
 
       track
     else
