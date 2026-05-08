@@ -55,6 +55,11 @@ class Tracks::Merger
     end
 
     true
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.info(
+      "Skipped merge for tracks #{@older_track&.id}+#{@newer_track&.id}: conflicting track exists"
+    )
+    false
   rescue StandardError => e
     Rails.logger.error "Failed to merge tracks #{@older_track&.id} and #{@newer_track&.id}: #{e.message}"
     false

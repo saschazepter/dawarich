@@ -165,39 +165,34 @@ class Tracks::BoundaryDetector
     true
   end
 
-  # Merge a group of boundary tracks into a single track
   def merge_boundary_tracks(track_group)
     return false if track_group.size < 2
 
-    # Sort tracks by start time
     sorted_tracks = track_group.sort_by(&:start_at)
 
-    # Collect all points from all tracks
-    all_points = []
-    sorted_tracks.each do |track|
-      track_points = track.points.order(:timestamp).to_a
-      all_points.concat(track_points)
-    end
-
-    # Remove duplicates and sort by timestamp
+    all_points = sorted_tracks.flat_map { |track| track.points.order(:timestamp).to_a }
     unique_points = all_points.uniq(&:id).sort_by(&:timestamp)
-
     return false if unique_points.size < 2
 
-    # Calculate merged track distance
     merged_distance = Point.calculate_distance_for_array_geocoder(unique_points, :m)
 
-    # Create new merged track
-    merged_track = create_track_from_points(unique_points, merged_distance)
+    success = false
+    ActiveRecord::Base.transaction do
+      merged_track = create_track_from_points(unique_points, merged_distance)
 
-    if merged_track
-      # Delete the original boundary tracks
-      sorted_tracks.each(&:destroy)
+      unless merged_track
+        Rails.logger.warn(
+          "Boundary merge skipped for tracks #{sorted_tracks.map(&:id).join(',')}: " \
+          'no merged track produced'
+        )
+        raise ActiveRecord::Rollback
+      end
 
-      true
-    else
-      false
+      sorted_tracks.reject { |t| t.id == merged_track.id }.each(&:destroy)
+      success = true
     end
+
+    success
   end
 
   # Required by Tracks::Segmentation module

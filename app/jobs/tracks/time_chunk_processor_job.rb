@@ -16,8 +16,10 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
     return unless session_exists?
 
-    tracks_created = process_chunk
-    update_session_progress(tracks_created)
+    Tracks::PerUserLock.with_user_lock(user_id) do
+      tracks_created = process_chunk
+      update_session_progress(tracks_created)
+    end
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to process time chunk for user #{user_id}")
 

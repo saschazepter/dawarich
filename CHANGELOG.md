@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Track generation no longer produces duplicate tracks under concurrent daily, realtime, recalculation, boundary-resolution, or import runs. Adds a `(user_id, start_at, end_at)` unique index on `tracks`, a per-user advisory lock around generation, and idempotent rescue paths in `TrackBuilder`, `Merger`, `BoundaryDetector`, and `Users::ImportData::Tracks`.
 
 ## [1.7.5] - 2026-05-04
 

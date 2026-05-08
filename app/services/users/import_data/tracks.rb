@@ -27,6 +27,11 @@ class Users::ImportData::Tracks
         track_record = create_track_record(track_data)
         create_segments(track_record, track_data['segments']) if track_data['segments'].present?
         tracks_created += 1
+      rescue ActiveRecord::RecordNotUnique
+        Rails.logger.info(
+          "Track already exists (race): user=#{user.id} #{track_data['start_at']}..#{track_data['end_at']}"
+        )
+        next
       rescue ActiveRecord::RecordInvalid => e
         Rails.logger.error "Failed to create track: #{e.message}"
         ExceptionReporter.call(e, 'Failed to create track during import')
@@ -49,8 +54,7 @@ class Users::ImportData::Tracks
   def find_existing_track(track_data)
     user.tracks.find_by(
       start_at: track_data['start_at'],
-      end_at: track_data['end_at'],
-      distance: track_data['distance']
+      end_at: track_data['end_at']
     )
   end
 

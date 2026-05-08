@@ -87,6 +87,31 @@ module Tracks::TrackBuilder
       Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
       nil
     end
+  rescue ActiveRecord::RecordNotUnique
+    reuse_existing_track(track, points)
+  end
+
+  def reuse_existing_track(track, points)
+    existing = nil
+    3.times do
+      existing = Track.find_by(user_id: user.id, start_at: track.start_at, end_at: track.end_at)
+      break if existing
+
+      sleep 0.05
+    end
+
+    unless existing
+      Rails.logger.warn(
+        "Race winner not found for user #{user.id} #{track.start_at}..#{track.end_at}; skipping"
+      )
+      return nil
+    end
+
+    Point.where(id: points.map(&:id), track_id: nil).update_all(track_id: existing.id)
+    Rails.logger.info(
+      "Reused existing track id=#{existing.id} for user #{user.id} #{track.start_at}..#{track.end_at}"
+    )
+    existing
   end
 
   def build_path(points)

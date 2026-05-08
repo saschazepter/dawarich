@@ -129,6 +129,31 @@ RSpec.describe Users::ImportData::Tracks, type: :service do
       end
     end
 
+    context 'when a concurrent insert wins the (start_at, end_at) race' do
+      let(:tracks_data) do
+        [
+          {
+            'start_at' => '2024-01-15T08:00:00Z',
+            'end_at' => '2024-01-15T09:00:00Z',
+            'original_path' => 'LINESTRING(-74.006 40.7128, -74.007 40.713)',
+            'distance' => 1500,
+            'avg_speed' => 25.0,
+            'duration' => 3600
+          }
+        ]
+      end
+
+      it 'rescues RecordNotUnique and continues without raising' do
+        service = described_class.new(user, tracks_data)
+
+        allow(user.tracks).to receive(:find_by).and_return(nil)
+        allow(user.tracks).to receive(:create!).and_raise(ActiveRecord::RecordNotUnique.new('uniq'))
+
+        expect { service.call }.not_to raise_error
+        expect(service.call).to eq(0)
+      end
+    end
+
     context 'with tracks without segments' do
       let(:tracks_data) do
         [
