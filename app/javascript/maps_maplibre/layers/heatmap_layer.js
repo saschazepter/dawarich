@@ -27,7 +27,8 @@ export class HeatmapLayer extends BaseLayer {
         type: "heatmap",
         source: this.sourceId,
         paint: {
-          // Fixed weight
+          // Tuned for typical Dawarich point density across country→street zoom;
+          // first non-zero color stop kept above the sparse-noise floor.
           "heatmap-weight": 1,
 
           "heatmap-intensity": [
@@ -42,6 +43,8 @@ export class HeatmapLayer extends BaseLayer {
             3,
             20,
             5,
+            22,
+            5,
           ],
 
           // Color ramp
@@ -51,7 +54,7 @@ export class HeatmapLayer extends BaseLayer {
             ["heatmap-density"],
             0,
             "rgba(0,0,0,0)",
-            0.05,
+            0.1,
             "rgba(33,102,172,0.4)",
             0.2,
             "rgb(103,169,207)",
