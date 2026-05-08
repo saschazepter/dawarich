@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rexml/document'
+require 'nokogiri'
 
 class Gpx::TrackImporter
   include Imports::Broadcaster
@@ -18,30 +18,41 @@ class Gpx::TrackImporter
   end
 
   def call
-    file_content = load_file_content
-    json = Hash.from_xml(file_content)
+    batch = []
+    each_trkpt do |point_hash|
+      data = prepare_point(point_hash)
+      next unless data
 
-    tracks = json['gpx']['trk']
-    tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
+      batch << data
+      next if batch.size < BATCH_SIZE
 
-    points = tracks_arr.map { parse_track(_1) }.flatten.compact
-    points_data = points.map { prepare_point(_1) }.compact
-
-    points_data.each_slice(BATCH_SIZE) do |batch|
-      inserted = bulk_insert_points(batch)
-      broadcast_import_progress(import, inserted)
+      flush(batch)
+      batch = []
     end
+    flush(batch) unless batch.empty?
+  ensure
+    cleanup_temp_file
   end
 
   private
 
-  def parse_track(track)
-    return if track['trkseg'].blank?
+  def each_trkpt(&block)
+    path = resolve_file_path
+    File.open(path, 'rb') do |io|
+      seek_to_document_start(io)
+      handler = TrkptStreamHandler.new(&block)
+      Nokogiri::XML::SAX::Parser.new(handler).parse(io)
+    end
+  end
 
-    segments = track['trkseg']
-    segments_array = segments.is_a?(Array) ? segments : [segments]
+  def seek_to_document_start(io)
+    prefix = io.read(256) || ''
+    io.seek(prefix.index('<') || 0)
+  end
 
-    segments_array.compact.map { |segment| segment['trkpt'] }
+  def flush(batch)
+    inserted = bulk_insert_points(batch)
+    broadcast_import_progress(import, inserted)
   end
 
   def prepare_point(point)
@@ -77,5 +88,43 @@ class Gpx::TrackImporter
     value ||= extensions.is_a?(Hash) ? extensions['speed'] : nil
 
     value&.to_f&.round(1)
+  end
+
+  class TrkptStreamHandler < Nokogiri::XML::SAX::Document
+    def initialize(&block)
+      super()
+      @callback = block
+      @stack = nil
+      @text = +''
+    end
+
+    def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
+      attrs_h = attrs.each_with_object({}) { |a, h| h[a.localname] = a.value }
+      if name == 'trkpt' && @stack.nil?
+        @stack = [attrs_h]
+        @text = +''
+      elsif @stack
+        @stack.last[name] = attrs_h
+        @stack.push(attrs_h)
+        @text = +''
+      end
+    end
+
+    def characters(string)
+      @text << string if @stack
+    end
+
+    def end_element_namespace(name, _prefix = nil, _uri = nil)
+      return unless @stack
+
+      closed = @stack.pop
+      if @stack.empty?
+        @callback.call(closed)
+        @stack = nil
+      else
+        @stack.last[name] = @text.strip if closed.empty?
+        @text = +''
+      end
+    end
   end
 end
