@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Monthly stats (distance, daily chart, toponyms, map bounds) now bucket points by your local timezone instead of UTC, fixing a phantom day-1 spike from overnight imports and the matching undercount near month boundaries. Self-hosters: enqueue `Stats::BackfillTimezoneRebucketJob` once to refresh saved totals for all months. #2546
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Fixed wrong "modified" timestamps on files extracted from export zips across timezones (e.g. appearing seven hours into the future on a US Pacific machine). Applies to both per-export downloads and the full user-data archive. (#2639)
 - Map v2 heatmap layer now stays visible at city and street zoom, instead of fading away once you zoomed past city level. (#2087)
 - Map v2 search panel: visits list no longer flashes briefly and disappears after picking a location — a stale debounced location-suggestions fetch from the search input could overwrite the visits panel. (#2394)
 - Transportation-mode threshold sliders in Map v2 settings (Walking/Cycling/Driving max speed, Min flight distance, etc.) now respect your selected unit of measurement, displaying mph/mi when miles are selected instead of always showing km/h and km. (#2634)
