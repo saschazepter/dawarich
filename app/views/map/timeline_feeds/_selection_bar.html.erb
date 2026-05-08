@@ -1,4 +1,6 @@
-<div data-timeline-feed-target="selectionBar" class="selection-bar" hidden>
+<div data-timeline-feed-target="selectionBar"
+     data-max-bulk-visits="<%= VisitsController::MAX_BULK_VISIT_IDS %>"
+     class="selection-bar" hidden>
   <span class="selection-bar__count" data-timeline-feed-target="selectionCount">0 selected</span>
   <span class="selection-bar__actions">
     <button type="button"
@@ -15,7 +17,7 @@
       <button type="submit"
               class="selection-bar__action selection-bar__confirm"
               data-timeline-feed-target="confirmButton"
-              title="Mark these visits as confirmed (you were really there)"
+              title="Mark these visits as confirmed (yes, I was there)"
               disabled>
         Confirm
       </button>
@@ -29,7 +31,7 @@
       <button type="submit"
               class="selection-bar__action selection-bar__decline"
               data-timeline-feed-target="declineButton"
-              title="Mark these visits as declined (not a real visit)"
+              title="Mark these visits as declined (no, I wasn't there)"
               disabled>
         Decline
       </button>

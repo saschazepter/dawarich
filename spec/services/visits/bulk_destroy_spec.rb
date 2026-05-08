@@ -93,7 +93,7 @@ RSpec.describe Visits::BulkDestroy do
     context 'when the bulk delete raises mid-transaction' do
       subject(:service) { described_class.new(user, [visit1.id, visit2.id]) }
 
-      it 'rolls back the whole batch' do
+      it 'rolls back the whole batch and reports an error' do
         point = create(:point, user: user, visit: visit1)
         original_where = PlaceVisit.method(:where)
         allow(PlaceVisit).to receive(:where) do |args|
@@ -104,7 +104,8 @@ RSpec.describe Visits::BulkDestroy do
           relation
         end
 
-        expect { service.call }.to raise_error(ActiveRecord::StatementInvalid)
+        expect(service.call).to be(false)
+        expect(service.errors).to include(/database error/i)
         expect(Visit.where(id: [visit1.id, visit2.id]).count).to eq(2)
         expect(point.reload.visit_id).to eq(visit1.id)
       end

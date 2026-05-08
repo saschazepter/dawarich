@@ -809,15 +809,26 @@ export default class extends Controller {
     return scope.querySelector(selector)
   }
 
+  maxBulkVisits() {
+    const bar = this.activeSelectionBar()
+    const raw = bar?.dataset?.maxBulkVisits
+    const n = Number.parseInt(raw, 10)
+    return Number.isFinite(n) && n > 0 ? n : 500
+  }
+
   syncSelectionUI() {
     const n = this.selectedVisitIds.size
+    const max = this.maxBulkVisits()
+    const overCap = n > max
     const countEl = this.activeSelectionCount()
     if (countEl) {
-      countEl.textContent = `${n} selected`
+      countEl.textContent = overCap
+        ? `${n} selected (max ${max})`
+        : `${n} selected`
     }
     const mergeBtn = this.activeMergeButton()
     if (mergeBtn) {
-      mergeBtn.disabled = n < 2
+      mergeBtn.disabled = n < 2 || overCap
       mergeBtn.textContent = n >= 2 ? `Merge ${n}` : "Merge"
     }
     for (const [getter, label] of [
@@ -827,7 +838,7 @@ export default class extends Controller {
     ]) {
       const btn = getter()
       if (!btn) continue
-      btn.disabled = n < 1
+      btn.disabled = n < 1 || overCap
       btn.textContent = n >= 1 ? `${label} ${n}` : label
     }
   }

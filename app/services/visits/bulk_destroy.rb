@@ -38,6 +38,7 @@ module Visits
       end
 
       started_ats = visits.pluck(:started_at)
+      started_at = Time.current
 
       Visit.transaction do
         Point.where(visit_id: ids).update_all(visit_id: nil)
@@ -45,7 +46,21 @@ module Visits
         Visit.where(id: ids).delete_all
       end
 
+      log_success(ids.length, Time.current - started_at)
+
       { count: ids.length, started_ats: started_ats }
+    rescue ActiveRecord::StatementInvalid => e
+      Rails.logger.warn(
+        "Visits::BulkDestroy failed user_id=#{user.id} count=#{ids&.length} error=#{e.class}: #{e.message}"
+      )
+      errors << 'Database error: please try again.'
+      false
+    end
+
+    def log_success(count, duration_seconds)
+      Rails.logger.info(
+        "Visits::BulkDestroy user_id=#{user.id} count=#{count} duration_ms=#{(duration_seconds * 1000).round}"
+      )
     end
   end
 end

@@ -3,7 +3,7 @@
 class VisitsController < ApplicationController
   include FlashStreamable
 
-  MAX_BULK_VISIT_IDS = 500
+  MAX_BULK_VISIT_IDS = Visits::BulkDestroy::MAX_VISIT_IDS
 
   before_action :authenticate_user!
   before_action :set_visit, only: %i[update destroy]
@@ -18,10 +18,13 @@ class VisitsController < ApplicationController
       return render_unprocessable(too_many_visits_message) if explicit_visit_ids.length > MAX_BULK_VISIT_IDS
 
       scope = current_user.scoped_visits.where(id: explicit_visit_ids)
-      return render_not_found(missing_visits_message) if scope.length != explicit_visit_ids.length
+      if scope.count != explicit_visit_ids.length
+        return render_not_found(message_for_missing_visits(explicit_visit_ids))
+      end
     else
       scope = current_user.scoped_visits.where(status: source_status)
       scope = apply_date_scope(scope) if params[:date].present?
+      return render_unprocessable(too_many_visits_message) if scope.count > MAX_BULK_VISIT_IDS
     end
 
     @affected_started_at = scope.pluck(:started_at)
@@ -56,7 +59,7 @@ class VisitsController < ApplicationController
     return render_unprocessable(too_many_visits_message) if visit_ids.length > MAX_BULK_VISIT_IDS
 
     visits = current_user.scoped_visits.where(id: visit_ids)
-    return render_not_found(missing_visits_message) if visits.length != visit_ids.length
+    return render_not_found(message_for_missing_visits(visit_ids)) if visits.count != visit_ids.length
 
     @affected_started_at = visits.pluck(:started_at)
 
@@ -141,7 +144,7 @@ class VisitsController < ApplicationController
     return render_unprocessable('Select at least 2 visits to merge.') if visit_ids.length < 2
 
     visits = current_user.scoped_visits.where(id: visit_ids).order(:started_at)
-    return render_not_found(missing_visits_message) if visits.length != visit_ids.length
+    return render_not_found(message_for_missing_visits(visit_ids)) if visits.length != visit_ids.length
 
     return render_unprocessable('Visits must be on the same day.') unless same_day?(visits)
 
@@ -423,8 +426,23 @@ class VisitsController < ApplicationController
     "You can act on up to #{MAX_BULK_VISIT_IDS} visits at once. Narrow your selection and try again."
   end
 
+  def message_for_missing_visits(ids)
+    return missing_visits_message unless current_user.plan_restricted?
+
+    archived_count = current_user.visits.where(id: ids)
+                                 .where('started_at < ?', current_user.data_window_start)
+                                 .count
+    return missing_visits_message if archived_count.zero?
+
+    plan_window_visits_message
+  end
+
   def missing_visits_message
-    "Some of those visits aren't available anymore. Refresh and try again."
+    "Some of those visits aren't here anymore — probably edited in another tab. Refresh and try again."
+  end
+
+  def plan_window_visits_message
+    'Some of those visits are outside your Lite plan’s 12-month window. Upgrade to Pro to manage older data.'
   end
 
   def bulk_destroy_success_message(count)

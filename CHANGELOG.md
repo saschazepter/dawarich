@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Map v2 timeline panel: bulk Confirm, Decline, and Delete in selection mode (alongside the existing Merge action). **Delete is non-destructive to your raw location data — it only removes the visit grouping, not the points.** Bulk actions are capped at 500 visits per request.
+- Map v2 timeline panel: bulk Confirm, Decline, and Delete in selection mode (alongside the existing Merge action). **Delete is non-destructive — it only removes the visit grouping, not your location points.** Bulk actions are capped at 500 visits per request.
 
 ### Fixed
 

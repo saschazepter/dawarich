@@ -426,6 +426,17 @@ RSpec.describe '/visits', type: :request do
       patch bulk_update_visits_url(format: :turbo_stream), params: { status: 'confirmed', visit_ids: ids }
 
       expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include(VisitsController::MAX_BULK_VISIT_IDS.to_s)
+      expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('suggested'))
+    end
+
+    it 'rejects when fallback (status-only) scoping would exceed the maximum' do
+      stub_const('VisitsController::MAX_BULK_VISIT_IDS', 2)
+
+      patch bulk_update_visits_url(format: :turbo_stream),
+            params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect(response).to have_http_status(:unprocessable_content)
       expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('suggested'))
     end
   end
@@ -489,6 +500,23 @@ RSpec.describe '/visits', type: :request do
       delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: ids }
 
       expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include(VisitsController::MAX_BULK_VISIT_IDS.to_s)
+    end
+
+    it 'returns the Lite-window upgrade hint when an archived visit id is submitted' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      old_visit = create(:visit, user: user,
+                                  started_at: 13.months.ago,
+                                  ended_at: 13.months.ago + 30.minutes)
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id, old_visit.id] }
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.body).to include('Lite plan')
+      expect { old_visit.reload }.not_to raise_error
+      expect { visit_a.reload }.not_to raise_error
     end
 
     it 'busts caches for every month touched when the deletion spans months' do
