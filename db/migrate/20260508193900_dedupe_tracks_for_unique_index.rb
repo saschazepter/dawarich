@@ -6,49 +6,49 @@ class DedupeTracksForUniqueIndex < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   def up
-    say_with_time('Deduplicating tracks by (user_id, start_at, end_at)') do
-      total_losers = 0
-      total_orphaned = 0
-      iteration = 0
-      previous_signature = nil
+    Rails.logger.info('[DedupeTracksForUniqueIndex] starting')
+    total_losers = 0
+    total_orphaned = 0
+    iteration = 0
+    previous_signature = nil
 
-      loop do
-        iteration += 1
-        groups = duplicate_groups(limit: BATCH_SIZE)
-        break if groups.empty?
+    loop do
+      iteration += 1
+      groups = duplicate_groups(limit: BATCH_SIZE)
+      break if groups.empty?
 
-        # If two consecutive iterations return the exact same set of duplicate
-        # groups, the resolve loop is making no progress (e.g. a future FK
-        # blocking deletion) — raise rather than spin forever.
-        signature = groups.map { |g| [g['user_id'], g['start_at'], g['end_at']] }
-        if signature == previous_signature
-          raise(
-            "Dedup migration stuck: same #{groups.size} duplicate group(s) returned " \
-            'in two consecutive batches without making progress.'
-          )
-        end
-        previous_signature = signature
-
-        batch_losers = 0
-        batch_orphaned = 0
-        groups.each do |group|
-          stats = resolve_group(group)
-          batch_losers += stats[:losers]
-          batch_orphaned += stats[:orphaned]
-        end
-        total_losers += batch_losers
-        total_orphaned += batch_orphaned
-
-        say(
-          "Batch #{iteration}: #{groups.size} group(s), #{batch_losers} loser(s) deleted, " \
-          "#{batch_orphaned} point(s) orphaned for re-attachment " \
-          "(running totals: #{total_losers}/#{total_orphaned})",
-          true
+      # If two consecutive iterations return the exact same set of duplicate
+      # groups, the resolve loop is making no progress (e.g. a future FK
+      # blocking deletion) — raise rather than spin forever.
+      signature = groups.map { |g| [g['user_id'], g['start_at'], g['end_at']] }
+      if signature == previous_signature
+        raise(
+          "Dedup migration stuck: same #{groups.size} duplicate group(s) returned " \
+          'in two consecutive batches without making progress.'
         )
       end
+      previous_signature = signature
 
-      say "Removed #{total_losers} duplicate track row(s); orphaned #{total_orphaned} out-of-window point(s)", true
+      batch_losers = 0
+      batch_orphaned = 0
+      groups.each do |group|
+        stats = resolve_group(group)
+        batch_losers += stats[:losers]
+        batch_orphaned += stats[:orphaned]
+      end
+      total_losers += batch_losers
+      total_orphaned += batch_orphaned
+
+      Rails.logger.info(
+        "[DedupeTracksForUniqueIndex] batch=#{iteration} groups=#{groups.size} " \
+        "losers=#{batch_losers} orphaned_points=#{batch_orphaned} " \
+        "totals_losers=#{total_losers} totals_orphaned=#{total_orphaned}"
+      )
     end
+
+    Rails.logger.info(
+      "[DedupeTracksForUniqueIndex] done losers=#{total_losers} orphaned_points=#{total_orphaned}"
+    )
   end
 
   def down

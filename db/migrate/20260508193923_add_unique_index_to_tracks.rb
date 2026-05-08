@@ -17,8 +17,6 @@ class AddUniqueIndexToTracks < ActiveRecord::Migration[8.0]
   end
 
   def down
-    remove_index :tracks,
-                 name: 'index_tracks_on_user_start_end_unique',
-                 algorithm: :concurrently
+    execute 'DROP INDEX CONCURRENTLY IF EXISTS index_tracks_on_user_start_end_unique'
   end
 end
