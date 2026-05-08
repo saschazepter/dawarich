@@ -4,6 +4,8 @@ class Trip < ApplicationRecord
   include Calculateable
   include DistanceConvertible
 
+  RECALCULATE_COOLDOWN = 60.seconds
+
   has_rich_text :notes
 
   belongs_to :user
@@ -16,6 +18,10 @@ class Trip < ApplicationRecord
 
   def enqueue_calculation_jobs
     Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
+  end
+
+  def recalculating?
+    last_recalculated_at.present? && last_recalculated_at > RECALCULATE_COOLDOWN.ago
   end
 
   def points

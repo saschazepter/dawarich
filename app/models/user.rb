@@ -167,6 +167,12 @@ class User < ApplicationRecord
 
   delegate :timezone, to: :safe_settings
 
+  def timezone_iana
+    raw = timezone.presence || Time.zone.name
+    tz = ActiveSupport::TimeZone[raw] if raw
+    tz ? tz.tzinfo.name : 'Etc/UTC'
+  end
+
   # Aggregate countries from all stats' toponyms
   # Only counts a country if the user spent meaningful time in at least one city
   # (i.e., the country has non-empty cities array in at least one month)

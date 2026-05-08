@@ -55,6 +55,13 @@ class Tracks::Merger
     end
 
     true
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.info(
+      'event=tracks.unique_violation_rescued service=merger ' \
+      "user_id=#{@older_track&.user_id} " \
+      "older_track_id=#{@older_track&.id} newer_track_id=#{@newer_track&.id}"
+    )
+    false
   rescue StandardError => e
     Rails.logger.error "Failed to merge tracks #{@older_track&.id} and #{@newer_track&.id}: #{e.message}"
     false

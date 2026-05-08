@@ -23,10 +23,10 @@ class Stats::CalculateMonth
 
   attr_reader :user, :year, :month
 
-  def start_timestamp = DateTime.new(year, month, 1).to_i
+  def start_timestamp = (DateTime.new(year, month, 1) - 2.days).to_i
 
   def end_timestamp
-    DateTime.new(year, month, -1).end_of_day.to_i
+    (DateTime.new(year, month, -1).end_of_day + 2.days).to_i
   end
 
   def update_month_stats(year, month)
@@ -50,8 +50,6 @@ class Stats::CalculateMonth
   def points
     return @points if defined?(@points)
 
-    # Select all needed columns to avoid duplicate queries
-    # Used for both distance calculation and toponyms extraction
     @points = user
               .points
               .not_anomaly
@@ -61,13 +59,22 @@ class Stats::CalculateMonth
               .order(timestamp: :asc)
   end
 
+  def points_in_local_month
+    tz = user.timezone_iana
+    points.where(
+      'EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ? ' \
+      'AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ?',
+      tz, year, tz, month
+    )
+  end
+
   def distance(distance_by_day)
     distance_by_day.sum { |day| day[1] }
   end
 
   def toponyms
     CountriesAndCities.new(
-      points,
+      points_in_local_month,
       min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
       max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
     ).call
