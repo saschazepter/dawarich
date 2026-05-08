@@ -83,10 +83,14 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
     end
 
     context 'when trip is not found' do
-      it 'raises ActiveRecord::RecordNotFound' do
+      it 'is discarded without raising and tallies an error completion' do
+        allow(Trips::CalculateAllJob).to receive(:tally_completion)
+
         expect do
           described_class.perform_now(999_999, distance_unit)
-        end.to raise_error(ActiveRecord::RecordNotFound)
+        end.not_to raise_error
+
+        expect(Trips::CalculateAllJob).to have_received(:tally_completion).with(999_999, error: true)
       end
     end
 

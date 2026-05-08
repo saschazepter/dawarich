@@ -3,22 +3,39 @@
 class Trips::CalculateAllJob < ApplicationJob
   queue_as :trips
 
-  retry_on StandardError, wait: :polynomially_longer, attempts: 3 do |job, error|
-    Rails.logger.error("Trips::CalculateAllJob permanent failure trip_id=#{job.arguments.first}: #{error.class}: #{error.message}")
-    job.send(:finalize, job.arguments.first, error: true)
-  end
+  PENDING_KEY_PREFIX = 'trips:recalc:pending'
+  PENDING_TTL = 10.minutes
 
   def perform(trip_id, distance_unit = 'km')
-    Trips::CalculatePathJob.perform_now(trip_id)
-    Trips::CalculateDistanceJob.perform_now(trip_id, distance_unit)
-    Trips::CalculateCountriesJob.perform_now(trip_id, distance_unit)
+    Rails.cache.write(self.class.pending_key(trip_id), 3, expires_in: PENDING_TTL, raw: true)
 
+    Trips::CalculatePathJob.perform_later(trip_id)
+    Trips::CalculateDistanceJob.perform_later(trip_id, distance_unit)
+    Trips::CalculateCountriesJob.perform_later(trip_id, distance_unit)
+  end
+
+  def self.pending_key(trip_id)
+    "#{PENDING_KEY_PREFIX}:#{trip_id}"
+  end
+
+  def self.tally_completion(trip_id, error: false)
+    key = pending_key(trip_id)
+    return unless Rails.cache.read(key, raw: true)
+
+    if error
+      Rails.cache.delete(key)
+      finalize(trip_id, error: true)
+      return
+    end
+
+    remaining = Rails.cache.decrement(key)
+    return if remaining.nil? || remaining.positive?
+
+    Rails.cache.delete(key)
     finalize(trip_id, error: false)
   end
 
-  private
-
-  def finalize(trip_id, error:)
+  def self.finalize(trip_id, error:)
     trip = Trip.find_by(id: trip_id)
     return unless trip
 

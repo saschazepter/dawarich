@@ -11,64 +11,71 @@ RSpec.describe Trips::CalculateAllJob, type: :job do
            ended_at: DateTime.new(2024, 11, 27, 14, 0, 0))
   end
 
-  before do
-    allow(Trips::CalculatePathJob).to receive(:perform_now)
-    allow(Trips::CalculateDistanceJob).to receive(:perform_now)
-    allow(Trips::CalculateCountriesJob).to receive(:perform_now)
-    allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to)
-  end
-
   describe '#perform' do
-    it 'runs the three sub-jobs synchronously in path -> distance -> countries order' do
-      expect(Trips::CalculatePathJob).to receive(:perform_now).with(trip.id).ordered
-      expect(Trips::CalculateDistanceJob).to receive(:perform_now).with(trip.id, 'km').ordered
-      expect(Trips::CalculateCountriesJob).to receive(:perform_now).with(trip.id, 'km').ordered
-
-      described_class.perform_now(trip.id, 'km')
-    end
-
-    it 'clears last_recalculated_at after success' do
-      trip.update_column(:last_recalculated_at, Time.current)
-
+    it 'enqueues the three sub-jobs and seeds the pending counter' do
       described_class.perform_now(trip.id, 'km')
 
-      expect(trip.reload.last_recalculated_at).to be_nil
-    end
-
-    it 'broadcasts the recalculate-button frame replacement on success' do
-      expect(Turbo::StreamsChannel).to receive(:broadcast_replace_to).with(
-        "trip_#{trip.id}",
-        hash_including(
-          target: 'trip_recalculate_frame',
-          partial: 'trips/recalculate_button',
-          locals: hash_including(trip: trip, error: false)
-        )
-      )
-
-      described_class.perform_now(trip.id, 'km')
-    end
-
-    it 'no-ops finalize cleanly when the trip has been deleted mid-run' do
-      allow(Trips::CalculateCountriesJob).to receive(:perform_now) do
-        trip.destroy!
-      end
-
-      expect { described_class.perform_now(trip.id, 'km') }.not_to raise_error
+      expect(Trips::CalculatePathJob).to have_been_enqueued.with(trip.id)
+      expect(Trips::CalculateDistanceJob).to have_been_enqueued.with(trip.id, 'km')
+      expect(Trips::CalculateCountriesJob).to have_been_enqueued.with(trip.id, 'km')
+      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true).to_i).to eq(3)
     end
   end
 
-  describe 'permanent failure handling' do
-    it 'broadcasts an error frame replacement after the retry budget is exhausted' do
+  describe '.tally_completion' do
+    before do
+      Rails.cache.write(described_class.pending_key(trip.id), 3, expires_in: 5.minutes, raw: true)
+      allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to)
+    end
+
+    after { Rails.cache.delete(described_class.pending_key(trip.id)) }
+
+    it 'is a no-op when no orchestrator chain exists for the trip' do
+      Rails.cache.delete(described_class.pending_key(trip.id))
+
+      described_class.tally_completion(trip.id)
+
+      expect(Turbo::StreamsChannel).not_to have_received(:broadcast_replace_to)
+    end
+
+    it 'decrements the counter without finalizing while sub-jobs remain' do
+      described_class.tally_completion(trip.id)
+
+      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true).to_i).to eq(2)
+      expect(Turbo::StreamsChannel).not_to have_received(:broadcast_replace_to)
+    end
+
+    it 'finalizes success after the third decrement and clears the counter' do
       trip.update_column(:last_recalculated_at, Time.current)
 
-      job = described_class.new(trip.id, 'km')
-      job.send(:finalize, trip.id, error: true)
+      3.times { described_class.tally_completion(trip.id) }
 
+      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true)).to be_nil
       expect(trip.reload.last_recalculated_at).to be_nil
       expect(Turbo::StreamsChannel).to have_received(:broadcast_replace_to).with(
         "trip_#{trip.id}",
-        hash_including(locals: hash_including(error: true))
+        hash_including(target: 'trip_recalculate_frame', locals: hash_including(error: false))
       )
+    end
+
+    it 'short-circuits to error finalize on error: true and clears the counter' do
+      trip.update_column(:last_recalculated_at, Time.current)
+
+      described_class.tally_completion(trip.id, error: true)
+
+      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true)).to be_nil
+      expect(trip.reload.last_recalculated_at).to be_nil
+      expect(Turbo::StreamsChannel).to have_received(:broadcast_replace_to).with(
+        "trip_#{trip.id}",
+        hash_including(target: 'trip_recalculate_frame', locals: hash_including(error: true))
+      )
+    end
+
+    it 'no-ops finalize cleanly when the trip has been deleted mid-run' do
+      trip_id = trip.id
+      trip.destroy!
+
+      expect { described_class.tally_completion(trip_id) }.not_to raise_error
     end
   end
 end

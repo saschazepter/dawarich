@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Trip pages now have a **Recalculate** button to refresh path, distance and visited countries on demand. Useful after re-importing points or cleaning up a trip's underlying data. The page updates automatically when the recalculation finishes; subsequent clicks within 60 seconds are debounced.
+- Trip pages now have a **Recalculate** button to refresh path, distance and visited countries on demand. Useful after re-importing points or cleaning up a trip's underlying data. The page updates automatically when the recalculation finishes; clicks within 60 seconds are ignored while it's running.
 
 ### Fixed
 

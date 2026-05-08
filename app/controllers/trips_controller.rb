@@ -52,8 +52,6 @@ class TripsController < ApplicationController
   end
 
   def recalculate
-    authorize @trip, :recalculate?
-
     affected = current_user.trips
                            .where(id: @trip.id)
                            .where('last_recalculated_at IS NULL OR last_recalculated_at < ?', Trip::RECALCULATE_COOLDOWN.ago)
@@ -63,11 +61,11 @@ class TripsController < ApplicationController
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: stream_flash(:notice,
-                                            'Already recalculating — the map will update automatically when it\'s done.')
+                                            'Already recalculating — this page will update when it\'s done.')
         end
         format.html do
           redirect_to trip_path(@trip),
-                      notice: 'Already recalculating — the map will update automatically when it\'s done.'
+                      notice: 'Already recalculating — this page will update when it\'s done.'
         end
       end
       return
