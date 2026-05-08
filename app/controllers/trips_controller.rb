@@ -50,11 +50,18 @@ class TripsController < ApplicationController
   end
 
   def recalculate
+    if @trip.recalculating?
+      redirect_to trip_path(@trip),
+                  notice: 'Recalculation already in progress. The map will update automatically.'
+      return
+    end
+
+    @trip.update_column(:last_recalculated_at, Time.current)
     Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
+    Rails.logger.info("trip_recalculate trip_id=#{@trip.id} user_id=#{current_user.id}")
 
     redirect_to trip_path(@trip),
-                notice: 'Recalculating trip map. Refresh in a moment.',
-                status: :see_other
+                notice: 'Recalculating trip map. The page will update automatically when ready.'
   end
 
   private

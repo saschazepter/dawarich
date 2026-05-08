@@ -1,0 +1,12 @@
+<% if trip.recalculating? %>
+  <button class="btn btn-outline btn-sm" disabled>
+    <span class="loading loading-spinner loading-xs"></span> Recalculating&hellip;
+  </button>
+<% else %>
+  <%= button_to recalculate_trip_path(trip),
+      method: :post,
+      form: { data: { turbo_confirm: "Refresh this trip's map and stats from your current location data?" } },
+      class: "btn btn-outline btn-sm" do %>
+    <%= icon 'refresh-ccw', class: 'w-4 h-4' %> Recalculate map
+  <% end %>
+<% end %>

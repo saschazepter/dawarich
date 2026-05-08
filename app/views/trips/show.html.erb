@@ -6,10 +6,8 @@
   <%# Header %>
   <%= render layout: 'shared/page_header', locals: { title: @trip.name } do %>
     <div class="flex items-center gap-2">
-      <%= link_to recalculate_trip_path(@trip),
-          data: { turbo_confirm: "Recalculate path, distance and visited countries from current points?", turbo_method: :post },
-          class: "btn btn-outline btn-sm" do %>
-        <%= icon 'refresh-ccw', class: 'w-4 h-4' %> Recalculate map
+      <%= turbo_frame_tag "trip_recalculate_frame" do %>
+        <%= render "trips/recalculate_button", trip: @trip %>
       <% end %>
       <%= link_to edit_trip_path(@trip), class: "btn btn-outline btn-sm" do %>
         <%= icon 'square-pen', class: 'w-4 h-4' %> Edit

@@ -16,11 +16,7 @@ RSpec.describe 'Manual recalculation of a trip after underlying points change',
            visited_countries: ['Germany'])
   end
 
-  before do
-    allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
-    allow_any_instance_of(Trip).to receive(:photo_sources).and_return([])
-    sign_in user
-  end
+  before { sign_in user }
 
   describe 'POST /trips/:id/recalculate' do
     it 'enqueues Trips::CalculateAllJob with the trip id' do
@@ -30,6 +26,9 @@ RSpec.describe 'Manual recalculation of a trip after underlying points change',
     end
 
     it 'redirects back to the trip page with a notice' do
+      allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
+      allow_any_instance_of(Trip).to receive(:photo_sources).and_return([])
+
       post recalculate_trip_path(trip)
 
       expect(response).to redirect_to(trip_path(trip))
@@ -37,19 +36,47 @@ RSpec.describe 'Manual recalculation of a trip after underlying points change',
       expect(flash[:notice]).to match(/recalculat/i)
     end
 
-    it 'remains scoped to the current user' do
+    it 'does not enqueue a second job while a recalculation is in flight' do
+      post recalculate_trip_path(trip)
+
+      expect do
+        post recalculate_trip_path(trip)
+      end.not_to have_enqueued_job(Trips::CalculateAllJob)
+    end
+
+    it 'returns 404 for another user\'s trip and does not enqueue the job' do
       other_user = create(:user)
       foreign_trip = create(:trip, user: other_user, path: nil)
 
       expect do
         post recalculate_trip_path(foreign_trip)
       end.not_to have_enqueued_job(Trips::CalculateAllJob)
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 
-  describe 'GET /trips/:id with all cached fields populated' do
-    it 'does not auto-enqueue CalculateAllJob' do
+  describe 'GET /trips/:id' do
+    before do
+      allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
+      allow_any_instance_of(Trip).to receive(:photo_sources).and_return([])
+    end
+
+    it 'does not auto-enqueue CalculateAllJob when all cached fields are populated' do
       expect { get trip_path(trip) }.not_to have_enqueued_job(Trips::CalculateAllJob)
+    end
+
+    it 'auto-enqueues CalculateAllJob when path, distance, or visited countries are blank' do
+      stale_trip = create(:trip,
+                          user: user,
+                          started_at: DateTime.new(2024, 11, 27, 12, 0, 0),
+                          ended_at: DateTime.new(2024, 11, 27, 14, 0, 0),
+                          distance: nil,
+                          path: nil,
+                          visited_countries: [])
+
+      expect { get trip_path(stale_trip) }
+        .to have_enqueued_job(Trips::CalculateAllJob).with(stale_trip.id, anything)
     end
   end
 end
