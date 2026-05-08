@@ -44,7 +44,8 @@ class VisitsController < ApplicationController
     params_to_update = visit_params.to_h
     params_to_update.delete(:name) if params_to_update[:name].is_a?(String) && params_to_update[:name].strip.empty?
 
-    maybe_auto_confirm_with_user_place!(params_to_update)
+    auto_confirm_result = maybe_auto_confirm_with_user_place!(params_to_update)
+    return render_unprocessable('Could not save the typed name as a place.') if auto_confirm_result == :place_invalid
 
     # Cross-tenant IDOR guard: place_id must belong to current_user.
     # Suggested places (visit.suggested_places) are also acceptable since
@@ -259,23 +260,32 @@ class VisitsController < ApplicationController
     params_to_update[:status] == 'confirmed' && @visit.suggested? && params_to_update[:name].blank?
   end
 
-  def maybe_auto_confirm_with_user_place!(params_to_update)
-    return unless @visit.suggested?
-    return if params_to_update[:place_id].present?
-    return if params_to_update[:status].present? && params_to_update[:status] != 'suggested'
+  PLACE_NAME_MAX_LENGTH = 200
 
-    name = params_to_update[:name]
-    return if name.blank?
+  def maybe_auto_confirm_with_user_place!(params_to_update)
+    return :noop unless @visit.suggested?
+    return :noop if params_to_update[:place_id].present?
+    return :noop if params_to_update[:status].present? && params_to_update[:status] != 'suggested'
+
+    name = params_to_update[:name].to_s.strip
+    return :noop if name.blank?
+
+    name = name[0, PLACE_NAME_MAX_LENGTH]
+    params_to_update[:name] = name
 
     place = find_or_create_user_place_for_rename(name)
-    return unless place
+    return :place_invalid unless place
 
     params_to_update[:place_id] = place.id
     params_to_update[:status] = 'confirmed'
+    :auto_confirmed
   end
 
   def find_or_create_user_place_for_rename(name)
     lat, lon = @visit.center
+    return nil if lat.blank? || lon.blank?
+    return nil if lat.to_f.zero? && lon.to_f.zero?
+
     existing = current_user.places.where(name: name).near([lat, lon], 50, :m).first
     return existing if existing
 
@@ -283,7 +293,6 @@ class VisitsController < ApplicationController
       name: name,
       latitude: lat,
       longitude: lon,
-      lonlat: "POINT(#{lon} #{lat})",
       source: :manual
     )
   rescue ActiveRecord::RecordInvalid

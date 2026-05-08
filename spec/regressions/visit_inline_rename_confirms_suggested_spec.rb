@@ -105,6 +105,40 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
     end
   end
 
+  describe 'PATCH /visits/:id with rename on a suggested visit that has no resolvable center' do
+    let(:visit) { create(:visit, user:, area: nil, place: nil, status: :suggested, name: 'Visit') }
+
+    it 'does not create a Place at [0, 0] and surfaces a 422' do
+      expect(visit.center).to eq([0, 0])
+
+      expect do
+        patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
+      end.not_to change(Place, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(visit.reload.status).to eq('suggested')
+    end
+  end
+
+  describe 'PATCH /visits/:id with surrounding whitespace in visit[name] on a suggested visit' do
+    let!(:nearby_place) { create(:place, user:, name: 'Cafe A', latitude: 54.2905, longitude: 13.0948) }
+    let(:visit) do
+      v = create(:visit, user:, status: :suggested, name: 'Visit')
+      v.update!(place: nearby_place)
+      v
+    end
+
+    before { create(:place_visit, visit:, place: nearby_place) }
+
+    it 'stores the trimmed name on both visit and Place' do
+      patch visit_url(visit), params: { visit: { name: '  My Coffee Spot  ' } }, as: :turbo_stream
+
+      created = user.places.find_by(name: 'My Coffee Spot')
+      expect(created).to be_present
+      expect(visit.reload.name).to eq('My Coffee Spot')
+    end
+  end
+
   describe 'PATCH /visits/:id picker confirm (place_id + status)' do
     let!(:nearby_place) { create(:place, user:, name: 'Cafe A', latitude: 54.2905, longitude: 13.0948) }
     let(:visit) { create(:visit, user:, status: :suggested, name: 'Visit') }
