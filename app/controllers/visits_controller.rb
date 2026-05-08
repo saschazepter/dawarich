@@ -84,6 +84,9 @@ class VisitsController < ApplicationController
     params_to_update = visit_params.to_h
     params_to_update.delete(:name) if params_to_update[:name].is_a?(String) && params_to_update[:name].strip.empty?
 
+    auto_confirm_result = maybe_auto_confirm_with_user_place!(params_to_update)
+    return render_unprocessable('Could not save the typed name as a place.') if auto_confirm_result == :place_invalid
+
     # Cross-tenant IDOR guard: place_id must belong to current_user.
     # Suggested places (visit.suggested_places) are also acceptable since
     # they're already user-scoped via the visit relationship.
@@ -299,6 +302,45 @@ class VisitsController < ApplicationController
 
   def confirming_suggested_visit?(params_to_update = visit_params)
     params_to_update[:status] == 'confirmed' && @visit.suggested? && params_to_update[:name].blank?
+  end
+
+  PLACE_NAME_MAX_LENGTH = 200
+
+  def maybe_auto_confirm_with_user_place!(params_to_update)
+    return :noop unless @visit.suggested?
+    return :noop if params_to_update[:place_id].present?
+    return :noop if params_to_update[:status].present? && params_to_update[:status] != 'suggested'
+
+    name = params_to_update[:name].to_s.strip
+    return :noop if name.blank?
+
+    name = name[0, PLACE_NAME_MAX_LENGTH]
+    params_to_update[:name] = name
+
+    place = find_or_create_user_place_for_rename(name)
+    return :place_invalid unless place
+
+    params_to_update[:place_id] = place.id
+    params_to_update[:status] = 'confirmed'
+    :auto_confirmed
+  end
+
+  def find_or_create_user_place_for_rename(name)
+    lat, lon = @visit.center
+    return nil if lat.blank? || lon.blank?
+    return nil if lat.to_f.zero? && lon.to_f.zero?
+
+    existing = current_user.places.where(name: name).near([lat, lon], 50, :m).first
+    return existing if existing
+
+    current_user.places.create!(
+      name: name,
+      latitude: lat,
+      longitude: lon,
+      source: :manual
+    )
+  rescue ActiveRecord::RecordInvalid
+    nil
   end
 
   def auto_name_on_confirm

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Renaming a suggested visit in the timeline now confirms it and saves the typed name as a place under your account. (#2621)
 
 ## [1.7.5] - 2026-05-04
 
