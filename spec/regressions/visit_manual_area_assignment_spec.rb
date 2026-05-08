@@ -35,7 +35,7 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
       expect(visit.reload.name).to eq('Custom label')
     end
 
-    it 'rejects a foreign area with a 404' do
+    it 'rejects a foreign area with 422' do
       foreign_user = create(:user)
       foreign_area = create(:area, user: foreign_user, name: 'Foreign', latitude: 1.0, longitude: 1.0, radius: 100)
 
@@ -43,8 +43,21 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
             params: { visit: { area_id: foreign_area.id } },
             headers: auth_headers
 
-      expect(response).to have_http_status(:not_found)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(visit.reload.area_id).to be_nil
+    end
+
+    it 'prefers place name over area name when both are provided' do
+      place = create(:place, user: user, name: 'Coffee Shop')
+
+      patch "/api/v1/visits/#{visit.id}",
+            params: { visit: { place_id: place.id, area_id: area.id } },
+            headers: auth_headers
+
+      visit.reload
+      expect(visit.place_id).to eq(place.id)
+      expect(visit.area_id).to eq(area.id)
+      expect(visit.name).to eq('Coffee Shop')
     end
 
     it 'clears area_id when an empty value is sent' do
@@ -75,9 +88,24 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
       foreign_area = create(:area, user: foreign_user, name: 'Foreign', latitude: 1.0, longitude: 1.0, radius: 100)
 
       patch "/visits/#{visit.id}",
-            params: { visit: { area_id: foreign_area.id } }
+            params: { visit: { area_id: foreign_area.id } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('Invalid area')
       expect(visit.reload.area_id).to be_nil
+    end
+
+    it 'prefers place name over area name when both are provided' do
+      place = create(:place, user: user, name: 'Coffee Shop')
+
+      patch "/visits/#{visit.id}",
+            params: { visit: { place_id: place.id, area_id: area.id } }
+
+      visit.reload
+      expect(visit.place_id).to eq(place.id)
+      expect(visit.area_id).to eq(area.id)
+      expect(visit.name).to eq('Coffee Shop')
     end
   end
 end

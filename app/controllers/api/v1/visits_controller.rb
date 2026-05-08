@@ -41,7 +41,13 @@ class Api::V1::VisitsController < ApiController
 
   def update
     visit = current_api_user.visits.find(params[:id])
-    visit = update_visit(visit)
+
+    if visit_params[:area_id].present?
+      area = current_api_user.areas.find_by(id: visit_params[:area_id])
+      return render json: { error: 'Invalid area' }, status: :unprocessable_content if area.nil?
+    end
+
+    visit = update_visit(visit, area: area)
 
     render json: Api::VisitSerializer.new(visit).call
   end
@@ -120,21 +126,16 @@ class Api::V1::VisitsController < ApiController
     params.permit(:status, visit_ids: [])
   end
 
-  def update_visit(visit)
+  def update_visit(visit, area: nil)
     attributes = visit_params.to_h.except('latitude', 'longitude')
     user_provided_name = attributes['name'].present?
-
-    if attributes['area_id'].present?
-      allowed = current_api_user.areas.where(id: attributes['area_id']).exists?
-      raise ActiveRecord::RecordNotFound, 'Invalid area' unless allowed
-    end
 
     visit.assign_attributes(attributes)
 
     if attributes['place_id'].present? && !user_provided_name && visit.place.present?
       visit.name = visit.place.name
-    elsif attributes['area_id'].present? && !user_provided_name && visit.area.present?
-      visit.name = visit.area.name
+    elsif area && !user_provided_name && area.name.present?
+      visit.name = area.name
     end
 
     visit.save!

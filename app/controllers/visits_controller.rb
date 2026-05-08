@@ -53,9 +53,10 @@ class VisitsController < ApplicationController
       return render_unprocessable('Invalid place') unless allowed_place_ids.include?(params_to_update[:place_id].to_i)
     end
 
+    selected_area = nil
     if params_to_update[:area_id].present?
-      allowed_area_ids = current_user.areas.where(id: params_to_update[:area_id]).pluck(:id)
-      return render_unprocessable('Invalid area') unless allowed_area_ids.include?(params_to_update[:area_id].to_i)
+      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
+      return render_unprocessable('Invalid area') unless selected_area
     end
 
     # Capture both old and new month so cache busts cover edits that move
@@ -68,8 +69,8 @@ class VisitsController < ApplicationController
 
     if params_to_update[:place_id].present?
       update_visit_name_from_place(params_to_update[:place_id])
-    elsif params_to_update[:area_id].present?
-      update_visit_name_from_area(params_to_update[:area_id])
+    elsif selected_area
+      @visit.name = selected_area.name if selected_area.name.present?
     elsif confirming_suggested_visit?(params_to_update)
       # Only auto-pick from the visit's first suggested place when the
       # user did NOT explicitly select one — otherwise we'd overwrite the
@@ -258,11 +259,6 @@ class VisitsController < ApplicationController
     place = current_user.places.find_by(id: place_id) ||
             @visit.suggested_places.find_by(id: place_id)
     @visit.name = place.name if place && place.name.present?
-  end
-
-  def update_visit_name_from_area(area_id)
-    area = current_user.areas.find_by(id: area_id)
-    @visit.name = area.name if area && area.name.present?
   end
 
   def confirming_suggested_visit?(params_to_update = visit_params)
