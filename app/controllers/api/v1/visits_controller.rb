@@ -109,7 +109,7 @@ class Api::V1::VisitsController < ApiController
   private
 
   def visit_params
-    params.require(:visit).permit(:name, :place_id, :status, :latitude, :longitude, :started_at, :ended_at)
+    params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
   end
 
   def merge_params
@@ -124,9 +124,18 @@ class Api::V1::VisitsController < ApiController
     attributes = visit_params.to_h.except('latitude', 'longitude')
     user_provided_name = attributes['name'].present?
 
+    if attributes['area_id'].present?
+      allowed = current_api_user.areas.where(id: attributes['area_id']).exists?
+      raise ActiveRecord::RecordNotFound, 'Invalid area' unless allowed
+    end
+
     visit.assign_attributes(attributes)
 
-    visit.name = visit.place.name if attributes['place_id'].present? && !user_provided_name && visit.place.present?
+    if attributes['place_id'].present? && !user_provided_name && visit.place.present?
+      visit.name = visit.place.name
+    elsif attributes['area_id'].present? && !user_provided_name && visit.area.present?
+      visit.name = visit.area.name
+    end
 
     visit.save!
 

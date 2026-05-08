@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- API and web routes for updating a visit now accept `area_id`, so a visit can be manually assigned to one of your own areas. The visit's name is auto-set from the area name unless an explicit name is provided. (#2577)
+
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
