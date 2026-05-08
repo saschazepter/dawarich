@@ -2,6 +2,8 @@
 
 module Visits
   class BulkDestroy
+    MAX_VISIT_IDS = 500
+
     attr_reader :user, :visit_ids, :errors
 
     def initialize(user, visit_ids)
@@ -20,30 +22,30 @@ module Visits
     private
 
     def validate
-      return if visit_ids.present?
+      return errors << 'No visits selected' if visit_ids.blank?
+      return if visit_ids.length <= MAX_VISIT_IDS
 
-      errors << 'No visits selected'
+      errors << "Too many visits selected (max #{MAX_VISIT_IDS})"
     end
 
     def destroy_visits
-      visits = user.visits.where(id: visit_ids)
+      visits = user.scoped_visits.where(id: visit_ids)
+      ids = visits.pluck(:id)
 
-      if visits.empty?
+      if ids.empty?
         errors << 'No matching visits found'
         return false
       end
 
       started_ats = visits.pluck(:started_at)
-      destroyed_count = 0
 
       Visit.transaction do
-        visits.find_each do |visit|
-          visit.destroy!
-          destroyed_count += 1
-        end
+        Point.where(visit_id: ids).update_all(visit_id: nil)
+        PlaceVisit.where(visit_id: ids).delete_all
+        Visit.where(id: ids).delete_all
       end
 
-      { count: destroyed_count, started_ats: started_ats }
+      { count: ids.length, started_ats: started_ats }
     end
   end
 end

@@ -50,12 +50,34 @@ RSpec.describe Visits::BulkDestroy do
       end
     end
 
+    context 'plan-tier scoping' do
+      it 'refuses to destroy visits outside the Lite data window' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :lite)
+        old_visit = create(:visit, user: user, started_at: 13.months.ago, ended_at: 13.months.ago + 30.minutes)
+
+        result = described_class.new(user, [old_visit.id]).call
+
+        expect(result).to be(false)
+        expect(old_visit.reload).to be_persisted
+      end
+    end
+
     context 'when visit_ids is blank' do
       subject(:service) { described_class.new(user, []) }
 
       it 'returns false and records an error' do
         expect(service.call).to be(false)
         expect(service.errors).to include('No visits selected')
+      end
+    end
+
+    context 'when visit_ids exceeds the maximum batch size' do
+      subject(:service) { described_class.new(user, (1..(described_class::MAX_VISIT_IDS + 1)).to_a) }
+
+      it 'returns false and records an error' do
+        expect(service.call).to be(false)
+        expect(service.errors.first).to match(/Too many visits/i)
       end
     end
 
@@ -68,19 +90,18 @@ RSpec.describe Visits::BulkDestroy do
       end
     end
 
-    context 'when a destroy raises mid-batch' do
+    context 'when the bulk delete raises mid-transaction' do
       subject(:service) { described_class.new(user, [visit1.id, visit2.id]) }
 
-      it 'rolls back all destroys (transactional)' do
-        allow_any_instance_of(Visit).to receive(:destroy!).and_wrap_original do |original, *args|
-          raise ActiveRecord::RecordNotDestroyed if original.receiver.id == visit2.id
+      it 'rolls back the whole batch' do
+        point = create(:point, user: user, visit: visit1)
+        relation = instance_double(ActiveRecord::Relation)
+        allow(PlaceVisit).to receive(:where).with(visit_id: [visit1.id, visit2.id]).and_return(relation)
+        allow(relation).to receive(:delete_all).and_raise(ActiveRecord::StatementInvalid)
 
-          original.call(*args)
-        end
-
-        expect { service.call }.to raise_error(ActiveRecord::RecordNotDestroyed)
-        expect(Visit.where(id: visit1.id)).to exist
-        expect(Visit.where(id: visit2.id)).to exist
+        expect { service.call }.to raise_error(ActiveRecord::StatementInvalid)
+        expect(Visit.where(id: [visit1.id, visit2.id]).count).to eq(2)
+        expect(point.reload.visit_id).to eq(visit1.id)
       end
     end
 
@@ -91,6 +112,19 @@ RSpec.describe Visits::BulkDestroy do
       it 'nullifies points\' visit_id (does not delete points)' do
         expect { service.call }.not_to change(Point, :count)
         expect(point.reload.visit_id).to be_nil
+      end
+    end
+
+    context 'place_visit cascade' do
+      let!(:place) { create(:place) }
+      let!(:place_visit) { create(:place_visit, visit: visit1, place: place) }
+      subject(:service) { described_class.new(user, [visit1.id]) }
+
+      it 'deletes the visit\'s place_visits' do
+        service.call
+
+        expect(PlaceVisit.where(id: place_visit.id)).to be_empty
+        expect(Place.where(id: place.id)).to exist
       end
     end
   end

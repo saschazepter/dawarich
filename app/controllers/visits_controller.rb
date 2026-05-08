@@ -12,12 +12,13 @@ class VisitsController < ApplicationController
     source_status = params[:source_status] || 'suggested'
     explicit_visit_ids = parse_visit_ids(params[:visit_ids])
 
-    scope = if explicit_visit_ids.any?
-              current_user.scoped_visits.where(id: explicit_visit_ids)
-            else
-              s = current_user.scoped_visits.where(status: source_status)
-              params[:date].present? ? apply_date_scope(s) : s
-            end
+    if explicit_visit_ids.any?
+      scope = current_user.scoped_visits.where(id: explicit_visit_ids)
+      return render_not_found('One or more visits not found.') if scope.length != explicit_visit_ids.length
+    else
+      scope = current_user.scoped_visits.where(status: source_status)
+      scope = apply_date_scope(scope) if params[:date].present?
+    end
 
     @affected_started_at = scope.pluck(:started_at)
     visit_ids = scope.pluck(:id)
@@ -48,6 +49,9 @@ class VisitsController < ApplicationController
   def bulk_destroy
     visit_ids = parse_visit_ids(params[:visit_ids])
     return render_unprocessable('Select at least one visit to delete.') if visit_ids.empty?
+    if visit_ids.length > Visits::BulkDestroy::MAX_VISIT_IDS
+      return render_unprocessable("Too many visits selected (max #{Visits::BulkDestroy::MAX_VISIT_IDS}).")
+    end
 
     visits = current_user.scoped_visits.where(id: visit_ids)
     return render_not_found('One or more visits not found.') if visits.length != visit_ids.length
@@ -353,43 +357,51 @@ class VisitsController < ApplicationController
 
   def build_bulk_destroy_streams(count)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    first_started_at = Array(@affected_started_at).compact.min
-    date_str = if first_started_at
-                 Time.use_zone(tz) { first_started_at.in_time_zone.to_date.to_s }
-               else
-                 Time.use_zone(tz) { Date.current.to_s }
-               end
-    day_range = Time.use_zone(tz) { Date.parse(date_str).in_time_zone.all_day }
+    affected_dates = Time.use_zone(tz) do
+      Array(@affected_started_at).compact.map { |t| t.in_time_zone.to_date }.uniq
+    end
+    visible_date = affected_dates.first if affected_dates.length == 1
+    counts_date_str = (visible_date || Time.use_zone(tz) { Date.current }).to_s
 
-    days = Timeline::DayAssembler.new(
+    streams = []
+    day_stream = build_day_frame_stream(visible_date, tz)
+    streams << day_stream if day_stream
+    streams.concat(filter_count_streams(counts_date_str))
+    streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} deleted.")
+    streams
+  end
+
+  # When all deleted visits fall on the same user-local date, we can rebuild
+  # that day's frame from fresh data. For cross-day deletions (e.g. via API),
+  # we leave the frame alone — the controller can't know which day the user
+  # is currently viewing.
+  def build_day_frame_stream(date, time_zone)
+    return nil unless date
+
+    day_range = Time.use_zone(time_zone) { date.in_time_zone.all_day }
+    day = Timeline::DayAssembler.new(
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
       distance_unit: current_user.safe_settings.distance_unit
-    ).call
-    day = days.first
+    ).call.first
 
+    if day
+      turbo_stream.update('timeline-feed-frame',
+                          partial: 'map/timeline_feeds/day',
+                          locals: { day: day })
+    else
+      turbo_stream.update('timeline-feed-frame', '')
+    end
+  end
+
+  def filter_count_streams(date_str)
     status_counts = month_status_counts(date_str)
-
-    streams = []
-    streams << if day
-                 turbo_stream.update('timeline-feed-frame',
-                                     partial: 'map/timeline_feeds/day',
-                                     locals: { day: day })
-               else
-                 turbo_stream.update('timeline-feed-frame', '')
-               end
-    streams << turbo_stream.replace('filter-count-confirmed',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'confirmed', count: status_counts['confirmed'].to_i })
-    streams << turbo_stream.replace('filter-count-suggested',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'suggested', count: status_counts['suggested'].to_i })
-    streams << turbo_stream.replace('filter-count-declined',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'declined', count: status_counts['declined'].to_i })
-    streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} deleted.")
-    streams
+    %w[confirmed suggested declined].map do |status|
+      turbo_stream.replace("filter-count-#{status}",
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: status, count: status_counts[status].to_i })
+    end
   end
 
   def render_unprocessable(message)

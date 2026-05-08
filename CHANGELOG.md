@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Map v2 timeline panel: in selection mode you can now Confirm, Decline, or Delete the selected visits in one click, alongside the existing Merge action. Delete prompts for confirmation and nullifies points' visit attribution rather than deleting the points themselves.
+- Map v2 timeline panel: in selection mode you can now Confirm, Decline, or Delete the selected visits in one click, alongside the existing Merge action. Delete keeps your location points — it only removes the visit grouping. Bulk actions are capped at 500 visits per request.
 
 ### Fixed
 

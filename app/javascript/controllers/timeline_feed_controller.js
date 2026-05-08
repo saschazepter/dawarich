@@ -863,7 +863,8 @@ export default class extends Controller {
       return
     }
     const noun = n === 1 ? "visit" : "visits"
-    if (!window.confirm(`Delete ${n} ${noun}? This cannot be undone.`)) {
+    const message = `Delete ${n} ${noun}? Your location points stay — only the visit grouping is removed.`
+    if (!window.confirm(message)) {
       event.preventDefault()
       return
     }

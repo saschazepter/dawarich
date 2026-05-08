@@ -403,13 +403,14 @@ RSpec.describe '/visits', type: :request do
       expect(visit_b.reload.status).to eq('suggested')
     end
 
-    it 'ignores ids that belong to another user' do
+    it 'rejects the whole batch when an id belongs to another user' do
       other_user_visit = create(:visit, user: create(:user), status: :suggested)
 
-      patch bulk_update_visits_url,
+      patch bulk_update_visits_url(format: :turbo_stream),
             params: { status: 'confirmed', visit_ids: [visit_a.id, other_user_visit.id] }
 
-      expect(visit_a.reload.status).to eq('confirmed')
+      expect(response).to have_http_status(:not_found)
+      expect(visit_a.reload.status).to eq('suggested')
       expect(other_user_visit.reload.status).to eq('suggested')
     end
 
@@ -471,6 +472,32 @@ RSpec.describe '/visits', type: :request do
 
       expect(Point.where(id: point.id)).to exist
       expect(point.reload.visit_id).to be_nil
+    end
+
+    it 'rejects when more than the maximum number of visit_ids are submitted' do
+      ids = (1..(Visits::BulkDestroy::MAX_VISIT_IDS + 1)).to_a
+
+      delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: ids }
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it 'busts caches for every month touched when the deletion spans months' do
+      tz = user.safe_settings.timezone.presence || 'UTC'
+      apr_start = Time.use_zone(tz) { Time.zone.local(2026, 4, 30, 10, 0) }
+      may_start = Time.use_zone(tz) { Time.zone.local(2026, 5, 1, 10, 0) }
+      apr_visit = create(:visit, user:, started_at: apr_start, ended_at: apr_start + 30.minutes)
+      may_visit = create(:visit, user:, started_at: may_start, ended_at: may_start + 30.minutes)
+      apr_key = Timeline::MonthSummary.cache_key_for(user, apr_start.to_date.beginning_of_month)
+      may_key = Timeline::MonthSummary.cache_key_for(user, may_start.to_date.beginning_of_month)
+      Rails.cache.write(apr_key, 'sentinel-apr')
+      Rails.cache.write(may_key, 'sentinel-may')
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [apr_visit.id, may_visit.id] }
+
+      expect(Rails.cache.read(apr_key)).to be_nil
+      expect(Rails.cache.read(may_key)).to be_nil
     end
   end
 end
