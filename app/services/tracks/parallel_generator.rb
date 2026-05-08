@@ -6,18 +6,19 @@ class Tracks::ParallelGenerator
   include Tracks::Segmentation
   include Tracks::TrackBuilder
 
-  attr_reader :user, :start_at, :end_at, :mode, :chunk_size
+  attr_reader :user, :start_at, :end_at, :mode, :chunk_size, :untracked_only
 
-  def initialize(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day)
+  def initialize(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false)
     @user = user
     @start_at = start_at
     @end_at = end_at
     @mode = mode.to_sym
     @chunk_size = chunk_size
+    @untracked_only = untracked_only
   end
 
   def call
-    clean_existing_tracks if mode.in?(%i[bulk daily])
+    clean_existing_tracks if mode.in?(%i[bulk daily]) && !untracked_only
 
     # Generate time chunks
     time_chunks = generate_time_chunks
@@ -76,7 +77,7 @@ class Tracks::ParallelGenerator
       Tracks::TimeChunkProcessorJob.perform_later(
         user.id,
         session_id,
-        chunk
+        chunk.merge(untracked_only: untracked_only)
       )
     end
   end
