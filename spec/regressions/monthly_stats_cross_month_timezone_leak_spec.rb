@@ -135,4 +135,83 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
       expect(dec_stat.distance).to eq(0)
     end
   end
+
+  context 'toponyms do not leak adjacent-month cities' do
+    let(:tz) { 'Europe/Berlin' }
+    let(:user) do
+      create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 1, 'max_gap_minutes_in_city' => 120 })
+    end
+    let(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+    let(:france) { create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA') }
+
+    before do
+      create(:point, user: user, lonlat: 'POINT(13.4 52.5)', city: 'Berlin',
+                     country_name: 'Germany', country_id: germany.id, velocity: '0',
+                     timestamp: Time.utc(2026, 3, 15, 9, 0, 0).to_i)
+      create(:point, user: user, lonlat: 'POINT(13.5 52.6)', city: 'Berlin',
+                     country_name: 'Germany', country_id: germany.id, velocity: '0',
+                     timestamp: Time.utc(2026, 3, 15, 9, 30, 0).to_i)
+      create(:point, user: user, lonlat: 'POINT(2.35 48.85)', city: 'Paris',
+                     country_name: 'France', country_id: france.id, velocity: '0',
+                     timestamp: Time.utc(2026, 3, 31, 23, 30, 0).to_i)
+      create(:point, user: user, lonlat: 'POINT(2.36 48.86)', city: 'Paris',
+                     country_name: 'France', country_id: france.id, velocity: '0',
+                     timestamp: Time.utc(2026, 3, 31, 23, 45, 0).to_i)
+    end
+
+    it 'excludes Paris (local Berlin April) from March toponyms' do
+      stat = calculate_and_load(user, 2026, 3)
+
+      country_names = (stat.toponyms || []).map { |c| c['country'] }
+      expect(country_names).to include('Germany')
+      expect(country_names).not_to include('France')
+    end
+  end
+
+  context 're-running CalculateMonth is idempotent' do
+    let(:tz) { 'Europe/Berlin' }
+    let(:user) { create(:user, settings: { 'timezone' => tz }) }
+
+    let!(:point_a) { create_point(user, 13.4, 52.5, Time.utc(2026, 3, 15, 9, 0, 0)) }
+    let!(:point_b) { create_point(user, 13.5, 52.6, Time.utc(2026, 3, 15, 9, 30, 0)) }
+
+    it 'produces identical daily_distance and distance on a second run' do
+      first = calculate_and_load(user, 2026, 3)
+      first_daily = first.daily_distance
+      first_total = first.distance
+
+      second = calculate_and_load(user, 2026, 3)
+      expect(second.daily_distance).to eq(first_daily)
+      expect(second.distance).to eq(first_total)
+    end
+  end
+
+  context 'extreme positive UTC offset (Pacific/Kiritimati, UTC+14)' do
+    let(:tz) { 'Pacific/Kiritimati' }
+    let(:user) { create(:user, settings: { 'timezone' => tz }) }
+
+    let!(:point_utc_feb_28_local_march_1_a) { create_point(user, -157.4, 1.87, Time.utc(2026, 2, 28, 11, 0, 0)) }
+    let!(:point_utc_feb_28_local_march_1_b) { create_point(user, -157.41, 1.88, Time.utc(2026, 2, 28, 11, 30, 0)) }
+
+    it 'attributes UTC-Feb-28 11:00 (Kiritimati Mar 1 01:00) to local March day 1' do
+      stat = calculate_and_load(user, 2026, 3)
+
+      day_1 = stat.daily_distance.find { |day, _| day == 1 }&.last
+      expect(day_1).to be > 0
+    end
+  end
+
+  context 'invalid stored timezone falls back to UTC' do
+    let(:user) { create(:user, settings: { 'timezone' => 'Not/A/Real/Zone' }) }
+
+    let!(:point) { create_point(user, 13.4, 52.5, Time.utc(2026, 3, 15, 12, 0, 0)) }
+    let!(:point_b) { create_point(user, 13.5, 52.6, Time.utc(2026, 3, 15, 12, 30, 0)) }
+
+    it 'computes March stats without raising' do
+      expect { calculate_and_load(user, 2026, 3) }.not_to raise_error
+
+      stat = Stat.find_by(user: user, year: 2026, month: 3)
+      expect(stat).to be_present
+    end
+  end
 end

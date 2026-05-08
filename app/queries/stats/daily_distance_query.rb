@@ -66,11 +66,9 @@ class Stats::DailyDistanceQuery
   end
 
   def convert_to_daily_distances(distance_by_day_map)
-    timespan.to_a.map.with_index(1) do |day, index|
-      distance_meters =
-        distance_by_day_map[day.day]&.fetch('distance_meters', 0) || 0
-
-      [index, distance_meters.to_i]
+    timespan.to_a.map do |day|
+      distance_meters = distance_by_day_map[day.day]&.fetch('distance_meters', 0) || 0
+      [day.day, distance_meters.to_i]
     end
   end
 

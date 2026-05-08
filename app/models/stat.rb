@@ -100,24 +100,26 @@ class Stat < ApplicationRecord
   end
 
   def calculate_data_bounds
-    start_date = Date.new(year, month, 1).beginning_of_day
-    end_date = start_date.end_of_month.end_of_day
-
-    points_relation = user.points.where(timestamp: start_date.to_i..end_date.to_i)
-    point_count = points_relation.count
-
-    return nil if point_count.zero?
+    widened_start = (Date.new(year, month, 1).beginning_of_day - 1.day).to_i
+    widened_end = (Date.new(year, month, 1).end_of_month.end_of_day + 1.day).to_i
+    tz = user_timezone_iana
 
     bounds_result = ActiveRecord::Base.connection.exec_query(
       "SELECT MIN(ST_Y(lonlat::geometry)) as min_lat, MAX(ST_Y(lonlat::geometry)) as max_lat,
-              MIN(ST_X(lonlat::geometry)) as min_lng, MAX(ST_X(lonlat::geometry)) as max_lng
+              MIN(ST_X(lonlat::geometry)) as min_lng, MAX(ST_X(lonlat::geometry)) as max_lng,
+              COUNT(*) as point_count
        FROM points
        WHERE user_id = $1
        AND timestamp BETWEEN $2 AND $3
-       AND lonlat IS NOT NULL",
+       AND lonlat IS NOT NULL
+       AND EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $5
+       AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $6",
       'data_bounds_query',
-      [user.id, start_date.to_i, end_date.to_i]
+      [user.id, widened_start, widened_end, tz, year, month]
     ).first
+
+    point_count = bounds_result['point_count'].to_i
+    return nil if point_count.zero?
 
     {
       min_lat: bounds_result['min_lat'].to_f,
@@ -152,5 +154,11 @@ class Stat < ApplicationRecord
 
   def user_timezone
     user.timezone.presence || Time.zone.name
+  end
+
+  def user_timezone_iana
+    raw = user.timezone.presence || Time.zone.name
+    tz = ActiveSupport::TimeZone[raw] if raw
+    tz ? tz.tzinfo.name : 'Etc/UTC'
   end
 end

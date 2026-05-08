@@ -50,8 +50,6 @@ class Stats::CalculateMonth
   def points
     return @points if defined?(@points)
 
-    # Select all needed columns to avoid duplicate queries
-    # Used for both distance calculation and toponyms extraction
     @points = user
               .points
               .not_anomaly
@@ -61,16 +59,32 @@ class Stats::CalculateMonth
               .order(timestamp: :asc)
   end
 
+  def points_in_local_month
+    points.where(
+      'EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ? ' \
+      'AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ?',
+      user_timezone_iana, year, user_timezone_iana, month
+    )
+  end
+
   def distance(distance_by_day)
     distance_by_day.sum { |day| day[1] }
   end
 
   def toponyms
     CountriesAndCities.new(
-      points,
+      points_in_local_month,
       min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
       max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
     ).call
+  end
+
+  def user_timezone_iana
+    return @user_timezone_iana if defined?(@user_timezone_iana)
+
+    raw = user.timezone.presence || Time.zone.name
+    tz = ActiveSupport::TimeZone[raw] if raw
+    @user_timezone_iana = tz ? tz.tzinfo.name : 'Etc/UTC'
   end
 
   def create_stats_update_failed_notification(user, error)
