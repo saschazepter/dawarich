@@ -102,7 +102,7 @@ class Stat < ApplicationRecord
   def calculate_data_bounds
     widened_start = (Date.new(year, month, 1).beginning_of_day - 2.days).to_i
     widened_end = (Date.new(year, month, 1).end_of_month.end_of_day + 2.days).to_i
-    tz = user_timezone_iana
+    tz = user.timezone_iana
 
     bounds_result = ActiveRecord::Base.connection.exec_query(
       "SELECT MIN(ST_Y(lonlat::geometry)) as min_lat, MAX(ST_Y(lonlat::geometry)) as max_lat,
@@ -152,21 +152,15 @@ class Stat < ApplicationRecord
     user.points
         .not_anomaly
         .without_raw_data
-        .where(timestamp: widened_timespan)
+        .where(timestamp: widened_timespan.first.to_i..widened_timespan.last.to_i)
         .order(timestamp: :asc)
   end
 
   def calculate_daily_distances(monthly_points)
-    Stats::DailyDistanceQuery.new(monthly_points, timespan, user_timezone).call
+    Stats::DailyDistanceQuery.new(monthly_points, timespan, user.timezone_iana).call
   end
 
   def user_timezone
     user.timezone.presence || Time.zone.name
-  end
-
-  def user_timezone_iana
-    raw = user.timezone.presence || Time.zone.name
-    tz = ActiveSupport::TimeZone[raw] if raw
-    tz ? tz.tzinfo.name : 'Etc/UTC'
   end
 end

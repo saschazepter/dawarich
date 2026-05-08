@@ -60,10 +60,11 @@ class Stats::CalculateMonth
   end
 
   def points_in_local_month
+    tz = user.timezone_iana
     points.where(
       'EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ? ' \
       'AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ?',
-      user_timezone_iana, year, user_timezone_iana, month
+      tz, year, tz, month
     )
   end
 
@@ -77,14 +78,6 @@ class Stats::CalculateMonth
       min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
       max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
     ).call
-  end
-
-  def user_timezone_iana
-    return @user_timezone_iana if defined?(@user_timezone_iana)
-
-    raw = user.timezone.presence || Time.zone.name
-    tz = ActiveSupport::TimeZone[raw] if raw
-    @user_timezone_iana = tz ? tz.tzinfo.name : 'Etc/UTC'
   end
 
   def create_stats_update_failed_notification(user, error)

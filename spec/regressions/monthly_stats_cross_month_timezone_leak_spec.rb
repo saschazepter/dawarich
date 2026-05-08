@@ -284,4 +284,28 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
       expect(stat.daily_distance.find { |day, _| day == 15 }&.last).to be > 0
     end
   end
+
+  context 'HexagonCalculator buckets by local timezone' do
+    let(:tz) { 'Europe/Berlin' }
+    let(:user) { create(:user, settings: { 'timezone' => tz }) }
+    let(:flight_hex) { H3.from_geo_coordinates([50.0, -40.0], 8).to_s(16) }
+
+    let!(:flight_tail_utc_march_31) { create_point(user, -40.0, 50.0, Time.utc(2026, 3, 31, 23, 30, 0)) }
+    let!(:home_point_march_15) { create_point(user, 13.4, 52.5, Time.utc(2026, 3, 15, 9, 0, 0)) }
+
+    it 'excludes the cross-month flight point from March hex IDs' do
+      stat = calculate_and_load(user, 2026, 3)
+
+      hex_ids = (stat.h3_hex_ids || []).map { |entry| entry[0].to_s }
+      expect(hex_ids).not_to be_empty
+      expect(hex_ids).not_to include(flight_hex)
+    end
+
+    it 'attributes the flight point to local April hex IDs, not March' do
+      stat = calculate_and_load(user, 2026, 4)
+      hex_ids = (stat.h3_hex_ids || []).map { |entry| entry[0].to_s }
+
+      expect(hex_ids).to include(flight_hex)
+    end
+  end
 end
