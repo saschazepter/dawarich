@@ -28,6 +28,14 @@ RSpec.configure do |config|
     self.class.use_transactional_tests = false
   end
 
+  # Restore the default after the group finishes. The flag is class-level state
+  # on the example class — without this, any later untagged `it` block added
+  # inside a `:non_transactional` describe would silently run without a
+  # wrapping transaction and dirty the shared DB.
+  config.after(:context, :non_transactional) do
+    self.class.use_transactional_tests = true
+  end
+
   config.before(:each, :non_transactional) do |example|
     required_threads = example.metadata[:threads] || 2
     pool_size = ActiveRecord::Base.connection_pool.size
