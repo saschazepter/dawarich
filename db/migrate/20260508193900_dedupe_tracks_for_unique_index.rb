@@ -1,163 +1,76 @@
 # frozen_string_literal: true
 
+# Cleans up any (user_id, start_at, end_at) duplicate Track rows so the unique
+# index in the next migration can apply. Per (user_id, start_at, end_at) group
+# we keep the row with the highest id (newest insert) and delete the rest plus
+# their track_segments — same winner-selection and SQL shape as
+# Tracks::Deduplicator, just executed inline at deploy time so the index
+# migration that follows doesn't fail on existing dups.
 class DedupeTracksForUniqueIndex < ActiveRecord::Migration[8.0]
-  BATCH_SIZE = 500
-
   disable_ddl_transaction!
 
   def up
-    Rails.logger.info('[DedupeTracksForUniqueIndex] starting')
-    total_losers = 0
-    total_orphaned = 0
-    iteration = 0
-    previous_signature = nil
+    user_ids = users_with_duplicates
+    return if user_ids.empty?
 
-    loop do
-      iteration += 1
-      groups = duplicate_groups(limit: BATCH_SIZE)
-      break if groups.empty?
+    Rails.logger.info "[Migration] Deduplicating tracks for #{user_ids.size} user(s)"
 
-      # If two consecutive iterations return the exact same set of duplicate
-      # groups, the resolve loop is making no progress (e.g. a future FK
-      # blocking deletion) — raise rather than spin forever.
-      signature = groups.map { |g| [g['user_id'], g['start_at'], g['end_at']] }
-      if signature == previous_signature
-        raise(
-          "Dedup migration stuck: same #{groups.size} duplicate group(s) returned " \
-          'in two consecutive batches without making progress.'
-        )
-      end
-      previous_signature = signature
+    user_ids.each do |user_id|
+      removed = dedupe_user(user_id)
+      next if removed.zero?
 
-      batch_losers = 0
-      batch_orphaned = 0
-      groups.each do |group|
-        stats = resolve_group(group)
-        batch_losers += stats[:losers]
-        batch_orphaned += stats[:orphaned]
-      end
-      total_losers += batch_losers
-      total_orphaned += batch_orphaned
-
-      Rails.logger.info(
-        "[DedupeTracksForUniqueIndex] batch=#{iteration} groups=#{groups.size} " \
-        "losers=#{batch_losers} orphaned_points=#{batch_orphaned} " \
-        "totals_losers=#{total_losers} totals_orphaned=#{total_orphaned}"
-      )
+      Rails.logger.info "[Migration] user_id=#{user_id} removed=#{removed} duplicate track(s)"
     end
-
-    Rails.logger.info(
-      "[DedupeTracksForUniqueIndex] done losers=#{total_losers} orphaned_points=#{total_orphaned}"
-    )
   end
 
   def down
-    # Data deletion is not reversible. Down is a no-op so the schema migration
-    # can roll back without errors. Restore from backup if rollback is needed.
+    # Data deletion is not reversible. Restore from backup if rollback is needed.
   end
 
   private
 
-  def duplicate_groups(limit:)
-    sql = <<~SQL
-      SELECT user_id, start_at, end_at, ARRAY_AGG(id ORDER BY id) AS ids
-      FROM tracks
-      GROUP BY user_id, start_at, end_at
-      HAVING COUNT(*) > 1
-      LIMIT #{limit.to_i}
+  def users_with_duplicates
+    sql = <<~SQL.squish
+      SELECT DISTINCT user_id FROM tracks
+      WHERE (user_id, start_at, end_at) IN (
+        SELECT user_id, start_at, end_at FROM tracks
+        GROUP BY user_id, start_at, end_at
+        HAVING COUNT(*) > 1
+      )
     SQL
-
-    connection.execute(sql).to_a
+    connection.execute(sql).map { |row| row['user_id'].to_i }
   end
 
-  def resolve_group(row)
-    ids = parse_id_array(row['ids'])
-    return { losers: 0, orphaned: 0 } if ids.size < 2
-
-    winner_id, winner_start, winner_end = pick_winner(ids)
-    loser_ids = ids - [winner_id]
-
-    # Defense-in-depth: if the winner somehow ended up in loser_ids (type
-    # mismatch, etc.), abort this group rather than delete the winner.
-    if loser_ids.empty? || loser_ids.include?(winner_id)
-      raise "Dedup migration safety check failed: winner_id=#{winner_id.inspect} losers=#{loser_ids.inspect}"
-    end
-
-    orphaned = 0
-    Track.transaction do
-      # Reassign loser points within the winner's time window only — points
-      # outside that window would silently corrupt the winner's path/distance/
-      # duration metadata, which were computed from the winner's original point
-      # set. Out-of-window points are nulled so the next regeneration pass can
-      # re-attach them to a track that actually covers their timestamps.
-      window_start = winner_start.to_i
-      window_end = winner_end.to_i
-
+  def dedupe_user(user_id)
+    ActiveRecord::Base.transaction do
       connection.execute(
-        ActiveRecord::Base.send(
-          :sanitize_sql_array,
-          [
-            "UPDATE points SET track_id = ? WHERE track_id IN (#{loser_ids.join(',')}) " \
-            'AND timestamp BETWEEN ? AND ?',
-            winner_id, window_start, window_end
-          ]
-        )
+        ActiveRecord::Base.sanitize_sql([<<~SQL.squish, { user_id: user_id }])
+          DELETE FROM track_segments
+          WHERE track_id IN (
+            SELECT id FROM tracks
+            WHERE user_id = :user_id
+              AND id NOT IN (
+                SELECT MAX(id) FROM tracks
+                WHERE user_id = :user_id
+                GROUP BY start_at, end_at
+              )
+          )
+        SQL
       )
 
-      orphan_result = connection.execute(
-        "UPDATE points SET track_id = NULL WHERE track_id IN (#{loser_ids.join(',')})"
+      result = connection.execute(
+        ActiveRecord::Base.sanitize_sql([<<~SQL.squish, { user_id: user_id }])
+          DELETE FROM tracks
+          WHERE user_id = :user_id
+            AND id NOT IN (
+              SELECT MAX(id) FROM tracks
+              WHERE user_id = :user_id
+              GROUP BY start_at, end_at
+            )
+        SQL
       )
-      orphaned = orphan_result.cmd_tuples
 
-      # track_segments belong to losers; cascade via Track#destroy is too
-      # heavy for a maintenance migration, so we delete segments first then
-      # the losers themselves.
-      connection.execute("DELETE FROM track_segments WHERE track_id IN (#{loser_ids.join(',')})")
-      connection.execute("DELETE FROM tracks WHERE id IN (#{loser_ids.join(',')})")
-    end
-
-    { losers: loser_ids.size, orphaned: orphaned }
-  end
-
-  # Picks the row with the most associated points (most data is the best
-  # signal of "real" track), breaking ties by longest distance and finally
-  # by oldest id. Returns [id, start_at, end_at] for the winner so the caller
-  # can constrain point reassignment to the winner's time window.
-  def pick_winner(ids)
-    sql = <<~SQL
-      SELECT t.id, t.start_at, t.end_at, COALESCE(t.distance, 0) AS dist,
-             COUNT(p.id) AS point_count
-      FROM tracks t
-      LEFT JOIN points p ON p.track_id = t.id
-      WHERE t.id IN (#{ids.join(',')})
-      GROUP BY t.id, t.start_at, t.end_at, t.distance
-      ORDER BY point_count DESC, dist DESC, t.id ASC
-      LIMIT 1
-    SQL
-
-    row = connection.execute(sql).first
-    raise "Dedup migration: no winner found for ids=#{ids.inspect}" unless row
-
-    # `connection.execute` skips Rails type casting and returns raw strings.
-    # Coerce explicitly so Array#- and arithmetic work correctly downstream.
-    [
-      row['id'].to_i,
-      coerce_time(row['start_at']),
-      coerce_time(row['end_at'])
-    ]
-  end
-
-  def coerce_time(value)
-    return value if value.is_a?(Time) || value.is_a?(DateTime)
-
-    Time.zone.parse(value.to_s)
-  end
-
-  def parse_id_array(raw)
-    case raw
-    when Array then raw.map(&:to_i)
-    when String then raw.delete('{}').split(',').map(&:to_i)
-    else Array(raw).map(&:to_i)
+      result.cmd_tuples
     end
   end
 end
