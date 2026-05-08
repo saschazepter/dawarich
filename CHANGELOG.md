@@ -70,6 +70,7 @@ scrape_configs:
 - 500 error on the imports page. #2683
 - Insights weekly pattern now refreshes after monthly stats change, instead of showing a stale snapshot until the next monthly digest job runs. #2478
 - Points with no reverse-geocoding result (ocean, wilderness) are now marked as attempted instead of being re-queued every nightly run; use "Start Reverse Geocoding" to retry after switching providers. #2271
+- Activity detection now falls back to displacement when the tracker reports 0 m/s, so OwnTracks Significant Change mode and similar low-power setups stop misclassifying real movement as stationary. Run **Map v2 → Settings → Recalculate tracks & stats** to apply to existing tracks. #2390
 
 ## [1.7.6] - 2026-05-09
 
