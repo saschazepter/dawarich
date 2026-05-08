@@ -64,6 +64,7 @@ export class SettingsController {
       familyToggle: "familyEnabled",
       speedColoredToggle: "speedColoredRoutes",
       tracksToggle: "tracksEnabled",
+      anomaliesToggle: "anomaliesEnabled",
     }
 
     // Gated layer toggles that Lite users cannot persist
