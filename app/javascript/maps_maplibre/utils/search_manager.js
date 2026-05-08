@@ -15,6 +15,7 @@ export class SearchManager {
     this.debounceDelay = 300 // ms
     this.currentMarker = null
     this.currentVisitsData = null // Store visits data for click handling
+    this._activeRenderId = 0
   }
 
   /**
@@ -89,11 +90,14 @@ export class SearchManager {
     }
 
     this.debounceTimer = setTimeout(async () => {
+      const renderId = ++this._activeRenderId
       try {
         this.showLoading()
         const suggestions = await this.service.fetchSuggestions(query)
+        if (renderId !== this._activeRenderId) return
         this.displayResults(suggestions)
       } catch (error) {
+        if (renderId !== this._activeRenderId) return
         this.showError("Failed to fetch suggestions")
         console.error("SearchManager: Search error:", error)
       }
@@ -158,6 +162,10 @@ export class SearchManager {
    * @param {Object} location - Selected location
    */
   async handleResultClick(location) {
+    clearTimeout(this.debounceTimer)
+    this.debounceTimer = null
+    const renderId = ++this._activeRenderId
+
     // Fly to location on map
     this.map.flyTo({
       center: [location.lon, location.lat],
@@ -185,9 +193,12 @@ export class SearchManager {
         address: location.address || "",
       })
 
+      if (renderId !== this._activeRenderId) return
+
       // Display visits results
       this.displayVisitsResults(visitsData, location)
     } catch (error) {
+      if (renderId !== this._activeRenderId) return
       console.error("SearchManager: Failed to fetch visits:", error)
       this.showError("Failed to load visits for this location")
     }

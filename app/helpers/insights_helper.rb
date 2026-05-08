@@ -262,6 +262,15 @@ module InsightsHelper
     labels
   end
 
+  def most_recent_active_date(daily_data)
+    return nil if daily_data.blank?
+
+    daily_data
+      .select { |_date_key, distance| distance.to_i.positive? }
+      .keys
+      .max
+  end
+
   private
 
   def country_code(country_name)

@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 class TripsController < ApplicationController
+  include FlashStreamable
+
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[new create]
-  before_action :set_trip, only: %i[show edit update destroy]
+  before_action :authenticate_active_user!, only: %i[new create recalculate]
+  before_action :set_trip, only: %i[show edit update destroy recalculate]
   before_action :set_coordinates, only: %i[show edit]
 
   def index
@@ -47,6 +49,46 @@ class TripsController < ApplicationController
   def destroy
     @trip.destroy!
     redirect_to trips_url, notice: 'Trip was successfully destroyed.', status: :see_other
+  end
+
+  def recalculate
+    affected = current_user.trips
+                           .where(id: @trip.id)
+                           .where('last_recalculated_at IS NULL OR last_recalculated_at < ?', Trip::RECALCULATE_COOLDOWN.ago)
+                           .update_all(last_recalculated_at: Time.current)
+
+    if affected.zero?
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: stream_flash(:notice,
+                                            'Already recalculating — this page will update when it\'s done.')
+        end
+        format.html do
+          redirect_to trip_path(@trip),
+                      notice: 'Already recalculating — this page will update when it\'s done.'
+        end
+      end
+      return
+    end
+
+    @trip.reload
+    Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
+    Rails.logger.info("trip_recalculate trip_id=#{@trip.id} user_id=#{current_user.id}")
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.replace('trip_recalculate_frame',
+                               partial: 'trips/recalculate_button',
+                               locals: { trip: @trip }),
+          stream_flash(:notice, 'Recalculating — the page will update automatically when it\'s ready.')
+        ]
+      end
+      format.html do
+        redirect_to trip_path(@trip),
+                    notice: 'Recalculating — the page will update automatically when it\'s ready.'
+      end
+    end
   end
 
   private
