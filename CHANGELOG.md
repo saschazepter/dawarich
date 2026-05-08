@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- The Activity Overview heatmap on the Insights page now opens centered on the most recent active day instead of always starting at January 1. On mobile, this means you no longer see a blank stretch of future months when the year has just begun. (#2228)
 
 ## [1.7.5] - 2026-05-04
 
