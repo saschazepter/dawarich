@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Trip pages now have a "Recalculate map" button so the trip's path, distance and visited countries can be refreshed after deleting or adding points within the trip's date range. Previously the map stayed frozen at trip-creation time. (#2291)
 
 ## [1.7.5] - 2026-05-04
 

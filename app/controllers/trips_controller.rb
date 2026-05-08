@@ -3,7 +3,7 @@
 class TripsController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create]
-  before_action :set_trip, only: %i[show edit update destroy]
+  before_action :set_trip, only: %i[show edit update destroy recalculate]
   before_action :set_coordinates, only: %i[show edit]
 
   def index
@@ -47,6 +47,14 @@ class TripsController < ApplicationController
   def destroy
     @trip.destroy!
     redirect_to trips_url, notice: 'Trip was successfully destroyed.', status: :see_other
+  end
+
+  def recalculate
+    Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
+
+    redirect_to trip_path(@trip),
+                notice: 'Recalculating trip map. Refresh in a moment.',
+                status: :see_other
   end
 
   private
