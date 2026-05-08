@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Monthly stats (distance, daily chart, toponyms, map bounds) now bucket points by your local timezone instead of UTC, fixing a phantom day-1 spike from overnight imports and the matching undercount near month boundaries. Self-hosters: enqueue `Stats::BackfillTimezoneRebucketJob` once to refresh saved totals for all months. #2546
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
 - Renaming a suggested visit in the timeline now confirms it and saves the typed name as a place under your account. (#2621)
+- Track generation no longer creates duplicate tracks. Previously, several background jobs (daily generation, realtime tracking, recalculation, and import) could each produce the same track for the same time window, leaving you with two or three copies of the same trip on your map. (#2677)
+  - Internals: tracks now have a `(user_id, start_at, end_at)` unique index, generation runs under a per-user PostgreSQL advisory lock, and racing inserts fall back to attaching the loser's points to the winning track. A pre-migration deduplicates any existing duplicates so the unique index can apply cleanly.
+  - **Self-hosters with very large databases (>10 GB tracks)**: the deduplication migration emits per-user progress to the migration log, but if you have a long history of duplicates the run may take several minutes to over an hour. After the migration, the surviving track in each duplicate group keeps its original `distance` and `path` — to recompute those stats from the merged set of points, run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading.
 
 ## [1.7.5] - 2026-05-04
 
