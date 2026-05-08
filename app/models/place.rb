@@ -20,7 +20,6 @@ class Place < ApplicationRecord
   enum :source, { manual: 0, photon: 1 }
 
   scope :for_user, ->(user) { where(user: user) }
-  scope :global, -> { where(user: nil) }
   scope :ordered, -> { order(:name) }
 
   def lon

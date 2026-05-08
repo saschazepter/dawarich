@@ -47,16 +47,14 @@ module Visits
 
     # Step 1: Find existing place
     def find_existing_place(lat, lon, name)
-      # Try to find existing place by location first
-      existing_by_location = Place.global.near([lat, lon], SIMILARITY_RADIUS, :m).first
+      existing_by_location = user.places.near([lat, lon], SIMILARITY_RADIUS, :m).first
       return existing_by_location if existing_by_location
 
-      # Then try by name if available
       return nil if name.blank?
 
-      Place.where(name: name)
-           .near([lat, lon], SEARCH_RADIUS, :m)
-           .first
+      user.places.where(name: name)
+          .near([lat, lon], SEARCH_RADIUS, :m)
+          .first
     end
 
     # Step 2: Collect potential places from all sources
@@ -109,19 +107,16 @@ module Visits
       properties = point.geodata['properties'] || {}
       return nil if properties.blank?
 
-      # Get or build a name
       name = build_place_name(properties)
       return nil if name == Place::DEFAULT_NAME
 
-      # Look for existing place with this name
-      existing = Place.where(name: name)
-                      .near([point.lat, point.lon], SIMILARITY_RADIUS, :m)
-                      .first
+      existing = user.places.where(name: name)
+                     .near([point.lat, point.lon], SIMILARITY_RADIUS, :m)
+                     .first
 
       return existing if existing
 
-      # Create new place
-      place = Place.new(
+      place = user.places.build(
         name: name,
         lonlat: "POINT(#{point.lon} #{point.lat})",
         latitude: point.lat,
@@ -165,19 +160,16 @@ module Visits
       properties = result.data['properties'] || {}
       return nil if properties.blank?
 
-      # Get or build a name
       name = build_place_name(properties)
       return nil if name == Place::DEFAULT_NAME
 
-      # Look for existing place with this name
-      existing = Place.where(name: name)
-                      .near([result.latitude, result.longitude], SIMILARITY_RADIUS, :m)
-                      .first
+      existing = user.places.where(name: name)
+                     .near([result.latitude, result.longitude], SIMILARITY_RADIUS, :m)
+                     .first
 
       return existing if existing
 
-      # Create new place
-      place = Place.new(
+      place = user.places.build(
         name: name,
         lonlat: "POINT(#{result.longitude} #{result.latitude})",
         latitude: result.latitude,
@@ -210,7 +202,7 @@ module Visits
     def create_default_place(lat, lon, suggested_name)
       name = suggested_name.presence || Place::DEFAULT_NAME
 
-      place = Place.new(
+      place = user.places.build(
         name: name,
         lonlat: "POINT(#{lon} #{lat})",
         latitude: lat,
@@ -223,16 +215,11 @@ module Visits
     end
 
     # Step 9: Find suggested places
-    #
-    # Constrains the search to the current user's own places plus globally-
-    # shared (user_id IS NULL) places. Without this scope, Place.near(...)
-    # returns every user's nearby places — an IDOR that leaks one user's
-    # private places into another user's auto-suggestion path.
     def find_suggested_places(lat, lon)
-      Place.where(user_id: [user.id, nil])
-           .near([lat, lon], SEARCH_RADIUS, :m)
-           .with_distance([lat, lon], :m)
-           .limit(MAX_SUGGESTED_PLACES)
+      user.places
+          .near([lat, lon], SEARCH_RADIUS, :m)
+          .with_distance([lat, lon], :m)
+          .limit(MAX_SUGGESTED_PLACES)
     end
 
     # Helper methods
