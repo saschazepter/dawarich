@@ -3,6 +3,8 @@
 class VisitsController < ApplicationController
   include FlashStreamable
 
+  MAX_BULK_VISIT_IDS = 500
+
   before_action :authenticate_user!
   before_action :set_visit, only: %i[update destroy]
   after_action :bust_timeline_month_cache, only: %i[update bulk_update bulk_destroy destroy merge]
@@ -13,8 +15,10 @@ class VisitsController < ApplicationController
     explicit_visit_ids = parse_visit_ids(params[:visit_ids])
 
     if explicit_visit_ids.any?
+      return render_unprocessable(too_many_visits_message) if explicit_visit_ids.length > MAX_BULK_VISIT_IDS
+
       scope = current_user.scoped_visits.where(id: explicit_visit_ids)
-      return render_not_found('One or more visits not found.') if scope.length != explicit_visit_ids.length
+      return render_not_found(missing_visits_message) if scope.length != explicit_visit_ids.length
     else
       scope = current_user.scoped_visits.where(status: source_status)
       scope = apply_date_scope(scope) if params[:date].present?
@@ -49,12 +53,10 @@ class VisitsController < ApplicationController
   def bulk_destroy
     visit_ids = parse_visit_ids(params[:visit_ids])
     return render_unprocessable('Select at least one visit to delete.') if visit_ids.empty?
-    if visit_ids.length > Visits::BulkDestroy::MAX_VISIT_IDS
-      return render_unprocessable("Too many visits selected (max #{Visits::BulkDestroy::MAX_VISIT_IDS}).")
-    end
+    return render_unprocessable(too_many_visits_message) if visit_ids.length > MAX_BULK_VISIT_IDS
 
     visits = current_user.scoped_visits.where(id: visit_ids)
-    return render_not_found('One or more visits not found.') if visits.length != visit_ids.length
+    return render_not_found(missing_visits_message) if visits.length != visit_ids.length
 
     @affected_started_at = visits.pluck(:started_at)
 
@@ -66,7 +68,7 @@ class VisitsController < ApplicationController
         format.turbo_stream { render turbo_stream: build_bulk_destroy_streams(result[:count]) }
         format.html do
           redirect_back(fallback_location: build_timeline_url(date: 'today'),
-                        notice: "#{result[:count]} #{'visit'.pluralize(result[:count])} deleted.",
+                        notice: bulk_destroy_success_message(result[:count]),
                         status: :see_other)
         end
       end
@@ -139,7 +141,7 @@ class VisitsController < ApplicationController
     return render_unprocessable('Select at least 2 visits to merge.') if visit_ids.length < 2
 
     visits = current_user.scoped_visits.where(id: visit_ids).order(:started_at)
-    return render_not_found('One or more visits not found.') if visits.length != visit_ids.length
+    return render_not_found(missing_visits_message) if visits.length != visit_ids.length
 
     return render_unprocessable('Visits must be on the same day.') unless same_day?(visits)
 
@@ -367,7 +369,7 @@ class VisitsController < ApplicationController
     day_stream = build_day_frame_stream(visible_date, tz)
     streams << day_stream if day_stream
     streams.concat(filter_count_streams(counts_date_str))
-    streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} deleted.")
+    streams << stream_flash(:notice, bulk_destroy_success_message(count))
     streams
   end
 
@@ -415,6 +417,19 @@ class VisitsController < ApplicationController
     Time.zone.parse(value.to_s)
   rescue ArgumentError, TypeError
     nil
+  end
+
+  def too_many_visits_message
+    "You can act on up to #{MAX_BULK_VISIT_IDS} visits at once. Narrow your selection and try again."
+  end
+
+  def missing_visits_message
+    "Some of those visits aren't available anymore. Refresh and try again."
+  end
+
+  def bulk_destroy_success_message(count)
+    noun = 'visit'.pluralize(count)
+    "#{count} #{noun} removed. Your location points are still here."
   end
 
   def bust_timeline_month_cache

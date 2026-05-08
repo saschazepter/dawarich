@@ -95,9 +95,14 @@ RSpec.describe Visits::BulkDestroy do
 
       it 'rolls back the whole batch' do
         point = create(:point, user: user, visit: visit1)
-        relation = instance_double(ActiveRecord::Relation)
-        allow(PlaceVisit).to receive(:where).with(visit_id: [visit1.id, visit2.id]).and_return(relation)
-        allow(relation).to receive(:delete_all).and_raise(ActiveRecord::StatementInvalid)
+        original_where = PlaceVisit.method(:where)
+        allow(PlaceVisit).to receive(:where) do |args|
+          relation = original_where.call(args)
+          if args.is_a?(Hash) && Array(args[:visit_id]).sort == [visit1.id, visit2.id].sort
+            allow(relation).to receive(:delete_all).and_raise(ActiveRecord::StatementInvalid)
+          end
+          relation
+        end
 
         expect { service.call }.to raise_error(ActiveRecord::StatementInvalid)
         expect(Visit.where(id: [visit1.id, visit2.id]).count).to eq(2)

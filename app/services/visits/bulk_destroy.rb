@@ -29,7 +29,7 @@ module Visits
     end
 
     def destroy_visits
-      visits = user.scoped_visits.where(id: visit_ids)
+      visits = user.scoped_visits.where(id: visit_ids).order(:id)
       ids = visits.pluck(:id)
 
       if ids.empty?

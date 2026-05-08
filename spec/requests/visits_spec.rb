@@ -419,6 +419,15 @@ RSpec.describe '/visits', type: :request do
 
       expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('confirmed'))
     end
+
+    it 'rejects when more than the maximum number of visit_ids are submitted' do
+      ids = (1..(VisitsController::MAX_BULK_VISIT_IDS + 1)).to_a
+
+      patch bulk_update_visits_url(format: :turbo_stream), params: { status: 'confirmed', visit_ids: ids }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('suggested'))
+    end
   end
 
   describe 'DELETE /bulk_destroy' do
@@ -475,7 +484,7 @@ RSpec.describe '/visits', type: :request do
     end
 
     it 'rejects when more than the maximum number of visit_ids are submitted' do
-      ids = (1..(Visits::BulkDestroy::MAX_VISIT_IDS + 1)).to_a
+      ids = (1..(VisitsController::MAX_BULK_VISIT_IDS + 1)).to_a
 
       delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: ids }
 
