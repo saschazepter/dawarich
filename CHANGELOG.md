@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Activity detection now infers movement from displacement when the tracker reports a stored velocity of 0 km/h. OwnTracks Significant Change mode and similar low-power configurations no longer cause real movement to be misclassified as stationary. (#2390)
 
 ## [1.7.5] - 2026-05-04
 
