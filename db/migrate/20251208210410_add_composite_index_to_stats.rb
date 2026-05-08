@@ -56,6 +56,11 @@ class AddCompositeIndexToStats < ActiveRecord::Migration[8.0]
               algorithm: :concurrently,
               if_not_exists: true
 
-    BulkStatsCalculatingJob.perform_later
+    # Tolerate the job class being renamed/removed and Sidekiq being down.
+    begin
+      BulkStatsCalculatingJob.perform_later
+    rescue StandardError => e
+      Rails.logger.warn "[Migration] Could not enqueue BulkStatsCalculatingJob: #{e.message}"
+    end
   end
 end
