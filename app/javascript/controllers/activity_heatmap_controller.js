@@ -4,6 +4,32 @@ export default class extends Controller {
   static targets = ["tooltip", "tooltipDate", "tooltipDistance"]
   static values = {
     unit: String,
+    targetDate: String,
+  }
+
+  connect() {
+    this.centerOnTargetDate()
+  }
+
+  centerOnTargetDate() {
+    const targetDate = this.targetDateValue
+    if (!targetDate) return
+
+    const cell = this.element.querySelector(`[data-date="${targetDate}"]`)
+    if (!cell) return
+
+    const scroller = cell.closest(".overflow-x-auto")
+    if (!scroller) return
+
+    const scrollerRect = scroller.getBoundingClientRect()
+    const cellRect = cell.getBoundingClientRect()
+    const cellCenter =
+      cellRect.left -
+      scrollerRect.left +
+      scroller.scrollLeft +
+      cellRect.width / 2
+
+    scroller.scrollLeft = cellCenter - scroller.clientWidth / 2
   }
 
   showTooltip(event) {
