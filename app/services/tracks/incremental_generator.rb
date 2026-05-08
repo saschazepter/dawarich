@@ -29,18 +29,20 @@ class Tracks::IncrementalGenerator
   end
 
   def call
-    segments = fetch_untracked_segments
-    return if segments.empty?
+    Tracks::PerUserLock.with_user_lock(user.id) do
+      segments = fetch_untracked_segments
+      return if segments.empty?
 
-    segments.each do |segment|
-      next if segment[:points].size < 2
+      segments.each do |segment|
+        next if segment[:points].size < 2
 
-      track = create_track_from_points(
-        segment[:points],
-        segment[:pre_calculated_distance]
-      )
+        track = create_track_from_points(
+          segment[:points],
+          segment[:pre_calculated_distance]
+        )
 
-      merge_with_recent_track(track) if track
+        merge_with_recent_track(track) if track
+      end
     end
   end
 
