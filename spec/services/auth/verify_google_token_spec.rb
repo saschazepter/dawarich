@@ -23,7 +23,7 @@ RSpec.describe Auth::VerifyGoogleToken do
         validator = instance_double(GoogleIDToken::Validator)
         allow(GoogleIDToken::Validator).to receive(:new).and_return(validator)
         allow(validator).to receive(:check)
-          .with(id_token, [ios_client_id, android_client_id, web_client_id])
+          .with(id_token, ios_client_id)
           .and_return({ 'sub' => 'google-user-id', 'email' => 'user@example.com' })
 
         result = described_class.new(id_token).call
@@ -44,12 +44,37 @@ RSpec.describe Auth::VerifyGoogleToken do
         validator = instance_double(GoogleIDToken::Validator)
         allow(GoogleIDToken::Validator).to receive(:new).and_return(validator)
         allow(validator).to receive(:check)
-          .with(id_token, [ios_client_id, android_client_id, web_client_id])
+          .with(id_token, ios_client_id)
+          .and_raise(GoogleIDToken::AudienceMismatchError.new('Token audience mismatch'))
+        allow(validator).to receive(:check)
+          .with(id_token, android_client_id)
+          .and_raise(GoogleIDToken::AudienceMismatchError.new('Token audience mismatch'))
+        allow(validator).to receive(:check)
+          .with(id_token, web_client_id)
           .and_return({ 'sub' => 'g-id', 'email' => 'a@b.com', 'aud' => web_client_id, 'azp' => ios_client_id })
 
         result = described_class.new(id_token).call
 
         expect(result[:aud]).to eq(web_client_id)
+      end
+
+      it 'raises InvalidToken when the audience matches none of the configured client ids' do
+        stub_const(
+          'ENV',
+          ENV.to_hash.merge(
+            'GOOGLE_IOS_CLIENT_ID' => ios_client_id,
+            'GOOGLE_ANDROID_CLIENT_ID' => android_client_id,
+            'GOOGLE_OAUTH_CLIENT_ID' => web_client_id
+          )
+        )
+
+        validator = instance_double(GoogleIDToken::Validator)
+        allow(GoogleIDToken::Validator).to receive(:new).and_return(validator)
+        allow(validator).to receive(:check)
+          .and_raise(GoogleIDToken::AudienceMismatchError.new('Token audience mismatch'))
+
+        expect { described_class.new(id_token).call }
+          .to raise_error(Auth::VerifyGoogleToken::InvalidToken, /audience mismatch/i)
       end
     end
 
