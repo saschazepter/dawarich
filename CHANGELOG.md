@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Redis no longer balloons (multi-GB) when browsing photos with Immich or Photoprism connected. Photo thumbnails are no longer copied into the server-side Redis cache; the browser caches them directly via `Cache-Control` instead. (#1609)
 
 ## [1.7.5] - 2026-05-04
 
