@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Transportation-mode threshold sliders in Map v2 settings (Walking/Cycling/Driving max speed, Min flight distance, etc.) now respect your selected unit of measurement, displaying mph/mi when miles are selected instead of always showing km/h and km. (#2634)
 
 ## [1.7.5] - 2026-05-04
 
