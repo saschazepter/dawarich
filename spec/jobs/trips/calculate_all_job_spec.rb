@@ -10,50 +10,59 @@ RSpec.describe Trips::CalculateAllJob, type: :job do
            started_at: DateTime.new(2024, 11, 27, 12, 0, 0),
            ended_at: DateTime.new(2024, 11, 27, 14, 0, 0))
   end
+  let(:run_token) { SecureRandom.uuid }
 
   describe '#perform' do
-    it 'enqueues the three sub-jobs and seeds the pending counter' do
+    it 'enqueues the three sub-jobs with a generated run_token and seeds the pending counter' do
+      allow(SecureRandom).to receive(:uuid).and_return(run_token)
+
       described_class.perform_now(trip.id, 'km')
 
-      expect(Trips::CalculatePathJob).to have_been_enqueued.with(trip.id)
-      expect(Trips::CalculateDistanceJob).to have_been_enqueued.with(trip.id, 'km')
-      expect(Trips::CalculateCountriesJob).to have_been_enqueued.with(trip.id, 'km')
-      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true).to_i).to eq(3)
+      expect(Trips::CalculatePathJob).to have_been_enqueued.with(trip.id, run_token)
+      expect(Trips::CalculateDistanceJob).to have_been_enqueued.with(trip.id, 'km', run_token)
+      expect(Trips::CalculateCountriesJob).to have_been_enqueued.with(trip.id, 'km', run_token)
+      expect(Rails.cache.read(described_class.pending_key(trip.id, run_token), raw: true).to_i).to eq(3)
     end
   end
 
   describe '.tally_completion' do
     before do
-      Rails.cache.write(described_class.pending_key(trip.id), 3, expires_in: 5.minutes, raw: true)
+      Rails.cache.write(described_class.pending_key(trip.id, run_token), 3, expires_in: 5.minutes, raw: true)
       allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to)
     end
 
-    after { Rails.cache.delete(described_class.pending_key(trip.id)) }
+    after { Rails.cache.delete(described_class.pending_key(trip.id, run_token)) }
 
-    it 'is a no-op when no orchestrator chain exists for the trip' do
-      Rails.cache.delete(described_class.pending_key(trip.id))
+    it 'is a no-op when run_token is nil (sub-job invoked outside an orchestrated chain)' do
+      described_class.tally_completion(trip.id, nil)
 
-      described_class.tally_completion(trip.id)
+      expect(Turbo::StreamsChannel).not_to have_received(:broadcast_replace_to)
+    end
+
+    it 'is a no-op when the cache key is gone (stale tally from a previous run)' do
+      stale_token = SecureRandom.uuid
+
+      described_class.tally_completion(trip.id, stale_token)
 
       expect(Turbo::StreamsChannel).not_to have_received(:broadcast_replace_to)
     end
 
     it 'decrements the counter without finalizing while sub-jobs remain' do
-      described_class.tally_completion(trip.id)
+      described_class.tally_completion(trip.id, run_token)
 
-      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true).to_i).to eq(2)
+      expect(Rails.cache.read(described_class.pending_key(trip.id, run_token), raw: true).to_i).to eq(2)
       expect(Turbo::StreamsChannel).not_to have_received(:broadcast_replace_to)
     end
 
     it 'finalizes success after the third decrement and clears the counter' do
       trip.update_column(:last_recalculated_at, Time.current)
 
-      3.times { described_class.tally_completion(trip.id) }
+      3.times { described_class.tally_completion(trip.id, run_token) }
 
-      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true)).to be_nil
+      expect(Rails.cache.read(described_class.pending_key(trip.id, run_token), raw: true)).to be_nil
       expect(trip.reload.last_recalculated_at).to be_nil
       expect(Turbo::StreamsChannel).to have_received(:broadcast_replace_to).with(
-        "trip_#{trip.id}",
+        trip_record_for(trip.id),
         hash_including(target: 'trip_recalculate_frame', locals: hash_including(error: false))
       )
     end
@@ -61,12 +70,12 @@ RSpec.describe Trips::CalculateAllJob, type: :job do
     it 'short-circuits to error finalize on error: true and clears the counter' do
       trip.update_column(:last_recalculated_at, Time.current)
 
-      described_class.tally_completion(trip.id, error: true)
+      described_class.tally_completion(trip.id, run_token, error: true)
 
-      expect(Rails.cache.read(described_class.pending_key(trip.id), raw: true)).to be_nil
+      expect(Rails.cache.read(described_class.pending_key(trip.id, run_token), raw: true)).to be_nil
       expect(trip.reload.last_recalculated_at).to be_nil
       expect(Turbo::StreamsChannel).to have_received(:broadcast_replace_to).with(
-        "trip_#{trip.id}",
+        trip_record_for(trip.id),
         hash_including(target: 'trip_recalculate_frame', locals: hash_including(error: true))
       )
     end
@@ -75,7 +84,11 @@ RSpec.describe Trips::CalculateAllJob, type: :job do
       trip_id = trip.id
       trip.destroy!
 
-      expect { described_class.tally_completion(trip_id) }.not_to raise_error
+      expect { described_class.tally_completion(trip_id, run_token) }.not_to raise_error
     end
+  end
+
+  def trip_record_for(id)
+    satisfy { |arg| arg.is_a?(Trip) && arg.id == id }
   end
 end

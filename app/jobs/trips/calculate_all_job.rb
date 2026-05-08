@@ -7,20 +7,22 @@ class Trips::CalculateAllJob < ApplicationJob
   PENDING_TTL = 10.minutes
 
   def perform(trip_id, distance_unit = 'km')
-    Rails.cache.write(self.class.pending_key(trip_id), 3, expires_in: PENDING_TTL, raw: true)
+    run_token = SecureRandom.uuid
+    Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
 
-    Trips::CalculatePathJob.perform_later(trip_id)
-    Trips::CalculateDistanceJob.perform_later(trip_id, distance_unit)
-    Trips::CalculateCountriesJob.perform_later(trip_id, distance_unit)
+    Trips::CalculatePathJob.perform_later(trip_id, run_token)
+    Trips::CalculateDistanceJob.perform_later(trip_id, distance_unit, run_token)
+    Trips::CalculateCountriesJob.perform_later(trip_id, distance_unit, run_token)
   end
 
-  def self.pending_key(trip_id)
-    "#{PENDING_KEY_PREFIX}:#{trip_id}"
+  def self.pending_key(trip_id, run_token)
+    "#{PENDING_KEY_PREFIX}:#{trip_id}:#{run_token}"
   end
 
-  def self.tally_completion(trip_id, error: false)
-    key = pending_key(trip_id)
-    return unless Rails.cache.read(key, raw: true)
+  def self.tally_completion(trip_id, run_token, error: false)
+    return unless run_token
+
+    key = pending_key(trip_id, run_token)
 
     if error
       Rails.cache.delete(key)
@@ -29,7 +31,7 @@ class Trips::CalculateAllJob < ApplicationJob
     end
 
     remaining = Rails.cache.decrement(key)
-    return if remaining.nil? || remaining.positive?
+    return unless remaining&.zero?
 
     Rails.cache.delete(key)
     finalize(trip_id, error: false)
@@ -42,7 +44,7 @@ class Trips::CalculateAllJob < ApplicationJob
     trip.update_columns(last_recalculated_at: nil) if trip.last_recalculated_at.present?
 
     Turbo::StreamsChannel.broadcast_replace_to(
-      "trip_#{trip.id}",
+      trip,
       target: 'trip_recalculate_frame',
       partial: 'trips/recalculate_button',
       locals: { trip: trip, error: error }

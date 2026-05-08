@@ -1,6 +1,6 @@
 <% content_for :title, @trip.name %>
 
-<%= turbo_stream_from "trip_#{@trip.id}" %>
+<%= turbo_stream_from @trip %>
 
 <div class="w-full my-5">
   <%# Header %>
