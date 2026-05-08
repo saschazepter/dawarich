@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Self-hosting docs (Docker install guide, Synology install guide, Self-hosting introduction) now show the correct default password `safepassword` matching the seeded admin account, instead of the old `password` value. (#2636)
 
 ## [1.7.5] - 2026-05-04
 
