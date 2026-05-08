@@ -11,6 +11,12 @@ class Users::ImportData::Tracks
     elevation_gain elevation_loss elevation_max elevation_min dominant_mode
   ].freeze
 
+  # Refresh deliberately excludes start_at/end_at: by the time we're in the
+  # refresh path we've already matched the existing row by those columns via
+  # the unique index, and letting the import payload shift them on a precision
+  # or timezone drift would silently break subsequent lookups.
+  REFRESHABLE_ATTRIBUTES = (IMPORTABLE_ATTRIBUTES - %w[start_at end_at]).freeze
+
   def initialize(user, tracks_data)
     @user = user
     @tracks_data = tracks_data
@@ -107,7 +113,7 @@ class Users::ImportData::Tracks
     end
 
     ActiveRecord::Base.transaction(requires_new: true) do
-      existing.update!(track_data.slice(*IMPORTABLE_ATTRIBUTES))
+      existing.update!(track_data.slice(*REFRESHABLE_ATTRIBUTES))
 
       if track_data['segments'].present?
         existing.track_segments.delete_all
@@ -121,6 +127,19 @@ class Users::ImportData::Tracks
       "start_at=#{track_data['start_at']} end_at=#{track_data['end_at']}"
     )
     true
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+    # Ruby's outer rescue handler doesn't re-catch exceptions of the same type
+    # raised from inside it. If `update!` fails validation or a fresh unique
+    # collision (e.g. corrupt payload), let the importer skip this track and
+    # keep iterating instead of aborting the whole archive.
+    Rails.logger.error(
+      'event=tracks.unique_violation_rescued service=import_data action=update_failed ' \
+      "user_id=#{user.id} track_id=#{existing&.id} " \
+      "start_at=#{track_data['start_at']} end_at=#{track_data['end_at']} " \
+      "error=#{e.class}: #{e.message}"
+    )
+    ExceptionReporter.call(e, 'Failed to refresh existing track during import')
+    false
   end
 
   def create_track_record(track_data)
