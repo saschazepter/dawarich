@@ -47,15 +47,37 @@ class PointsController < ApplicationController
   end
 
   def start_at
-    return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
+    return safe_timestamp(params[:start_at]) if params[:start_at].present?
+    return import_window_start if import_window_start
 
-    safe_timestamp(params[:start_at])
+    1.month.ago.beginning_of_day.to_i
   end
 
   def end_at
-    return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
+    return safe_timestamp(params[:end_at]) if params[:end_at].present?
+    return import_window_end if import_window_end
 
-    safe_timestamp(params[:end_at])
+    Time.zone.today.end_of_day.to_i
+  end
+
+  def import_window_start
+    return @import_window_start if defined?(@import_window_start)
+
+    ts = import_record&.points&.minimum(:timestamp)
+    @import_window_start = ts ? Time.zone.at(ts).beginning_of_day.to_i : nil
+  end
+
+  def import_window_end
+    return @import_window_end if defined?(@import_window_end)
+
+    ts = import_record&.points&.maximum(:timestamp)
+    @import_window_end = ts ? Time.zone.at(ts).end_of_day.to_i : nil
+  end
+
+  def import_record
+    return @import_record if defined?(@import_record)
+
+    @import_record = params[:import_id].present? ? current_user.imports.find_by(id: params[:import_id]) : nil
   end
 
   def points

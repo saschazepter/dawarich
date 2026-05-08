@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Viewing an import on the map or points page now selects the import's full date range, instead of defaulting to today (Map v2), the import's last day (Map v1), or the last month (Points). (#1857)
 
 ## [1.7.5] - 2026-05-04
 
