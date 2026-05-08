@@ -98,6 +98,7 @@ class Tracks::BoundaryDetector
 
     all_tracks.each do |candidate|
       next if candidate.id == track.id
+      next if candidate.tracker_id != track.tracker_id
 
       candidate_start = candidate.start_at.to_i
       candidate_end = candidate.end_at.to_i

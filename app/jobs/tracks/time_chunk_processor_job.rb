@@ -68,14 +68,13 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def segment_chunk_points(points)
-    # Convert relation to array for in-memory processing
     points_array = points.to_a
 
-    # Use Geocoder-based segmentation
-    segments = split_points_into_segments_geocoder(points_array)
+    segments = points_array
+               .group_by { |p| p.tracker_id.to_s }
+               .values
+               .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
 
-    # Filter segments to only include those that overlap with the actual chunk range
-    # (not just the buffer range)
     segments.select do |segment|
       segment_overlaps_chunk_range?(segment)
     end

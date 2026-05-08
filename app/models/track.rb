@@ -83,16 +83,17 @@ class Track < ApplicationRecord
           id,
           timestamp,
           lonlat,
-          LAG(lonlat) OVER (ORDER BY timestamp) as prev_lonlat,
-          LAG(timestamp) OVER (ORDER BY timestamp) as prev_timestamp,
+          COALESCE(tracker_id, '') AS bucket_key,
+          tracker_id,
+          LAG(lonlat) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp) as prev_lonlat,
+          LAG(timestamp) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp) as prev_timestamp,
           ST_Distance(
             lonlat::geography,
-            LAG(lonlat) OVER (ORDER BY timestamp)::geography
+            LAG(lonlat) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp)::geography
           ) as distance_meters,
-          (timestamp - LAG(timestamp) OVER (ORDER BY timestamp)) as time_diff_seconds
+          (timestamp - LAG(timestamp) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp)) as time_diff_seconds
         FROM points
         #{where_clause}
-        ORDER BY timestamp
       ),
       segment_breaks AS (
         SELECT *,
@@ -106,10 +107,12 @@ class Track < ApplicationRecord
       ),
       segments AS (
         SELECT *,
-          SUM(is_break) OVER (ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
+          SUM(is_break) OVER (PARTITION BY bucket_key ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
         FROM segment_breaks
       )
       SELECT
+        bucket_key,
+        MAX(tracker_id) AS tracker_id,
         segment_id,
         array_agg(id ORDER BY timestamp) as point_ids,
         count(*) as point_count,
@@ -117,9 +120,9 @@ class Track < ApplicationRecord
         max(timestamp) as end_timestamp,
         sum(COALESCE(distance_meters, 0)) as total_distance_meters
       FROM segments
-      GROUP BY segment_id
+      GROUP BY bucket_key, segment_id
       HAVING count(*) >= 2
-      ORDER BY segment_id
+      ORDER BY bucket_key, segment_id
     SQL
 
     results = Point.connection.exec_query(
@@ -133,6 +136,7 @@ class Track < ApplicationRecord
     results.each do |row|
       segments_data << {
         segment_id: row['segment_id'].to_i,
+        tracker_id: row['tracker_id'],
         point_ids: parse_postgres_array(row['point_ids']),
         point_count: row['point_count'].to_i,
         start_timestamp: row['start_timestamp'].to_i,
@@ -164,7 +168,8 @@ class Track < ApplicationRecord
         points: seg_data[:point_ids].map { |id| points_by_id[id] }.compact,
         pre_calculated_distance: seg_data[:total_distance_meters],
         start_timestamp: seg_data[:start_timestamp],
-        end_timestamp: seg_data[:end_timestamp]
+        end_timestamp: seg_data[:end_timestamp],
+        tracker_id: seg_data[:tracker_id]
       }
     end
   end

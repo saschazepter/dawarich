@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Tracks recorded by multiple devices on the same account (phone + watch + GPS unit) no longer get merged into one zigzagging track on the map. Each device's points are now kept on their own track, and Map v2 routes are drawn per-device so straight lines no longer connect points from different devices. To split historical tracks per device, press **Map v2 → Settings → Recalculate tracks & stats** once after upgrading. (#337, #1726)
+- Importing a GPX file with multiple `<trk>` or `<trkseg>` elements no longer merges them into a single track when their timestamps overlap or arrive out of order (e.g. Garmin daily-file exports). Each track and segment now becomes its own track. (#1726)
+- Importing a Google Records.json export with positions from more than one device no longer "teleports" between devices, inflating the distance travelled. Points are now scoped per-device using Google's `deviceTag` field. (#337)
+
 ## [1.7.8] - 2026-05-10
 
 ### ⚠️ Upgrade notes

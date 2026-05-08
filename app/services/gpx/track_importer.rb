@@ -19,8 +19,8 @@ class Gpx::TrackImporter
 
   def call
     batch = []
-    each_trkpt do |point_hash|
-      data = prepare_point(point_hash)
+    each_trkpt do |point_hash, tracker_id|
+      data = prepare_point(point_hash, tracker_id)
       next unless data
 
       batch << data
@@ -40,7 +40,7 @@ class Gpx::TrackImporter
     path = resolve_file_path
     File.open(path, 'rb') do |io|
       seek_to_document_start(io)
-      handler = TrkptStreamHandler.new(&block)
+      handler = TrkptStreamHandler.new(import.id, &block)
       Nokogiri::XML::SAX::Parser.new(handler).parse(io)
     end
   end
@@ -55,18 +55,17 @@ class Gpx::TrackImporter
     broadcast_import_progress(import, inserted)
   end
 
-  def prepare_point(point)
+  def prepare_point(point, tracker_id)
     return if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
 
     elevation = point['ele'].to_f
 
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
-      # During the integer→decimal altitude migration we write to both
-      # columns; readers (`Point#altitude`) prefer altitude_decimal.
       altitude: elevation,
       altitude_decimal: elevation,
       timestamp: Time.zone.parse(point['time']).utc.to_i,
+      tracker_id: tracker_id,
       import_id: import.id,
       velocity: speed(point),
       raw_data: point,
@@ -91,14 +90,27 @@ class Gpx::TrackImporter
   end
 
   class TrkptStreamHandler < Nokogiri::XML::SAX::Document
-    def initialize(&block)
+    def initialize(import_id, &block)
       super()
+      @import_id = import_id
       @callback = block
       @stack = nil
       @text = +''
+      @trk_index = -1
+      @seg_index = -1
     end
 
     def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
+      case name
+      when 'trk'
+        @trk_index += 1
+        @seg_index = -1
+        return
+      when 'trkseg'
+        @seg_index += 1
+        return
+      end
+
       attrs_h = attrs.each_with_object({}) { |a, h| h[a.localname] = a.value }
       if name == 'trkpt' && @stack.nil?
         @stack = [attrs_h]
@@ -115,16 +127,23 @@ class Gpx::TrackImporter
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)
+      return if %w[trk trkseg].include?(name)
       return unless @stack
 
       closed = @stack.pop
       if @stack.empty?
-        @callback.call(closed)
+        @callback.call(closed, tracker_id)
         @stack = nil
       else
         @stack.last[name] = @text.strip if closed.empty?
         @text = +''
       end
+    end
+
+    private
+
+    def tracker_id
+      "import-#{@import_id}-trk-#{[@trk_index, 0].max}-seg-#{[@seg_index, 0].max}"
     end
   end
 end
