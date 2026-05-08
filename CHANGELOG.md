@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- The mobile map view no longer hides part of the map and date selector behind the iOS Safari URL bar or the Android Chrome navigation bar. (#1873)
 
 ## [1.7.5] - 2026-05-04
 

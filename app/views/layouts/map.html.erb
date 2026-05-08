@@ -2,7 +2,7 @@
 <html data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
   <head>
     <title><%= full_title(yield(:title)) %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <%= action_cable_meta_tag %>
@@ -25,7 +25,7 @@
     <% end %>
   </head>
 
-  <body class='h-screen overflow-hidden relative'>
+  <body class='h-[100dvh] overflow-hidden relative'>
     <!-- Fixed Navbar -->
     <div class='fixed w-full z-40 h-16 border-b border-base-content/10'>
       <div class='container mx-auto h-full w-full flex items-center'>
