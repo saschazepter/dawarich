@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- On Map v2 with the light, white, or grayscale basemap, dense sequences of points no longer collapse into a thin white line that camouflages against road casings. The stroke around each point is now dark on light basemaps and stays white on dark basemaps. (#2387)
 
 ## [1.7.5] - 2026-05-04
 
