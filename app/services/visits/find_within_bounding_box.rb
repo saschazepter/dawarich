@@ -11,16 +11,22 @@ module Visits
       @ne_lng = params[:ne_lng].to_f
     end
 
+    PLACE_INSIDE = 'places.lonlat IS NOT NULL AND ' \
+                   'ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), ' \
+                   'ST_SetSRID(places.lonlat::geometry, 4326))'
+
+    AREA_INSIDE = 'areas.id IS NOT NULL AND ' \
+                  'ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), ' \
+                  'ST_SetSRID(ST_MakePoint(areas.longitude, areas.latitude), 4326))'
+
     def call
       user.scoped_visits
           .includes(:place, :area)
-          .joins(:place)
+          .left_outer_joins(:place, :area)
           .where(
-            'ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), ST_SetSRID(places.lonlat::geometry, 4326))',
-            sw_lng,
-            sw_lat,
-            ne_lng,
-            ne_lat
+            "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",
+            sw_lng, sw_lat, ne_lng, ne_lat,
+            sw_lng, sw_lat, ne_lng, ne_lat
           )
           .order(started_at: :desc)
     end

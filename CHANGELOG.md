@@ -72,6 +72,7 @@ scrape_configs:
 - Points with no reverse-geocoding result (ocean, wilderness) are now marked as attempted instead of being re-queued every nightly run; use "Start Reverse Geocoding" to retry after switching providers. #2271
 - Activity detection now falls back to displacement when the tracker reports 0 m/s, so OwnTracks Significant Change mode and similar low-power setups stop misclassifying real movement as stationary. Run **Map v2 → Settings → Recalculate tracks & stats** to apply to existing tracks. #2390
 - Redis no longer balloons (multi-GB) when browsing photos with Immich or Photoprism connected. Photo thumbnails are no longer copied into the server-side Redis cache; the browser caches them directly via `Cache-Control` instead. #1609
+- Drag-selecting a region on the map now includes visits attached to your saved Areas (Home, Work, etc.), instead of silently dropping area-only visits from the visit tray. #2420
 
 ## [1.7.6] - 2026-05-09
 
