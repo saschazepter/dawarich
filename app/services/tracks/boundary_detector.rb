@@ -165,39 +165,55 @@ class Tracks::BoundaryDetector
     true
   end
 
-  # Merge a group of boundary tracks into a single track
   def merge_boundary_tracks(track_group)
     return false if track_group.size < 2
 
-    # Sort tracks by start time
     sorted_tracks = track_group.sort_by(&:start_at)
+    boundary_ids = sorted_tracks.map(&:id)
 
-    # Collect all points from all tracks
-    all_points = []
-    sorted_tracks.each do |track|
-      track_points = track.points.order(:timestamp).to_a
-      all_points.concat(track_points)
-    end
-
-    # Remove duplicates and sort by timestamp
+    all_points = sorted_tracks.flat_map { |track| track.points.order(:timestamp).to_a }
     unique_points = all_points.uniq(&:id).sort_by(&:timestamp)
-
     return false if unique_points.size < 2
 
-    # Calculate merged track distance
     merged_distance = Point.calculate_distance_for_array_geocoder(unique_points, :m)
 
-    # Create new merged track
-    merged_track = create_track_from_points(unique_points, merged_distance)
+    success = false
+    ActiveRecord::Base.transaction do
+      merged_track = create_track_from_points(unique_points, merged_distance)
 
-    if merged_track
-      # Delete the original boundary tracks
-      sorted_tracks.each(&:destroy)
+      unless merged_track
+        Rails.logger.warn(
+          "Boundary merge skipped for tracks #{boundary_ids.join(',')}: " \
+          'no merged track produced'
+        )
+        raise ActiveRecord::Rollback
+      end
 
-      true
-    else
-      false
+      # If the merged span collided with the unique index and reuse_existing_track
+      # returned a pre-existing track (not the freshly inserted one), absorbing
+      # older+newer into it would corrupt that track's metadata — its path,
+      # distance, segments were computed from a different point set. Bail and
+      # preserve the boundary tracks for the next pass.
+      unless merged_track.previously_new_record? || boundary_ids.include?(merged_track.id)
+        Rails.logger.warn(
+          'event=tracks.boundary_merge_skipped reason=third_party_collision ' \
+          "user_id=#{user.id} boundary_ids=#{boundary_ids.join(',')} " \
+          "existing_track_id=#{merged_track.id}"
+        )
+        raise ActiveRecord::Rollback
+      end
+
+      sorted_tracks.reject { |t| t.id == merged_track.id }.each(&:destroy)
+      success = true
     end
+
+    success
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.warn(
+      'event=tracks.boundary_merge_failed reason=race_winner_not_visible ' \
+      "user_id=#{user.id} boundary_ids=#{sorted_tracks.map(&:id).join(',')}"
+    )
+    false
   end
 
   # Required by Tracks::Segmentation module
