@@ -139,51 +139,83 @@
   background: oklch(var(--bc) / 0.3);
 }
 
-/* Toggle Focus State - Remove all focus indicators — !important needed to override DaisyUI */
-.toggle:focus,
-.toggle:focus-visible,
-.toggle:focus-within {
-  outline: none !important;
-  box-shadow: none !important;
-  border-color: inherit !important;
+[type="checkbox"].toggle:focus,
+[type="checkbox"].toggle:focus-visible,
+[type="checkbox"].toggle:focus-within,
+[type="checkbox"].toggle:checked,
+[type="checkbox"].toggle:checked:focus,
+[type="checkbox"].toggle:checked:focus-visible,
+[type="checkbox"].toggle:checked:hover,
+[type="checkbox"].toggle:active,
+[type="checkbox"].toggle:active:focus {
+  outline: none;
+  background-image: none;
+  box-shadow:
+    var(--handleoffsetcalculator) 0 0 2px var(--tglbg) inset,
+    0 0 0 2px var(--tglbg) inset,
+    var(--togglehandleborder);
+  --tw-ring-shadow: 0 0 transparent;
+  --tw-ring-offset-shadow: 0 0 transparent;
 }
 
-/* Override DaisyUI toggle focus styles */
-.toggle:focus-visible:checked,
-.toggle:checked:focus,
-.toggle:checked:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
+[type="checkbox"].toggle-primary:checked,
+[type="checkbox"].toggle-primary:checked:focus,
+[type="checkbox"].toggle-primary:checked:focus-visible,
+[type="checkbox"].toggle-primary:checked:hover {
+  background-color: oklch(var(--p));
+  border-color: oklch(var(--p) / 0.1);
 }
 
-/* Ensure no outline on the toggle container */
-.form-control .toggle:focus {
-  outline: none !important;
+[type="checkbox"].toggle-secondary:checked,
+[type="checkbox"].toggle-secondary:checked:focus,
+[type="checkbox"].toggle-secondary:checked:focus-visible,
+[type="checkbox"].toggle-secondary:checked:hover {
+  background-color: oklch(var(--s));
+  border-color: oklch(var(--s) / 0.1);
 }
 
-/* Prevent indeterminate visual state on toggles */
+[type="checkbox"].toggle-accent:checked,
+[type="checkbox"].toggle-accent:checked:focus,
+[type="checkbox"].toggle-accent:checked:focus-visible,
+[type="checkbox"].toggle-accent:checked:hover {
+  background-color: oklch(var(--a));
+  border-color: oklch(var(--a) / 0.1);
+}
+
+[type="checkbox"].toggle-success:checked,
+[type="checkbox"].toggle-success:checked:focus,
+[type="checkbox"].toggle-success:checked:focus-visible,
+[type="checkbox"].toggle-success:checked:hover {
+  background-color: oklch(var(--su));
+  border-color: oklch(var(--su) / 0.1);
+}
+
+[type="checkbox"].toggle-warning:checked,
+[type="checkbox"].toggle-warning:checked:focus,
+[type="checkbox"].toggle-warning:checked:focus-visible,
+[type="checkbox"].toggle-warning:checked:hover {
+  background-color: oklch(var(--wa));
+  border-color: oklch(var(--wa) / 0.1);
+}
+
+[type="checkbox"].toggle-error:checked,
+[type="checkbox"].toggle-error:checked:focus,
+[type="checkbox"].toggle-error:checked:focus-visible,
+[type="checkbox"].toggle-error:checked:hover {
+  background-color: oklch(var(--er));
+  border-color: oklch(var(--er) / 0.1);
+}
+
+[type="checkbox"].toggle-info:checked,
+[type="checkbox"].toggle-info:checked:focus,
+[type="checkbox"].toggle-info:checked:focus-visible,
+[type="checkbox"].toggle-info:checked:hover {
+  background-color: oklch(var(--in));
+  border-color: oklch(var(--in) / 0.1);
+}
+
 .toggle:indeterminate {
   opacity: 1;
-}
-
-/* Ensure smooth toggle transitions without intermediate states */
-.toggle {
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.toggle:checked {
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
-}
-
-/* Remove any active/pressed state that might cause intermediate appearance */
-.toggle:active,
-.toggle:active:focus {
-  outline: none !important;
-  box-shadow: none !important;
 }
 
 /* Responsive Breakpoints */

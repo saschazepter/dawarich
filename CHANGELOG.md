@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.6] - 2026-05-09
+
+### Added
+
+- Map v2 timeline: bulk Confirm and Decline in selection mode, capped at 500 visits per request.
+- Trip **Recalculate** button: refresh path, distance, and visited countries on demand. The page updates automatically when it finishes; repeat clicks within 60 seconds are ignored. #2478
+- Google's "Timeline Edits.json" type of Takeout export is now recognized and imported directly.
+
+### Fixed
+
+- Monthly stats now bucket points by your local timezone instead of UTC — fixes phantom day-1 spikes from overnight imports and undercounts near month boundaries. #2546
+- Slider knobs in settings and map-layer toggles now move on click instead of staying left while only the track color changes. #2566
+- Stats and tracks recalculation no longer crashes in midnight-DST timezones (e.g. `America/Santiago`). #2638
+- Mobile map fills the dynamic viewport and respects iPhone safe-area insets — navbar below the notch, date selector / demo banner above the home indicator and Safari URL bar. #1873
+- Transactional emails now build links with HTTPS, fixing reset links that arrived as `http://` even when the site was served over HTTPS via reverse proxy. #1469
+- SMTP authentication and timeouts (`SMTP_AUTHENTICATION`, `SMTP_OPEN_TIMEOUT`, `SMTP_READ_TIMEOUT`) are now env-configurable — Office 365 and similar no longer need a custom initializer. #1469
+- Export zip entry timestamps no longer drift across timezones (was 7h ahead on US Pacific). Applies to per-export and full-archive downloads. #2639
+- Map v2 heatmap stays visible at city and street zoom instead of fading out past city level. #2087
+- Map v2 search panel: visits list no longer flashes and disappears after picking a location — a stale debounced fetch was overwriting it. #2394
+- Transportation-mode sliders (Walking/Cycling/Driving max speed, Min flight distance) in Map v2 settings now respect your unit of measurement (mph/mi when miles are selected). #2634
+- Self-hosting docs (Docker, Synology, intro) now show the correct default password `safepassword` instead of `password`. #2636
+- Map v2 light/white/grayscale basemaps: dense point sequences no longer camouflage as thin white lines — strokes are now dark on light basemaps, white on dark. #2387
+- Activity Overview heatmap opens centered on your most recent active day instead of January 1 — no blank future months on mobile early in the year. #2228
+- Map v2 timeline calendar: a selected day shows visits in your profile timezone — late-evening visits no longer leak across day tabs. #2619
+- Renaming a suggested visit in the timeline now confirms it and saves the typed name as a place under your account. #2621
+- User-data archive import no longer lets the payload overwrite a track's `user_id`, `id`, or timestamps.
+- Track generation no longer creates duplicate tracks — multiple background jobs (daily, realtime, recalc, import) could previously produce the same track per time window, leaving 2–3 copies on your map. Run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to recompute from the merged points. #2677
+- Heatmap on Map V2 looks a lot better than before
+- In notifications section of navbar only "99+" is shown when there are more than 99 notifications, instead of the actual number.
+
+
+
 ## [1.7.5] - 2026-05-04
 
 ### Added
@@ -79,18 +111,18 @@ Fixes for several issues found in a static-analysis security audit. None of thes
 
 - Google Phone Takeout `location-history.json` now imports reliably. (#2437, #2587)
 - KMZ files from a wider range of exporters now import.
-- Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. (#2446)
+- Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. #2446
 - FIT files from non-Garmin devices and phone apps now import.
 - CSV files with quoted headers (e.g. `"Latitude","Longitude"`) are now recognized.
 - Empty (0-byte) uploads now produce a clear error instead of crashing.
-- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate`. (#2576)
+- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate`. #2576
 
 
 ## [1.7.2] - 2026-04-29
 
 ### Removed
 
-- `rails_pulse` performance monitoring has been removed entirely. The gem, its initializer (`config/initializers/rails_pulse.rb`), the `/rails_pulse` route mount, the scheduled `RailsPulse::SummaryJob` and `RailsPulse::CleanupJob` cron entries, and all `rails_pulse_*` tables are gone. A new migration `DropRailsPulseTables` cleans up existing installations on upgrade. This resolves a class of upgrade failures where the `rails_pulse_*` tables ended up missing/half-applied on production. (#2549)
+- `rails_pulse` performance monitoring has been removed entirely. The gem, its initializer (`config/initializers/rails_pulse.rb`), the `/rails_pulse` route mount, the scheduled `RailsPulse::SummaryJob` and `RailsPulse::CleanupJob` cron entries, and all `rails_pulse_*` tables are gone. A new migration `DropRailsPulseTables` cleans up existing installations on upgrade. This resolves a class of upgrade failures where the `rails_pulse_*` tables ended up missing/half-applied on production. #2549
 
 ### Added
 
@@ -100,9 +132,9 @@ Fixes for several issues found in a static-analysis security audit. None of thes
 ### Fixed
 
 - Monthly and yearly digest emails now convert distance from stored meters to the user's preferred unit (km/mi). Previously the raw meter value was shown next to the unit label (e.g. `500000 km` instead of `500 km`).
-- Map (Leaflet): route lines no longer revert to their pre-move shape when an unrelated point is deleted after dragging another point. The dragend handler was failing to update the marker array because it looked for the controller in the wrong place. (#1797)
-- Track creation now caps a single track's distance at 100,000 km (with a logged warning) instead of silently truncating at the legacy 999,999 m limit. Long-haul journeys are no longer collapsed to ~1000 km. (#1693)
-- Dev container: bind-mount the project root into the container so `bundle install` can locate the `Gemfile`. Previously only sub-paths were mounted, leaving `/var/app/Gemfile` missing. (#1804)
+- Map (Leaflet): route lines no longer revert to their pre-move shape when an unrelated point is deleted after dragging another point. The dragend handler was failing to update the marker array because it looked for the controller in the wrong place. #1797
+- Track creation now caps a single track's distance at 100,000 km (with a logged warning) instead of silently truncating at the legacy 999,999 m limit. Long-haul journeys are no longer collapsed to ~1000 km. #1693
+- Dev container: bind-mount the project root into the container so `bundle install` can locate the `Gemfile`. Previously only sub-paths were mounted, leaving `/var/app/Gemfile` missing. #1804
 - Map v2: photos without GPS metadata (`latitude`/`longitude` null) no longer render as markers at Null Island (0°, 0°) — they are now correctly excluded from the photos layer. (#2464, #2465)
 
 
