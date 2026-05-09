@@ -29,6 +29,11 @@ Sidekiq.configure_server do |config|
         Logger: WEBrick::Log.new(File::NULL),
         AccessLog: []
       )
+    rescue StandardError => e
+      Rails.logger.error(
+        "[Sidekiq metrics] WEBrick exporter on :#{port} crashed: " \
+        "#{e.class}: #{e.message}"
+      )
     end
   end
 end

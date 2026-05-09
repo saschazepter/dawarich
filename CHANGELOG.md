@@ -47,15 +47,25 @@ failed scrape.
 | Process/GC (e.g. `ruby_rss`, `ruby_heap_live_slots`) | emitted | not emitted by default; add a custom Yabeda group if needed |
 
 **Removed environment variables:**
-- `PROMETHEUS_EXPORTER_HOST`, `PROMETHEUS_EXPORTER_PORT`, `PROMETHEUS_EXPORTER_HOST_SIDEKIQ` — no longer needed. Metrics are served in-process by each application.
+- `PROMETHEUS_EXPORTER_HOST`, `PROMETHEUS_EXPORTER_HOST_SIDEKIQ` — no longer needed. Metrics are served in-process by each application.
 
 **Retained environment variables:**
 - `PROMETHEUS_EXPORTER_ENABLED` — still the single on/off switch.
 - `METRICS_USERNAME`, `METRICS_PASSWORD` — unchanged.
+- `PROMETHEUS_EXPORTER_PORT` — port the in-process Sidekiq metrics exporter binds to (default 9394).
 
-**New optional environment variables:**
-- `PROMETHEUS_MULTIPROC_DIR` — directory for Puma multi-worker aggregation mmap files. Defaults to `tmp/prometheus_mmap`. Only override if you mount `tmp/` somewhere unusual.
-- `SIDEKIQ_METRICS_URL` — URL of the Sidekiq container's in-process exporter. Defaults to `http://dawarich_sidekiq:9394/metrics`. Override only if the docker service name differs from the default.
+**Prometheus scrape config example:**
+
+```yaml
+scrape_configs:
+  - job_name: dawarich
+    metrics_path: /metrics
+    basic_auth:
+      username: prometheus     # set via METRICS_USERNAME
+      password: prometheus     # set via METRICS_PASSWORD
+    static_configs:
+      - targets: ['dawarich_app:3000']
+```
 
 ### Added
 

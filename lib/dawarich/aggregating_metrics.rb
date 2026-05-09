@@ -64,7 +64,8 @@ module Dawarich
         body.each_line do |line|
           if line.start_with?(HELP_PREFIX) || line.start_with?(TYPE_PREFIX)
             metric_name = line.split(/\s+/, 4)[2]
-            key = "#{line[0, 6]}|#{metric_name}"
+            prefix = line.start_with?(HELP_PREFIX) ? HELP_PREFIX : TYPE_PREFIX
+            key = "#{prefix}#{metric_name}"
             next unless seen.add?(key)
           end
           out << line
