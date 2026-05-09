@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.7.7] - Unreleased
+## [1.7.7] - 2026-05-09
 
 ### ⚠️ Breaking changes
 
