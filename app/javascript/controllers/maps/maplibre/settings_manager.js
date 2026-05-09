@@ -990,7 +990,7 @@ export class SettingsController {
    */
   getDistanceUnit() {
     // Try to get from settings, default to 'km'
-    return this.settings?.distanceUnit || "km"
+    return this.settings?.distance_unit || "km"
   }
 
   /**

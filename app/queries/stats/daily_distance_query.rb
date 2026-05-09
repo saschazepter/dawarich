@@ -22,16 +22,16 @@ class Stats::DailyDistanceQuery
     sql = <<-SQL.squish
       WITH points_with_distances AS (
         SELECT
-          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as day_of_month,
+          (to_timestamp(timestamp) AT TIME ZONE $1)::date as local_date,
           CASE
             WHEN LAG(lonlat) OVER (
-              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1))
+              PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
               ORDER BY timestamp
             ) IS NOT NULL THEN
               ST_Distance(
                 lonlat::geography,
                 LAG(lonlat) OVER (
-                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1))
+                  PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
                   ORDER BY timestamp
                 )::geography
               )
@@ -40,15 +40,20 @@ class Stats::DailyDistanceQuery
         FROM (#{monthly_points.to_sql}) as points
       )
       SELECT
-        day_of_month,
+        EXTRACT(day FROM local_date)::int as day_of_month,
         ROUND(COALESCE(SUM(segment_distance), 0)) as distance_meters
       FROM points_with_distances
-      GROUP BY day_of_month
-      ORDER BY day_of_month
+      WHERE EXTRACT(year FROM local_date) = $2
+        AND EXTRACT(month FROM local_date) = $3
+      GROUP BY local_date
+      ORDER BY local_date
     SQL
 
+    target = timespan.first
     binds = [
-      ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new)
+      ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new),
+      ActiveRecord::Relation::QueryAttribute.new('year', target.year, ActiveRecord::Type::Integer.new),
+      ActiveRecord::Relation::QueryAttribute.new('month', target.month, ActiveRecord::Type::Integer.new)
     ]
 
     Stat.connection.exec_query(sql, 'DailyDistanceQuery', binds).to_a
@@ -61,11 +66,9 @@ class Stats::DailyDistanceQuery
   end
 
   def convert_to_daily_distances(distance_by_day_map)
-    timespan.to_a.map.with_index(1) do |day, index|
-      distance_meters =
-        distance_by_day_map[day.day]&.fetch('distance_meters', 0) || 0
-
-      [index, distance_meters.to_i]
+    timespan.to_a.map do |day|
+      distance_meters = distance_by_day_map[day.day]&.fetch('distance_meters', 0) || 0
+      [day.day, distance_meters.to_i]
     end
   end
 

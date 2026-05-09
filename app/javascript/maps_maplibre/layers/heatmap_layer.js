@@ -27,20 +27,24 @@ export class HeatmapLayer extends BaseLayer {
         type: "heatmap",
         source: this.sourceId,
         paint: {
-          // Fixed weight
+          // Tuned for typical Dawarich point density across country→street zoom;
+          // first non-zero color stop kept above the sparse-noise floor.
           "heatmap-weight": 1,
 
-          // low intensity to view major clusters
           "heatmap-intensity": [
             "interpolate",
             ["linear"],
             ["zoom"],
             0,
-            0.01,
+            0.5,
             10,
-            0.1,
+            1,
             15,
-            0.3,
+            3,
+            20,
+            5,
+            22,
+            5,
           ],
 
           // Color ramp
@@ -50,17 +54,15 @@ export class HeatmapLayer extends BaseLayer {
             ["heatmap-density"],
             0,
             "rgba(0,0,0,0)",
-            0.4,
-            "rgba(0,0,0,0)",
-            0.65,
+            0.1,
             "rgba(33,102,172,0.4)",
-            0.7,
+            0.2,
             "rgb(103,169,207)",
-            0.8,
+            0.4,
             "rgb(209,229,240)",
-            0.9,
+            0.6,
             "rgb(253,219,199)",
-            0.95,
+            0.8,
             "rgb(239,138,98)",
             1,
             "rgb(178,24,43)",
@@ -69,14 +71,16 @@ export class HeatmapLayer extends BaseLayer {
           // Radius in pixels, exponential growth
           "heatmap-radius": [
             "interpolate",
-            ["exponential", 2],
+            ["exponential", 1.5],
             ["zoom"],
             10,
-            5,
             15,
-            10,
+            13,
+            30,
+            15,
+            50,
             20,
-            160,
+            120,
           ],
 
           // Visible when zoomed in, fades when zoomed out
