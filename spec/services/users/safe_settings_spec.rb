@@ -136,7 +136,7 @@ RSpec.describe Users::SafeSettings do
             'gps_filtering_enabled' => true,
             'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC',
-            'visit_radius_meters' => 100,
+            'visit_radius_meters' => 50,
             'visit_min_points' => 3,
             'visit_density_fill_enabled' => true
           }
@@ -705,6 +705,60 @@ RSpec.describe Users::SafeSettings do
 
     it 'coerces string values' do
       expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
+    end
+  end
+
+  describe '#visit_radius_meters' do
+    it 'returns 50 when missing' do
+      expect(described_class.new({}).visit_radius_meters).to eq(50)
+    end
+
+    it 'clamps below the minimum to 5' do
+      expect(described_class.new({ 'visit_radius_meters' => 1 }).visit_radius_meters).to eq(5)
+    end
+
+    it 'clamps above the maximum to 500' do
+      expect(described_class.new({ 'visit_radius_meters' => 9999 }).visit_radius_meters).to eq(500)
+    end
+
+    it 'returns the user value within range' do
+      expect(described_class.new({ 'visit_radius_meters' => 75 }).visit_radius_meters).to eq(75)
+    end
+  end
+
+  describe '#visit_min_points' do
+    it 'returns 3 when missing' do
+      expect(described_class.new({}).visit_min_points).to eq(3)
+    end
+
+    it 'clamps below the minimum to 2' do
+      expect(described_class.new({ 'visit_min_points' => 1 }).visit_min_points).to eq(2)
+    end
+
+    it 'clamps above the maximum to 20' do
+      expect(described_class.new({ 'visit_min_points' => 99 }).visit_min_points).to eq(20)
+    end
+
+    it 'returns the user value within range' do
+      expect(described_class.new({ 'visit_min_points' => 4 }).visit_min_points).to eq(4)
+    end
+  end
+
+  describe '#visit_density_fill_enabled?' do
+    it 'returns true when missing' do
+      expect(described_class.new({}).visit_density_fill_enabled?).to be true
+    end
+
+    it 'returns false for "0"' do
+      expect(described_class.new({ 'visit_density_fill_enabled' => '0' }).visit_density_fill_enabled?).to be false
+    end
+
+    it 'returns true for "1"' do
+      expect(described_class.new({ 'visit_density_fill_enabled' => '1' }).visit_density_fill_enabled?).to be true
+    end
+
+    it 'returns false for false' do
+      expect(described_class.new({ 'visit_density_fill_enabled' => false }).visit_density_fill_enabled?).to be false
     end
   end
 end
