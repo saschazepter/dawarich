@@ -1,8 +1,19 @@
-import { cellToBoundary, latLngToCell } from "h3-js"
 import maplibregl from "maplibre-gl"
 import { Toast } from "../components/toast"
 import { ProgressiveLoader } from "../utils/progressive_loader"
 import { BaseLayer } from "./base_layer"
+
+const ZOOM_DEBOUNCE_MS = 250
+
+let h3Module = null
+let h3LoadingPromise = null
+
+async function loadH3() {
+  if (h3Module) return h3Module
+  if (!h3LoadingPromise) h3LoadingPromise = import("h3-js")
+  h3Module = await h3LoadingPromise
+  return h3Module
+}
 
 const ZOOM_TO_RES = [
   { maxZoom: 3, res: 3 },
@@ -42,7 +53,14 @@ export class HexagonLayer extends BaseLayer {
     this._mouseleaveHandler = () => this._onMouseLeave()
     this._hoverAttached = false
     this._quotaWarned = false
-    this._zoomHandler = () => this._handleZoomEnd()
+    this._zoomDebounceTimer = null
+    this._zoomHandler = () => {
+      if (this._zoomDebounceTimer) clearTimeout(this._zoomDebounceTimer)
+      this._zoomDebounceTimer = setTimeout(() => {
+        this._zoomDebounceTimer = null
+        this._handleZoomEnd()
+      }, ZOOM_DEBOUNCE_MS)
+    }
     this.map.on("zoomend", this._zoomHandler)
     this._styleHandler = () => {
       if (!this.visible) return
@@ -53,6 +71,7 @@ export class HexagonLayer extends BaseLayer {
   }
 
   _handleZoomEnd() {
+    if (!h3Module) return
     const newRes = resolutionForZoom(this.map.getZoom())
     if (newRes === this.currentRes) return
 
@@ -190,6 +209,8 @@ export class HexagonLayer extends BaseLayer {
 
     this.controller?.showLoading?.()
 
+    await loadH3()
+
     const generation = ++this._loadGeneration
     this.loader = new ProgressiveLoader({
       onProgress: ({ newData, currentPage, loaded }) => {
@@ -231,7 +252,7 @@ export class HexagonLayer extends BaseLayer {
       if (result.length >= 100_000 && !this._quotaWarned) {
         this._quotaWarned = true
         Toast.warning(
-          "Showing hexagons for the first 100,000 points in this range. Narrow the date range for full coverage.",
+          "Showing the first 100k points in this range — narrow the dates to see everything.",
         )
       }
       this.controller?.updateLoadingCounts?.({
@@ -252,6 +273,8 @@ export class HexagonLayer extends BaseLayer {
 
   async resumeLoad() {
     if (!this.startAt || !this.endAt) return
+
+    await loadH3()
 
     const generation = ++this._loadGeneration
     this.loader = new ProgressiveLoader({
@@ -322,6 +345,7 @@ export class HexagonLayer extends BaseLayer {
   }
 
   _aggregatePoints(points) {
+    const { latLngToCell } = h3Module
     for (const point of points) {
       const lat = parseFloat(point.latitude)
       const lng = parseFloat(point.longitude)
@@ -336,6 +360,8 @@ export class HexagonLayer extends BaseLayer {
 
   _buildFeatureCollection() {
     const features = []
+    if (!h3Module) return { type: "FeatureCollection", features }
+    const { cellToBoundary } = h3Module
     for (const [h3Index, data] of this.aggregator) {
       const boundary = cellToBoundary(h3Index)
       const ring = boundary.map(([lat, lng]) => [lng, lat])
@@ -365,6 +391,8 @@ export class HexagonLayer extends BaseLayer {
 
   _reaggregateFromBuffer() {
     this.aggregator = new Map()
+    if (!h3Module) return
+    const { latLngToCell } = h3Module
     for (const { lat, lng, ts } of this.rawBuffer) {
       const cell = latLngToCell(lat, lng, this.currentRes)
       this._recordCell(cell, ts)
@@ -372,6 +400,10 @@ export class HexagonLayer extends BaseLayer {
   }
 
   remove() {
+    if (this._zoomDebounceTimer) {
+      clearTimeout(this._zoomDebounceTimer)
+      this._zoomDebounceTimer = null
+    }
     this._detachHoverHandlers()
     this.popup.remove()
     this.hoveredId = null

@@ -103,6 +103,10 @@ scrape_configs:
       - targets: ['dawarich_app:3000']
 ```
 
+### Added
+
+- Map v2 **Density Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+
 ### Fixed
 
 - Fixed monthly stats failing with a "Stats update failed" notification when the month's distance exceeded the int4 limit (2,147,483,647 m ≈ 2.15M km). Affected months stayed stuck on the prior value until recalculated. #1996
