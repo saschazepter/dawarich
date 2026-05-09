@@ -330,7 +330,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
   create_table "stats", force: :cascade do |t|
     t.integer "year", null: false
     t.integer "month", null: false
-    t.integer "distance", null: false
+    t.bigint "distance", default: 0, null: false
     t.jsonb "toponyms"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false

@@ -93,8 +93,7 @@ scrape_configs:
 - Track generation no longer creates duplicate tracks — multiple background jobs (daily, realtime, recalc, import) could previously produce the same track per time window, leaving 2–3 copies on your map. Run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to recompute from the merged points. #2677
 - Heatmap on Map V2 looks a lot better than before
 - In notifications section of navbar only "99+" is shown when there are more than 99 notifications, instead of the actual number.
-
-
+- Fixed monthly stats failing with a "Stats update failed" notification when the month's distance exceeded the int4 limit (2,147,483,647 m ≈ 2.15M km). Affected months stayed stuck on the prior value until recalculated. #1996
 
 ## [1.7.5] - 2026-05-04
 
