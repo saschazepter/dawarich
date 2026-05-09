@@ -48,6 +48,9 @@ failed scrape.
 - `METRICS_USERNAME`, `METRICS_PASSWORD` — unchanged.
 - `PROMETHEUS_EXPORTER_PORT` — port the in-process Sidekiq metrics exporter binds to (default 9394).
 
+**New optional environment variable:**
+- `SIDEKIQ_METRICS_URL` — internal URL the web container uses to fetch Sidekiq metrics (default `http://dawarich_sidekiq:9394/metrics`). Override on Dokku, Kubernetes, or any deployment where the worker container's hostname differs from the docker-compose default.
+
 **Prometheus scrape config example:**
 
 ```yaml

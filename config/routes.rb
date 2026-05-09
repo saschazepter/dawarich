@@ -209,7 +209,7 @@ Rails.application.routes.draw do
 
   aggregating_app = Dawarich::AggregatingMetrics.new(
     Yabeda::Prometheus::Exporter,
-    remote_url: 'http://dawarich_sidekiq:9394/metrics',
+    remote_url: ENV.fetch('SIDEKIQ_METRICS_URL', 'http://dawarich_sidekiq:9394/metrics'),
     remote_user: METRICS_USERNAME,
     remote_password: METRICS_PASSWORD
   )
