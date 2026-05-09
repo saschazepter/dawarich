@@ -13,10 +13,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Dawarich now uses the Yabeda monitoring framework instead of `discourse/prometheus_exporter`. Self-hosters who scrape Prometheus metrics from Dawarich should update their configuration.
 
-**Scrape targets** (both require HTTP basic auth with `METRICS_USERNAME` / `METRICS_PASSWORD`):
+**Single scrape URL.** Web `/metrics` now aggregates Sidekiq metrics over the
+internal docker network. Self-hosters scrape only `http://dawarich_app:3000/metrics`
+— Sidekiq's port no longer needs to be exposed. Prometheus scrape config simplifies
+to a single target.
 
-- Web: `http://dawarich_app:3000/metrics` (unchanged URL)
-- Sidekiq: `http://dawarich_sidekiq:9394/metrics` (new — previously Sidekiq metrics came from the web container's sidecar)
+If Sidekiq is unreachable during a scrape, web returns its own metrics only and
+logs a warning. Prometheus sees a momentary gap in `sidekiq_*` rather than a
+failed scrape.
+
+**Scrape target** (requires HTTP basic auth with `METRICS_USERNAME` / `METRICS_PASSWORD`):
+
+- Web: `http://dawarich_app:3000/metrics` (unchanged URL — now includes Sidekiq metrics)
 
 **Custom `dawarich_archive_*` metric names are unchanged.** Dashboards and alerts built on these metrics continue to work.
 
@@ -45,8 +53,9 @@ Dawarich now uses the Yabeda monitoring framework instead of `discourse/promethe
 - `PROMETHEUS_EXPORTER_ENABLED` — still the single on/off switch.
 - `METRICS_USERNAME`, `METRICS_PASSWORD` — unchanged.
 
-**New optional environment variable:**
+**New optional environment variables:**
 - `PROMETHEUS_MULTIPROC_DIR` — directory for Puma multi-worker aggregation mmap files. Defaults to `tmp/prometheus_mmap`. Only override if you mount `tmp/` somewhere unusual.
+- `SIDEKIQ_METRICS_URL` — URL of the Sidekiq container's in-process exporter. Defaults to `http://dawarich_sidekiq:9394/metrics`. Override only if the docker service name differs from the default.
 
 ### Added
 

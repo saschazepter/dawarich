@@ -165,12 +165,22 @@ Rails.application.routes.draw do
 
   post 'users/otp_challenge', to: 'users/otp_challenge#create', as: :user_otp_challenge
 
-  # Prometheus metrics endpoint (Yabeda + prometheus-client). Wrapped in basic auth.
-  # Enablement is evaluated per-request via routing constraint, so stubbing
-  # DawarichSettings.prometheus_exporter_enabled? in tests toggles 404 vs 200.
+  # Prometheus metrics endpoint. The web container's response aggregates its own
+  # in-process metrics (rails_*, puma_*, activerecord_*) with metrics fetched over
+  # the internal docker network from the Sidekiq container's exporter (sidekiq_*,
+  # dawarich_archive_*). This keeps Sidekiq's port unexposed externally.
   require 'yabeda/prometheus/exporter'
   require 'dawarich/metrics_basic_auth'
-  metrics_app = Dawarich::MetricsBasicAuth.new(Yabeda::Prometheus::Exporter)
+  require 'dawarich/aggregating_metrics'
+
+  sidekiq_metrics_url = ENV.fetch('SIDEKIQ_METRICS_URL', 'http://dawarich_sidekiq:9394/metrics')
+  aggregating_app = Dawarich::AggregatingMetrics.new(
+    Yabeda::Prometheus::Exporter,
+    remote_url: sidekiq_metrics_url,
+    remote_user: METRICS_USERNAME,
+    remote_password: METRICS_PASSWORD
+  )
+  metrics_app = Dawarich::MetricsBasicAuth.new(aggregating_app)
   mount metrics_app,
         at: '/metrics',
         constraints: ->(_req) { DawarichSettings.prometheus_exporter_enabled? }

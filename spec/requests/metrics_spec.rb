@@ -5,6 +5,8 @@ require 'rails_helper'
 RSpec.describe 'GET /metrics', type: :request do
   before do
     allow(DawarichSettings).to receive(:prometheus_exporter_enabled?).and_return(true)
+    # Stub the Sidekiq aggregation fetch so request specs don't hit the network.
+    stub_request(:get, %r{http://dawarich_sidekiq:9394/metrics}).to_return(status: 200, body: '')
   end
 
   it 'returns 401 without credentials' do
