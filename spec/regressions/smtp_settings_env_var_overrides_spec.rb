@@ -76,16 +76,16 @@ RSpec.describe SmtpConfig do
   end
 
   describe '.mailer_url_options' do
-    it 'reads DOMAIN as host and defaults protocol to https' do
+    it 'reads DOMAIN as host and always uses https' do
       expect(
         described_class.mailer_url_options('DOMAIN' => 'dawarich.example')
       ).to eq(host: 'dawarich.example', protocol: 'https')
     end
 
-    it 'lets self-hosters on plain HTTP override the protocol via APPLICATION_PROTOCOL' do
+    it 'ignores APPLICATION_PROTOCOL so reverse-proxy operators with force_ssl=off still get https links' do
       expect(
-        described_class.mailer_url_options('DOMAIN' => 'dawarich.lan', 'APPLICATION_PROTOCOL' => 'http')
-      ).to eq(host: 'dawarich.lan', protocol: 'http')
+        described_class.mailer_url_options('DOMAIN' => 'cloud.example', 'APPLICATION_PROTOCOL' => 'http')
+      ).to eq(host: 'cloud.example', protocol: 'https')
     end
   end
 end

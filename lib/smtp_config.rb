@@ -21,7 +21,7 @@ module SmtpConfig
   def self.mailer_url_options(env = ENV)
     {
       host:     env['DOMAIN'],
-      protocol: env.fetch('APPLICATION_PROTOCOL', 'https')
+      protocol: 'https'
     }
   end
 

@@ -4,34 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.7.6] - 2026-05-09
 
 ### Added
 
-- Map v2 timeline panel: bulk Confirm, Decline, and Delete in selection mode (alongside the existing Merge action). **Delete is non-destructive — it only removes the visit grouping, not your location points.** Bulk actions are capped at 500 visits per request.
-- Trip pages now have a **Recalculate** button to refresh path, distance, and visited countries on demand. Useful after re-importing points or cleaning up a trip's underlying data. The page updates automatically when the recalculation finishes; repeated clicks within 60 seconds are ignored while it's running. (#2478)
+- Map v2 timeline: bulk Confirm, Decline, and Delete in selection mode, capped at 500 visits per request. **Delete is non-destructive** — it only removes the visit grouping, not your location points.
+- Trip **Recalculate** button: refresh path, distance, and visited countries on demand. The page updates automatically when it finishes; repeat clicks within 60 seconds are ignored. (#2478)
 
 ### Fixed
 
-- Monthly stats (distance, daily chart, toponyms, map bounds) now bucket points by your local timezone instead of UTC, fixing a phantom day-1 spike from overnight imports and the matching undercount near month boundaries. Self-hosters: enqueue `Stats::BackfillTimezoneRebucketJob` once to refresh saved totals for all months. #2546
-- The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
-- Stats and tracks recalculation no longer crashes for users in timezones whose daylight-saving-time switch happens at midnight (e.g. `America/Santiago`). (#2638)
-- The mobile map view now fills the dynamic viewport and respects iPhone safe-area insets, so the navbar sits below the notch and the date selector / demo banner stay above the home indicator and the iOS Safari URL bar. (#1873)
-- Password-reset and other transactional emails now build links with HTTPS by default, instead of hardcoding `http://`, which broke reset links when served over HTTPS via a reverse proxy. Self-hosters serving plain HTTP (LAN-only, Tailscale, etc.) should set `APPLICATION_PROTOCOL=http`. (#1469)
-- SMTP authentication mechanism (`SMTP_AUTHENTICATION`) and connection timeouts (`SMTP_OPEN_TIMEOUT`, `SMTP_READ_TIMEOUT`) are now configurable via environment variables. Office 365 and other providers that require `login` authentication or longer timeouts no longer need a custom Rails initializer. (#1469)
-- Fixed wrong "modified" timestamps on files extracted from export zips across timezones (e.g. appearing seven hours into the future on a US Pacific machine). Applies to both per-export downloads and the full user-data archive. (#2639)
-- Map v2 heatmap layer now stays visible at city and street zoom, instead of fading away once you zoomed past city level. (#2087)
-- Map v2 search panel: visits list no longer flashes briefly and disappears after picking a location — a stale debounced location-suggestions fetch from the search input could overwrite the visits panel. (#2394)
-- Transportation-mode threshold sliders in Map v2 settings (Walking/Cycling/Driving max speed, Min flight distance, etc.) now respect your selected unit of measurement, displaying mph/mi when miles are selected instead of always showing km/h and km. (#2634)
-- Self-hosting docs (Docker install guide, Synology install guide, Self-hosting introduction) now show the correct default password `safepassword` matching the seeded admin account, instead of the old `password` value. (#2636)
-- On Map v2 with the light, white, or grayscale basemap, dense sequences of points no longer collapse into a thin white line that camouflages against road casings. The stroke around each point is now dark on light basemaps and stays white on dark basemaps. (#2387)
-- The Activity Overview heatmap on the Insights page now opens centered on the most recent active day instead of always starting at January 1. On mobile, this means you no longer see a blank stretch of future months when the year has just begun. (#2228)
-- Selecting a day in the Maps v2 timeline calendar now shows that day's visits in the user's profile timezone, instead of leaking the previous day's late-evening visits into the selected tab and hiding the selected day's late-evening visits under the next tab. (#2619)
+- Monthly stats now bucket points by your local timezone instead of UTC — fixes phantom day-1 spikes from overnight imports and undercounts near month boundaries. Self-hosters: enqueue `Stats::BackfillTimezoneRebucketJob` once to refresh saved totals. #2546
+- Slider knobs in settings and map-layer toggles now move on click instead of staying left while only the track color changes. (#2566)
+- Stats and tracks recalculation no longer crashes in midnight-DST timezones (e.g. `America/Santiago`). (#2638)
+- Mobile map fills the dynamic viewport and respects iPhone safe-area insets — navbar below the notch, date selector / demo banner above the home indicator and Safari URL bar. (#1873)
+- Transactional emails now build links with HTTPS, fixing reset links that arrived as `http://` even when the site was served over HTTPS via reverse proxy. Self-hosters on plain HTTP (LAN, Tailscale) can override via a `config/initializers/mailer_protocol.rb` setting `default_url_options[:protocol] = 'http'`. (#1469)
+- SMTP authentication and timeouts (`SMTP_AUTHENTICATION`, `SMTP_OPEN_TIMEOUT`, `SMTP_READ_TIMEOUT`) are now env-configurable — Office 365 and similar no longer need a custom initializer. (#1469)
+- Export zip entry timestamps no longer drift across timezones (was 7h ahead on US Pacific). Applies to per-export and full-archive downloads. (#2639)
+- Map v2 heatmap stays visible at city and street zoom instead of fading out past city level. (#2087)
+- Map v2 search panel: visits list no longer flashes and disappears after picking a location — a stale debounced fetch was overwriting it. (#2394)
+- Transportation-mode sliders (Walking/Cycling/Driving max speed, Min flight distance) in Map v2 settings now respect your unit of measurement (mph/mi when miles are selected). (#2634)
+- Self-hosting docs (Docker, Synology, intro) now show the correct default password `safepassword` instead of `password`. (#2636)
+- Map v2 light/white/grayscale basemaps: dense point sequences no longer camouflage as thin white lines — strokes are now dark on light basemaps, white on dark. (#2387)
+- Activity Overview heatmap opens centered on your most recent active day instead of January 1 — no blank future months on mobile early in the year. (#2228)
+- Map v2 timeline calendar: a selected day shows visits in your profile timezone — late-evening visits no longer leak across day tabs. (#2619)
 - Renaming a suggested visit in the timeline now confirms it and saves the typed name as a place under your account. (#2621)
-- User-data archive import no longer permits the archive payload to overwrite a track row's `user_id`, `id`, or timestamps. A crafted archive could previously transfer an imported track to another account on the same instance; only an explicit allowlist of track attributes is now accepted. Upgrade promptly.
-- Track generation no longer creates duplicate tracks. Previously, several background jobs (daily generation, realtime tracking, recalculation, and import) could each produce the same track for the same time window, leaving you with two or three copies of the same trip on your map. (#2677)
-  - Internals: tracks now have a `(user_id, start_at, end_at)` unique index, generation runs under a per-user PostgreSQL advisory lock, and racing inserts fall back to attaching the loser's points to the winning track. A pre-migration deduplicates any existing duplicates so the unique index can apply cleanly.
-  - **Self-hosters with very large databases (>10 GB tracks)**: the deduplication migration emits per-user progress to the migration log, but if you have a long history of duplicates the run may take several minutes to over an hour. After the migration, the surviving track in each duplicate group keeps its original `distance` and `path` — to recompute those stats from the merged set of points, run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading.
+- User-data archive import no longer lets the payload overwrite a track's `user_id`, `id`, or timestamps. A crafted archive could previously transfer an imported track to another account; only an explicit attribute allowlist is now accepted. **Upgrade promptly.**
+- Track generation no longer creates duplicate tracks — multiple background jobs (daily, realtime, recalc, import) could previously produce the same track per time window, leaving 2–3 copies on your map. (#2677)
+  - Internals: `(user_id, start_at, end_at)` unique index; per-user advisory lock; racing inserts attach the loser's points to the winning track; a pre-migration dedupes existing duplicates.
+  - **Self-hosters with >10 GB tracks**: the dedupe migration may take minutes to over an hour. The surviving track keeps its original `distance` and `path` — run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to recompute from the merged points.
+
 
 ## [1.7.5] - 2026-05-04
 
