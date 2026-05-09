@@ -1,0 +1,85 @@
+# frozen_string_literal: true
+
+require 'net/http'
+require 'uri'
+
+module Dawarich
+  # Rack middleware that wraps a local metrics endpoint (Yabeda::Prometheus::Exporter)
+  # and appends metrics fetched from a remote in-network endpoint (typically the
+  # Sidekiq container's WEBrick exporter). The combined response is served from a
+  # single external URL — used when the remote endpoint cannot be exposed publicly.
+  #
+  # Failure mode: if the remote fetch fails (network error, non-200), the middleware
+  # logs a warning and returns local metrics only. Prometheus sees a momentary gap
+  # in remote metrics rather than a scrape failure.
+  class AggregatingMetrics
+    HELP_PREFIX = '# HELP '
+    TYPE_PREFIX = '# TYPE '
+
+    def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 5)
+      @local_app = local_app
+      @remote_url = URI(remote_url)
+      @remote_user = remote_user
+      @remote_password = remote_password
+      @timeout = timeout
+    end
+
+    def call(env)
+      status, headers, body = @local_app.call(env)
+      return [status, headers, body] unless status == 200
+
+      local = read_body(body)
+      remote = fetch_remote_metrics
+      [200, { 'Content-Type' => 'text/plain; version=0.0.4' }, [merge(local, remote)]]
+    end
+
+    private
+
+    def fetch_remote_metrics
+      Net::HTTP.start(@remote_url.host, @remote_url.port,
+                      open_timeout: @timeout, read_timeout: @timeout) do |http|
+        req = Net::HTTP::Get.new(@remote_url.request_uri)
+        req.basic_auth(@remote_user, @remote_password)
+        res = http.request(req)
+        return res.body if res.is_a?(Net::HTTPSuccess)
+
+        Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics returned #{res.code}") if defined?(Rails.logger)
+        ''
+      end
+    rescue StandardError => e
+      Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics fetch failed: #{e.message}") if defined?(Rails.logger)
+      ''
+    end
+
+    # Concatenates local and remote bodies. Deduplicates `# HELP <name> ...` and
+    # `# TYPE <name> ...` lines so the same metric name doesn't appear twice
+    # in metadata.
+    def merge(local, remote)
+      return local if remote.empty?
+
+      seen = Set.new
+      out = String.new
+
+      [local, remote].each do |body|
+        body.each_line do |line|
+          if line.start_with?(HELP_PREFIX) || line.start_with?(TYPE_PREFIX)
+            metric_name = line.split(/\s+/, 4)[2]
+            prefix = line.start_with?(HELP_PREFIX) ? HELP_PREFIX : TYPE_PREFIX
+            key = "#{prefix}#{metric_name}"
+            next unless seen.add?(key)
+          end
+          out << line
+        end
+      end
+
+      out
+    end
+
+    def read_body(body)
+      buf = +''
+      body.each { |chunk| buf << chunk }
+      body.close if body.respond_to?(:close)
+      buf
+    end
+  end
+end

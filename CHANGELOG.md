@@ -4,6 +4,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.7] - 2026-05-09
+
+### ⚠️ Breaking changes
+
+**Prometheus metrics backend migrated to Yabeda.**
+
+Dawarich now uses the Yabeda monitoring framework instead of `discourse/prometheus_exporter`. Self-hosters who scrape Prometheus metrics from Dawarich should update their configuration.
+
+If Sidekiq is unreachable during a scrape, web returns its own metrics only and
+logs a warning. Prometheus sees a momentary gap in `sidekiq_*` rather than a
+failed scrape.
+
+**Scrape target** (requires HTTP basic auth with `METRICS_USERNAME` / `METRICS_PASSWORD`):
+
+- Web: `http://dawarich_app:3000/metrics`
+
+**Custom `dawarich_archive_*` metric names are unchanged.** Dashboards and alerts built on these metrics continue to work.
+
+**Infrastructure metric names have changed.** If you have dashboards built on `ruby_*`, `active_record_*`, or similar metrics emitted by `prometheus_exporter`, you must update them:
+
+| Category | Before | After |
+|---|---|---|
+| HTTP requests (total) | `ruby_http_requests_total` | `rails_requests_total` |
+| HTTP request duration | `ruby_http_request_duration_seconds` | `rails_request_duration` |
+| Sidekiq job count | `ruby_sidekiq_jobs_total` | `sidekiq_jobs_executed_total` |
+| Sidekiq failed jobs | `ruby_sidekiq_failed_jobs_total` | `sidekiq_jobs_failed_total` |
+| Sidekiq job duration | `ruby_sidekiq_job_duration_seconds` | `sidekiq_job_runtime_seconds` |
+| Sidekiq queue latency | `ruby_sidekiq_queue_latency_seconds` | `sidekiq_queue_latency` |
+| Sidekiq queue backlog | `ruby_sidekiq_queue_backlog_total` | `sidekiq_jobs_waiting_count` |
+| Sidekiq process count | `ruby_sidekiq_process_count` | `sidekiq_active_processes` |
+| Puma workers | `ruby_puma_workers` | `puma_workers` |
+| Puma backlog | `ruby_puma_request_backlog` | `puma_backlog` |
+| Puma thread pool capacity | `ruby_puma_thread_pool_capacity` | `puma_pool_capacity` |
+| ActiveRecord pool | `active_record_connection_pool_connections` | `activerecord_connection_pool_size` |
+| Process/GC (e.g. `ruby_rss`, `ruby_heap_live_slots`) | emitted | not emitted by default; add a custom Yabeda group if needed |
+
+**Removed environment variables:**
+- `PROMETHEUS_EXPORTER_HOST`, `PROMETHEUS_EXPORTER_HOST_SIDEKIQ` — no longer needed. Metrics are served in-process by each application.
+
+**Retained environment variables:**
+- `PROMETHEUS_EXPORTER_ENABLED` — still the single on/off switch.
+- `METRICS_USERNAME`, `METRICS_PASSWORD` — unchanged.
+- `PROMETHEUS_EXPORTER_PORT` — port the in-process Sidekiq metrics exporter binds to (default 9394).
+
+**New optional environment variable:**
+- `SIDEKIQ_METRICS_URL` — internal URL the web container uses to fetch Sidekiq metrics (default `http://dawarich_sidekiq:9394/metrics`). Override on Dokku, Kubernetes, or any deployment where the worker container's hostname differs from the docker-compose default.
+
+**Prometheus scrape config example:**
+
+```yaml
+scrape_configs:
+  - job_name: dawarich
+    metrics_path: /metrics
+    basic_auth:
+      username: prometheus     # set via METRICS_USERNAME
+      password: prometheus     # set via METRICS_PASSWORD
+    static_configs:
+      - targets: ['dawarich_app:3000']
+```
+
+### Fixed
+
+- Fixed monthly stats failing with a "Stats update failed" notification when the month's distance exceeded the int4 limit (2,147,483,647 m ≈ 2.15M km). Affected months stayed stuck on the prior value until recalculated. #1996
+- 500 error on the imports page. #2683
+- Insights weekly pattern now refreshes after monthly stats change, instead of showing a stale snapshot until the next monthly digest job runs. #2478
+- Points with no reverse-geocoding result (ocean, wilderness) are now marked as attempted instead of being re-queued every nightly run; use "Start Reverse Geocoding" to retry after switching providers. #2271
+- Activity detection now falls back to displacement when the tracker reports 0 m/s, so OwnTracks Significant Change mode and similar low-power setups stop misclassifying real movement as stationary. Run **Map v2 → Settings → Recalculate tracks & stats** to apply to existing tracks. #2390
+- Redis no longer balloons (multi-GB) when browsing photos with Immich or Photoprism connected. Photo thumbnails are no longer copied into the server-side Redis cache; the browser caches them directly via `Cache-Control` instead. #1609
+- Drag-selecting a region on the map now includes visits attached to your saved Areas (Home, Work, etc.), instead of silently dropping area-only visits from the visit tray. #2420
+
 ## [1.7.6] - 2026-05-09
 
 ### Added
@@ -33,8 +103,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Track generation no longer creates duplicate tracks — multiple background jobs (daily, realtime, recalc, import) could previously produce the same track per time window, leaving 2–3 copies on your map. Run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to recompute from the merged points. #2677
 - Heatmap on Map V2 looks a lot better than before
 - In notifications section of navbar only "99+" is shown when there are more than 99 notifications, instead of the actual number.
-
-
 
 ## [1.7.5] - 2026-05-04
 
