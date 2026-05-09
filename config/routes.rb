@@ -104,6 +104,7 @@ Rails.application.routes.draw do
   resources :visits, only: %i[update destroy] do
     collection do
       patch :bulk_update
+      delete :bulk_destroy
       post :merge
     end
   end
@@ -114,7 +115,11 @@ Rails.application.routes.draw do
     end
   end
   resources :exports, only: %i[index create destroy]
-  resources :trips
+  resources :trips do
+    member do
+      post :recalculate
+    end
+  end
   resources :tags, except: [:show]
 
   # Family management routes (only if feature is enabled)
@@ -194,7 +199,24 @@ Rails.application.routes.draw do
 
   post 'users/otp_challenge', to: 'users/otp_challenge#create', as: :user_otp_challenge
 
-  resources :metrics, only: [:index]
+  # Prometheus metrics endpoint. The web container's response aggregates its own
+  # in-process metrics (rails_*, puma_*, activerecord_*) with metrics fetched over
+  # the internal docker network from the Sidekiq container's exporter (sidekiq_*,
+  # dawarich_archive_*). This keeps Sidekiq's port unexposed externally.
+  require 'yabeda/prometheus/exporter'
+  require 'dawarich/metrics_basic_auth'
+  require 'dawarich/aggregating_metrics'
+
+  aggregating_app = Dawarich::AggregatingMetrics.new(
+    Yabeda::Prometheus::Exporter,
+    remote_url: ENV.fetch('SIDEKIQ_METRICS_URL', 'http://dawarich_sidekiq:9394/metrics'),
+    remote_user: METRICS_USERNAME,
+    remote_password: METRICS_PASSWORD
+  )
+  metrics_app = Dawarich::MetricsBasicAuth.new(aggregating_app)
+  mount metrics_app,
+        at: '/metrics',
+        constraints: ->(_req) { DawarichSettings.prometheus_exporter_enabled? }
 
   # Map namespace with versioning
   namespace :map do

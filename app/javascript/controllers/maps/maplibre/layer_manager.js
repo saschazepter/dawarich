@@ -381,6 +381,7 @@ export class LayerManager {
         visible: this.settings.pointsVisible !== false, // Default true unless explicitly false
         apiClient: this.api,
         layerManager: this,
+        styleName: this.settings.mapStyle,
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {

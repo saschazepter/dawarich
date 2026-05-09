@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_04_120000) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -408,6 +408,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_04_120000) do
     t.datetime "updated_at", null: false
     t.integer "dominant_mode", default: 0
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
+    t.index ["user_id", "start_at", "end_at"], name: "index_tracks_on_user_start_end_unique", unique: true
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
@@ -422,6 +423,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_04_120000) do
     t.datetime "updated_at", null: false
     t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
+    t.datetime "last_recalculated_at"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
