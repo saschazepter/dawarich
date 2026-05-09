@@ -18,11 +18,19 @@ RSpec.describe SmtpConfig do
 
       expect(result).to include(
         address:   'smtp.office365.com',
-        port:      '587',
+        port:      587,
         domain:    'example.com',
         user_name: 'noreply@example.com',
         password:  'secret'
       )
+    end
+
+    it 'casts SMTP_PORT to integer so the Mail gem picks the right TLS mode for SMTPS-on-465' do
+      expect(described_class.smtp_settings('SMTP_PORT' => '465')[:port]).to eq(465)
+    end
+
+    it 'leaves port nil when SMTP_PORT is unset' do
+      expect(described_class.smtp_settings({})[:port]).to be_nil
     end
 
     it 'defaults authentication to :plain when SMTP_AUTHENTICATION is unset' do

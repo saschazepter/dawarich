@@ -121,6 +121,23 @@ RSpec.describe Visits::BulkDestroy do
       end
     end
 
+    context 'when visit_ids spans more than one chunk' do
+      let(:visit_count) { described_class::POINT_NULLIFY_BATCH + 10 }
+      let!(:many_visits) { create_list(:visit, visit_count, user: user) }
+      let!(:points_with_visits) do
+        many_visits.map { |v| create(:point, user: user, visit: v) }
+      end
+      subject(:service) { described_class.new(user, many_visits.map(&:id)) }
+
+      it 'destroys every visit and nullifies every point across chunks' do
+        result = service.call
+
+        expect(result[:count]).to eq(visit_count)
+        expect(Visit.where(id: many_visits.map(&:id))).to be_empty
+        expect(Point.where(id: points_with_visits.map(&:id)).pluck(:visit_id)).to all(be_nil)
+      end
+    end
+
     context 'place_visit cascade' do
       let!(:place) { create(:place) }
       let!(:place_visit) { create(:place_visit, visit: visit1, place: place) }

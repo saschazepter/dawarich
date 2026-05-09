@@ -7,7 +7,7 @@ module SmtpConfig
   def self.smtp_settings(env = ENV)
     {
       address:         env['SMTP_SERVER'],
-      port:            env['SMTP_PORT'],
+      port:            env['SMTP_PORT']&.to_i,
       domain:          env['SMTP_DOMAIN'],
       user_name:       env['SMTP_USERNAME'],
       password:        env['SMTP_PASSWORD'],

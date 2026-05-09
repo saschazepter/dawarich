@@ -3,6 +3,7 @@
 module Visits
   class BulkDestroy
     MAX_VISIT_IDS = 500
+    POINT_NULLIFY_BATCH = 50
 
     attr_reader :user, :visit_ids, :errors
 
@@ -40,10 +41,12 @@ module Visits
       started_ats = visits.pluck(:started_at)
       started_at = Time.current
 
-      Visit.transaction do
-        Point.where(visit_id: ids).update_all(visit_id: nil)
-        PlaceVisit.where(visit_id: ids).delete_all
-        Visit.where(id: ids).delete_all
+      ids.each_slice(POINT_NULLIFY_BATCH) do |chunk|
+        Visit.transaction do
+          Point.where(visit_id: chunk).update_all(visit_id: nil)
+          PlaceVisit.where(visit_id: chunk).delete_all
+          Visit.where(id: chunk).delete_all
+        end
       end
 
       log_success(ids.length, Time.current - started_at)

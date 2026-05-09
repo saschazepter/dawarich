@@ -465,7 +465,7 @@ class VisitsController < ApplicationController
   end
 
   def too_many_visits_message
-    "You can act on up to #{MAX_BULK_VISIT_IDS} visits at once. Narrow your selection and try again."
+    "You can update up to #{MAX_BULK_VISIT_IDS} visits at once. Narrow your selection and try again."
   end
 
   def message_for_missing_visits(ids)
@@ -484,7 +484,7 @@ class VisitsController < ApplicationController
   end
 
   def plan_window_visits_message
-    'Some of those visits are outside your Lite plan’s 12-month window. Upgrade to Pro to manage older data.'
+    "Some of those visits are outside your Lite plan's 12-month window. Upgrade to Pro to manage older data."
   end
 
   def bulk_destroy_success_message(count)
