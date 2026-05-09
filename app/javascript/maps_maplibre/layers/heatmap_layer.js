@@ -47,25 +47,23 @@ export class HeatmapLayer extends BaseLayer {
             5,
           ],
 
-          // Color ramp
+          // Color ramp matching Map v1 (leaflet.heat default gradient)
           "heatmap-color": [
             "interpolate",
             ["linear"],
             ["heatmap-density"],
             0,
-            "rgba(0,0,0,0)",
-            0.1,
-            "rgba(33,102,172,0.4)",
-            0.2,
-            "rgb(103,169,207)",
+            "rgba(0,0,255,0)",
             0.4,
-            "rgb(209,229,240)",
+            "rgb(0,0,255)",
             0.6,
-            "rgb(253,219,199)",
+            "rgb(0,255,255)",
+            0.7,
+            "rgb(0,255,0)",
             0.8,
-            "rgb(239,138,98)",
+            "rgb(255,255,0)",
             1,
-            "rgb(178,24,43)",
+            "rgb(255,0,0)",
           ],
 
           // Radius in pixels, exponential growth
