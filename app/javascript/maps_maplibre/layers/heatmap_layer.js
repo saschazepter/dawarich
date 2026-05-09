@@ -29,7 +29,7 @@ export class HeatmapLayer extends BaseLayer {
         paint: {
           // Tuned for typical Dawarich point density across country→street zoom;
           // first non-zero color stop kept above the sparse-noise floor.
-          "heatmap-weight": 1,
+          "heatmap-weight": 0.2,
 
           "heatmap-intensity": [
             "interpolate",
@@ -40,11 +40,11 @@ export class HeatmapLayer extends BaseLayer {
             10,
             1,
             15,
-            3,
+            1.5,
             20,
-            5,
+            2,
             22,
-            5,
+            2,
           ],
 
           // Color ramp matching Map v1 (leaflet.heat default gradient)
@@ -72,13 +72,13 @@ export class HeatmapLayer extends BaseLayer {
             ["exponential", 1.5],
             ["zoom"],
             10,
-            15,
+            8,
             13,
-            30,
             15,
-            50,
+            15,
+            25,
             20,
-            120,
+            50,
           ],
 
           // Visible when zoomed in, fades when zoomed out
