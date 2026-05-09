@@ -25,7 +25,7 @@
   <td class="px-4 py-3" data-status-display>
     <%= status_badge(import) %>
   </td>
-  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at) %></td>
+  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, import.user.safe_settings.timezone) %></td>
   <td class="px-4 py-3 text-right">
     <div class="flex items-center gap-1 justify-end">
       <% if import.deleting? %>
@@ -49,7 +49,7 @@
             <% end %>
           </div>
         <% end %>
-        <div class="tooltip" data-tip="Delete import">
+        <div class="tooltip tooltip-left" data-tip="Delete import">
           <%= link_to import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
             <%= icon 'trash-2', class: 'w-4 h-4' %>
           <% end %>

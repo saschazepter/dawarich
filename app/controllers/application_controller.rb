@@ -10,6 +10,15 @@ class ApplicationController < ActionController::Base
   around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
+  helper_method :current_user_safe_settings
+
+  # Memoized per-request SafeSettings for the current user. Use this instead of
+  # `current_user.safe_settings` in partials/helpers that may render many rows
+  # — User#safe_settings allocates a fresh deep_dup'd hash on every call.
+  def current_user_safe_settings
+    @current_user_safe_settings ||= current_user&.safe_settings
+  end
+
   protected
 
   def configure_permitted_parameters
@@ -47,6 +56,8 @@ class ApplicationController < ActionController::Base
   end
 
   def after_sign_in_path_for(resource)
+    return trial_resume_path if resource.respond_to?(:pending_payment?) && resource.pending_payment?
+
     # Check for family invitation first
     invitation_token = params[:invitation_token] || session[:invitation_token]
     if invitation_token.present?
