@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Monthly stats calculation no longer fails with an integer overflow error when the computed monthly distance exceeds ~2,147,483 km expressed in meters. Affected months previously stayed stuck on the prior value and surfaced a "Stats update failed" notification. #1996
+- Fixed monthly stats failing with a "Stats update failed" notification when the month's distance exceeded the int4 limit (2,147,483,647 m ≈ 2.15M km). Affected months stayed stuck on the prior value until recalculated. #1996
 
 ## [1.7.5] - 2026-05-04
 
