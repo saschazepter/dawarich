@@ -69,6 +69,7 @@ scrape_configs:
 - Fixed monthly stats failing with a "Stats update failed" notification when the month's distance exceeded the int4 limit (2,147,483,647 m ≈ 2.15M km). Affected months stayed stuck on the prior value until recalculated. #1996
 - 500 error on the imports page. #2683
 - Insights weekly pattern now refreshes after monthly stats change, instead of showing a stale snapshot until the next monthly digest job runs. #2478
+- Points with no reverse-geocoding result (ocean, wilderness) are now marked as attempted instead of being re-queued every nightly run; use "Start Reverse Geocoding" to retry after switching providers. #2271
 
 ## [1.7.6] - 2026-05-09
 
