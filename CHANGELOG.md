@@ -8,8 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Map v2 timeline: bulk Confirm, Decline, and Delete in selection mode, capped at 500 visits per request.
+- Map v2 timeline: bulk Confirm and Decline in selection mode, capped at 500 visits per request.
 - Trip **Recalculate** button: refresh path, distance, and visited countries on demand. The page updates automatically when it finishes; repeat clicks within 60 seconds are ignored. #2478
+- Google's "Timeline Edits.json" type of Takeout export is now recognized and imported directly.
 
 ### Fixed
 
