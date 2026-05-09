@@ -109,7 +109,7 @@ Fixes for several issues found in a static-analysis security audit. None of thes
 
 ### Fixed
 
-- Google Phone Takeout `location-history.json` now imports reliably. #2437 #2587)
+- Google Phone Takeout `location-history.json` now imports reliably. (#2437, #2587)
 - KMZ files from a wider range of exporters now import.
 - Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. #2446
 - FIT files from non-Garmin devices and phone apps now import.
@@ -135,7 +135,7 @@ Fixes for several issues found in a static-analysis security audit. None of thes
 - Map (Leaflet): route lines no longer revert to their pre-move shape when an unrelated point is deleted after dragging another point. The dragend handler was failing to update the marker array because it looked for the controller in the wrong place. #1797
 - Track creation now caps a single track's distance at 100,000 km (with a logged warning) instead of silently truncating at the legacy 999,999 m limit. Long-haul journeys are no longer collapsed to ~1000 km. #1693
 - Dev container: bind-mount the project root into the container so `bundle install` can locate the `Gemfile`. Previously only sub-paths were mounted, leaving `/var/app/Gemfile` missing. #1804
-- Map v2: photos without GPS metadata (`latitude`/`longitude` null) no longer render as markers at Null Island (0°, 0°) — they are now correctly excluded from the photos layer. #2464 #2465)
+- Map v2: photos without GPS metadata (`latitude`/`longitude` null) no longer render as markers at Null Island (0°, 0°) — they are now correctly excluded from the photos layer. (#2464, #2465)
 
 
 ## [1.7.1] - 2026-04-28
@@ -1900,7 +1900,7 @@ User.includes(:tracked_points, visits: :places).find_each do |user|
 
     # Set the lonlat to a PostGIS point with the proper SRID
     # rubocop:disable Rails/SkipsModelValidations
-    place.update_column(:lonlat, "SRID=4326;POINT#{lace.longitude} #{place.latitude})")
+    place.update_column(:lonlat, "SRID=4326;POINT(#{place.longitude} #{place.latitude})")
     # rubocop:enable Rails/SkipsModelValidations
   end
 
