@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.8] - Unreleased
+
+### Fixed
+
+- Fix support of FIT files from Garmin Connect. #2686
+
 ## [1.7.7] - 2026-05-09
 
 ### ⚠️ Breaking changes
