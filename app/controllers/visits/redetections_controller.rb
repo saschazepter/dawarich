@@ -9,7 +9,7 @@ class Visits::RedetectionsController < ApplicationController
     if cooldown_active?
       respond_to do |format|
         format.html do
-          redirect_to settings_visit_detection_path,
+          redirect_to settings_visits_path,
                       alert: 'Re-detect ran recently. Try again in an hour.',
                       status: :too_many_requests
         end
@@ -19,7 +19,7 @@ class Visits::RedetectionsController < ApplicationController
     end
 
     Visits::FullHistoryRedetectJob.perform_later(current_user.id)
-    redirect_to settings_visit_detection_path,
+    redirect_to settings_visits_path,
                 notice: "Re-detection queued. We'll notify you when it finishes."
   end
 

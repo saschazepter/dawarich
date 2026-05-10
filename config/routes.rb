@@ -47,7 +47,7 @@ Rails.application.routes.draw do
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
-    resource :visit_detection, only: %i[show update], controller: 'visit_detection'
+    resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
         post 'regenerate_api_key'

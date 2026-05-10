@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Visits::FullHistoryRedetectJob < ApplicationJob
-  queue_as :default
+  queue_as :visit_suggesting
 
   BATCH_OVERLAP_SECONDS = 1.hour.to_i
 

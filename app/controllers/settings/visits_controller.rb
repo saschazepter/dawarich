@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Settings::VisitDetectionController < ApplicationController
+class Settings::VisitsController < ApplicationController
   before_action :authenticate_user!
 
   def show; end
@@ -9,7 +9,7 @@ class Settings::VisitDetectionController < ApplicationController
     merged = current_user.safe_settings.settings.merge(settings_params.to_h)
     current_user.update!(settings: merged)
 
-    redirect_to settings_visit_detection_path, notice: 'Visit detection settings updated'
+    redirect_to settings_visits_path, notice: 'Visit detection settings updated'
   end
 
   private
