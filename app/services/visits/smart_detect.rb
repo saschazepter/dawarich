@@ -22,10 +22,10 @@ module Visits
 
     private
 
-    def clamp_to_plan_window(ts)
-      return ts unless user.respond_to?(:plan_restricted?) && user.plan_restricted?
+    def clamp_to_plan_window(timestamp)
+      return timestamp unless user.respond_to?(:plan_restricted?) && user.plan_restricted?
 
-      [ts, user.data_window_start.to_i].max
+      [timestamp, user.data_window_start.to_i].max
     end
 
     def points_exist?
@@ -67,7 +67,8 @@ module Visits
         total_clusters  += clusters.size
 
         potential_visits = build_visit_hashes(clusters)
-        merged_visits    = Visits::Merger.new(scoped_batch_points(batch_start, batch_end)).merge_visits(potential_visits)
+        merged_visits    = Visits::Merger.new(scoped_batch_points(batch_start,
+                                                                  batch_end)).merge_visits(potential_visits)
         grouped_visits   = group_nearby_visits(merged_visits).flatten
 
         created.concat(Visits::Creator.new(user).create_visits(grouped_visits))

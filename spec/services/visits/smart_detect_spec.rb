@@ -63,9 +63,9 @@ RSpec.describe Visits::SmartDetect do
                        timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
       end
 
-      expect(Rails.logger).to receive(:info).with(
-        a_string_matching(/\[Visits::SmartDetect\] user_id=#{user.id} range=\d+\.\.\d+ batches=\d+ points_in=\d+ clusters=\d+ visits_created=\d+ duration_ms=\d+/)
-      ).at_least(:once)
+      log_pattern = /\[Visits::SmartDetect\] user_id=#{user.id} range=\d+\.\.\d+ batches=\d+ /
+      log_pattern_full = /#{log_pattern}points_in=\d+ clusters=\d+ visits_created=\d+ duration_ms=\d+/
+      expect(Rails.logger).to receive(:info).with(a_string_matching(log_pattern_full)).at_least(:once)
       allow(Rails.logger).to receive(:info)
 
       described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
