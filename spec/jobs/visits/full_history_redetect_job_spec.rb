@@ -75,12 +75,45 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
   end
 
   describe 'failure handling' do
-    it 'reports the error, notifies the user, and re-raises' do
+    it 'reports each failing month, sends a warning notification, and does not re-raise when SmartDetect fails' do
       allow_any_instance_of(Visits::SmartDetect).to receive(:call).and_raise(StandardError, 'boom')
-      expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError))
+      expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError)).at_least(:once)
 
-      expect { described_class.new.perform(user.id) }.to raise_error(StandardError, /boom/)
+      expect { described_class.new.perform(user.id) }.not_to raise_error
 
+      expect(user.notifications.where(kind: :warning)).to exist
+      expect(user.reload.visits_redetected_at).to be_present
+    end
+
+    it 'continues across months, completing successful ones when one month fails' do
+      jan_ts = Time.utc(2024, 1, 15, 12, 0).to_i
+      feb_ts = Time.utc(2024, 2, 15, 12, 0).to_i
+      [jan_ts, feb_ts].each do |ts|
+        3.times do |i|
+          create(:point, user: user,
+                         latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
+                         timestamp: ts + i * 60, accuracy: 10, visit_id: nil)
+        end
+      end
+
+      call_count = 0
+      allow_any_instance_of(Visits::SmartDetect).to receive(:call) do
+        call_count += 1
+        call_count == 1 ? raise(StandardError, 'transient') : []
+      end
+
+      expect { described_class.new.perform(user.id) }.not_to raise_error
+
+      warning = user.notifications.where(kind: :warning).last
+      expect(warning).to be_present
+      expect(warning.content).to match(/1 month\(s\) failed/)
+    end
+
+    it 'wraps the rest of perform in the outer rescue so non-month errors still notify and re-raise' do
+      allow(User).to receive(:find).and_call_original
+      allow_any_instance_of(User).to receive(:points).and_raise(StandardError, 'db down')
+
+      expect { described_class.new.perform(user.id) }.to raise_error(StandardError, /db down/)
       expect(user.notifications.where(kind: :error)).to exist
     end
   end

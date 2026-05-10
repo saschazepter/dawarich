@@ -7,6 +7,9 @@
       Replaces all suggested visits across your entire history with fresh detections using the settings above.
       Confirmed visits and the places you've named are preserved. This usually takes a few minutes.
     </p>
+    <% if current_user.respond_to?(:plan_restricted?) && current_user.plan_restricted? %>
+      <p class="text-xs opacity-70">On the Lite plan, re-detection covers your visible 12-month window only.</p>
+    <% end %>
 
     <%= button_to visits_redetections_path,
                   method: :post,

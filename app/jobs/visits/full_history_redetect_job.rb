@@ -42,8 +42,18 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     Visit.where(id: visit_ids).find_each(&:destroy)
 
     months = monthly_ranges(min_ts, max_ts)
-    visits_created = months.sum do |range_start, range_end|
-      Visits::SmartDetect.new(user, start_at: range_start, end_at: range_end).call.size
+    visits_created = 0
+    months_failed = []
+
+    months.each do |range_start, range_end|
+      visits_created += Visits::SmartDetect.new(user, start_at: range_start, end_at: range_end).call.size
+    rescue StandardError => e
+      months_failed << [range_start, range_end]
+      Rails.logger.error(
+        "[Visits::FullHistoryRedetectJob month_failed] user_id=#{user.id} " \
+        "range=#{range_start}..#{range_end} class=#{e.class} message=#{e.message}"
+      )
+      ExceptionReporter.call(e)
     end
 
     places_deleted = cleanup_orphan_places(user, candidate_place_ids)
@@ -53,11 +63,19 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).to_i
     Rails.logger.info(
       "[Visits::FullHistoryRedetectJob done] user_id=#{user.id} " \
-      "visits_created=#{visits_created} places_deleted=#{places_deleted} duration_ms=#{duration_ms}"
+      "visits_created=#{visits_created} places_deleted=#{places_deleted} " \
+      "months_processed=#{months.size - months_failed.size}/#{months.size} duration_ms=#{duration_ms}"
     )
 
-    notify!(user, kind: :info, title: 'Visit re-detection complete',
-                  content: "#{visits_created} visits across #{months.size} months.")
+    if months_failed.empty?
+      notify!(user, kind: :info, title: 'Visit re-detection complete',
+                    content: "#{visits_created} visits across #{months.size} months.")
+    else
+      ok_months = months.size - months_failed.size
+      notify!(user, kind: :warning, title: 'Visit re-detection partially complete',
+                    content: "#{visits_created} visits across #{ok_months} of #{months.size} months. " \
+                             "#{months_failed.size} month(s) failed; re-run after the cooldown to retry.")
+    end
   rescue StandardError => e
     Rails.logger.error(
       "[Visits::FullHistoryRedetectJob error] user_id=#{user_id} " \
