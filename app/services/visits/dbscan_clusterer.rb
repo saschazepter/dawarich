@@ -104,6 +104,7 @@ module Visits
             AND timestamp BETWEEN ? AND ?
             AND visit_id IS NULL
             AND lonlat IS NOT NULL
+            AND (anomaly IS NULL OR anomaly = FALSE)
         ),
         point_gaps AS (
           SELECT
