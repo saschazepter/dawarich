@@ -55,7 +55,7 @@ RSpec.describe Users::SafeSettings do
             gps_filtering_enabled: true,
             gps_accuracy_threshold: 100,
             timezone: 'UTC',
-            visit_radius_meters: 100,
+            visit_radius_meters: 50,
             visit_min_points: 3,
             visit_density_fill_enabled: true
           }
@@ -190,7 +190,7 @@ RSpec.describe Users::SafeSettings do
             gps_filtering_enabled: true,
             gps_accuracy_threshold: 100,
             timezone: 'UTC',
-            visit_radius_meters: 100,
+            visit_radius_meters: 50,
             visit_min_points: 3,
             visit_density_fill_enabled: true
           }
