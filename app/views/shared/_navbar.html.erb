@@ -120,7 +120,7 @@
           <%= icon 'bell' %>
           <% if @unread_notifications.present? %>
             <span class="badge badge-xs badge-primary absolute top-0 right-0">
-              <%= @unread_notifications.size %>
+              <%= @unread_notifications.size > 99 ? '99+' : @unread_notifications.size %>
             </span>
           <% end %>
         <% end %>

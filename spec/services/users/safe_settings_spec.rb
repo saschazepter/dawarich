@@ -54,7 +54,10 @@ RSpec.describe Users::SafeSettings do
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
             gps_accuracy_threshold: 100,
-            timezone: 'UTC'
+            timezone: 'UTC',
+            visit_radius_meters: 100,
+            visit_min_points: 3,
+            visit_density_fill_enabled: true
           }
         )
       end
@@ -132,7 +135,10 @@ RSpec.describe Users::SafeSettings do
             'max_gap_minutes_in_city' => 120,
             'gps_filtering_enabled' => true,
             'gps_accuracy_threshold' => 100,
-            'timezone' => 'UTC'
+            'timezone' => 'UTC',
+            'visit_radius_meters' => 100,
+            'visit_min_points' => 3,
+            'visit_density_fill_enabled' => true
           }
         )
       end
@@ -183,7 +189,10 @@ RSpec.describe Users::SafeSettings do
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
             gps_accuracy_threshold: 100,
-            timezone: 'UTC'
+            timezone: 'UTC',
+            visit_radius_meters: 100,
+            visit_min_points: 3,
+            visit_density_fill_enabled: true
           }
         )
       end

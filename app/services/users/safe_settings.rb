@@ -53,7 +53,11 @@ class Users::SafeSettings
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
     'gps_accuracy_threshold' => 100,
-    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    # Visit detection settings (DBSCAN-based clustering)
+    'visit_radius_meters' => 100,
+    'visit_min_points' => 3,
+    'visit_density_fill_enabled' => true
   }.freeze
 
   GPS_ACCURACY_THRESHOLD_MIN = 50
@@ -96,7 +100,10 @@ class Users::SafeSettings
       max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
       gps_accuracy_threshold: gps_accuracy_threshold,
-      timezone: timezone
+      timezone: timezone,
+      visit_radius_meters: visit_radius_meters,
+      visit_min_points: visit_min_points,
+      visit_density_fill_enabled: visit_density_fill_enabled?
     }
   end
 
@@ -276,6 +283,21 @@ class Users::SafeSettings
   def gps_accuracy_threshold
     raw = settings['gps_accuracy_threshold'] || DEFAULT_VALUES['gps_accuracy_threshold']
     raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
+  end
+
+  def visit_radius_meters
+    (settings['visit_radius_meters'] || DEFAULT_VALUES['visit_radius_meters']).to_i
+  end
+
+  def visit_min_points
+    (settings['visit_min_points'] || DEFAULT_VALUES['visit_min_points']).to_i
+  end
+
+  def visit_density_fill_enabled?
+    value = settings['visit_density_fill_enabled']
+    return DEFAULT_VALUES['visit_density_fill_enabled'] if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
   end
 
   private

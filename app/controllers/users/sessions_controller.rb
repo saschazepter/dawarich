@@ -13,6 +13,7 @@ class Users::SessionsController < Devise::SessionsController
 
   def check_otp_required
     return unless request.post?
+    return if DawarichSettings.oidc_enabled? && !ALLOW_EMAIL_PASSWORD_LOGIN
     return unless DawarichSettings.two_factor_available?
     return if params.dig(:user, :email).blank?
 
@@ -28,7 +29,7 @@ class Users::SessionsController < Devise::SessionsController
 
   def check_email_password_login_allowed
     return unless DawarichSettings.oidc_enabled?
-    return if DawarichSettings.registration_enabled?
+    return if ALLOW_EMAIL_PASSWORD_LOGIN
 
     redirect_to root_path, alert: 'Email/password login is disabled. Please use OIDC to sign in.'
   end

@@ -1,3 +1,6 @@
+# full list of environment variables with descriptions can be found in the documentation:
+# https://dawarich.app/docs/self-hosting/environment-variables/
+
 networks:
   dawarich:
 
@@ -57,7 +60,6 @@ services:
       - dawarich
     ports:
       - "${DAWARICH_APP_PORT:-3000}:3000"
-      # - "${PROMETHEUS_PORT:-9394}:9394" # Prometheus exporter, uncomment if needed
     stdin_open: true
     tty: true
     entrypoint: web-entrypoint.sh
@@ -75,8 +77,6 @@ services:
       TIME_ZONE: ${TIME_ZONE:-Europe/London}
       APPLICATION_PROTOCOL: ${APPLICATION_PROTOCOL:-http}
       PROMETHEUS_EXPORTER_ENABLED: ${PROMETHEUS_EXPORTER_ENABLED:-false}
-      PROMETHEUS_EXPORTER_HOST: ${PROMETHEUS_EXPORTER_HOST:-0.0.0.0}
-      PROMETHEUS_EXPORTER_PORT: ${PROMETHEUS_EXPORTER_PORT:-9394}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-"CHANGE_ME"}
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
@@ -135,8 +135,6 @@ services:
       BACKGROUND_PROCESSING_CONCURRENCY: ${BACKGROUND_PROCESSING_CONCURRENCY:-5}
       APPLICATION_PROTOCOL: ${APPLICATION_PROTOCOL:-http}
       PROMETHEUS_EXPORTER_ENABLED: ${PROMETHEUS_EXPORTER_ENABLED:-false}
-      PROMETHEUS_EXPORTER_HOST: ${PROMETHEUS_EXPORTER_HOST_SIDEKIQ:-dawarich_app}
-      PROMETHEUS_EXPORTER_PORT: ${PROMETHEUS_EXPORTER_PORT:-9394}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-"CHANGE_ME"}
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}

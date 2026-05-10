@@ -40,8 +40,9 @@ class Tracks::BoundaryResolverJob < ApplicationJob
   end
 
   def resolve_boundary_tracks
-    boundary_detector = Tracks::BoundaryDetector.new(user)
-    boundary_detector.resolve_cross_chunk_tracks
+    Tracks::PerUserLock.with_user_lock(user.id) do
+      Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
+    end
   end
 
   def finalize_session(_boundary_tracks_resolved)

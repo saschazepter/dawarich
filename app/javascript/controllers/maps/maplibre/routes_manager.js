@@ -13,6 +13,7 @@ export class RoutesManager {
     this.map = controller.map
     this.layerManager = controller.layerManager
     this.settings = controller.settings
+    this._anomaliesFetchId = 0
   }
 
   /**
@@ -536,49 +537,52 @@ export class RoutesManager {
     SettingsManager.updateSetting("pointsVisible", visible)
   }
 
-  /**
-   * Toggle anomalies layer
-   * Fetches anomaly points from backend on first enable (lazy-load pattern)
-   */
   async toggleAnomalies(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("anomaliesEnabled", enabled)
+    await this.refreshAnomalies({ enabled })
+  }
+
+  async refreshAnomalies({ enabled }) {
+    const anomaliesLayer = this.layerManager.getLayer("anomalies")
+    if (!anomaliesLayer) return
+
+    if (!enabled) {
+      anomaliesLayer.hide()
+      return
+    }
+
+    const fetchId = ++this._anomaliesFetchId
+    this.controller.showProgress()
+    this.controller.updateLoadingCounts({
+      counts: { anomalies: 0 },
+      isComplete: false,
+    })
 
     try {
-      const anomaliesLayer = this.layerManager.getLayer("anomalies")
-      if (!anomaliesLayer) return
+      const startDate = this.controller.startDateValue
+      const endDate = this.controller.endDateValue
+      const geoJSON = await anomaliesLayer.fetchAnomalies({
+        start_at: startDate,
+        end_at: endDate,
+      })
 
-      if (enabled) {
-        if (anomaliesLayer.data?.features?.length > 0) {
-          anomaliesLayer.show()
-        } else {
-          // Fetch anomaly points from backend (lazy-load)
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { anomalies: 0 },
-            isComplete: false,
-          })
+      if (fetchId !== this._anomaliesFetchId) return
 
-          const startDate = this.controller.startDateValue
-          const endDate = this.controller.endDateValue
-          const geoJSON = await anomaliesLayer.fetchAnomalies({
-            start_at: startDate,
-            end_at: endDate,
-          })
+      this.controller.updateLoadingCounts({
+        counts: { anomalies: geoJSON.features.length },
+        isComplete: true,
+      })
 
-          this.controller.updateLoadingCounts({
-            counts: { anomalies: geoJSON.features.length },
-            isComplete: true,
-          })
-
-          anomaliesLayer.update(geoJSON)
-          anomaliesLayer.show()
-        }
-      } else {
-        anomaliesLayer.hide()
-      }
+      anomaliesLayer.update(geoJSON)
+      anomaliesLayer.show()
     } catch (error) {
-      console.error("Failed to toggle anomalies layer:", error)
+      if (fetchId !== this._anomaliesFetchId) return
+      console.error("Failed to refresh anomalies layer:", error)
+      this.controller.updateLoadingCounts({
+        counts: { anomalies: 0 },
+        isComplete: true,
+      })
       Toast.error("Failed to load anomalies")
     }
   }
