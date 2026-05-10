@@ -164,7 +164,7 @@ module ApplicationHelper
   def email_password_login_enabled?
     return true unless DawarichSettings.oidc_enabled?
 
-    DawarichSettings.registration_enabled?
+    ALLOW_EMAIL_PASSWORD_LOGIN
   end
 
   def preferred_map_path(params = {})

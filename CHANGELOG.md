@@ -4,12 +4,117 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.7.8] - Unreleased
 
 ### Fixed
 
-- The slider knob inside settings and map-layer toggles now slides over to the new position when clicked, instead of staying on the left while only the track colour changes. (#2566)
+- Fix support of FIT files from Garmin Connect. #2686
+- The Anomalies map layer no longer requires manually toggling off and on after a page reload or timeframe change. The toggle state is restored on reload, and the layer refetches anomalies for the active date range. #2568
+- Email/password login is now shown alongside the OIDC button on self-hosted instances by default, instead of being hidden whenever OIDC is configured. Operators who want to enforce OIDC-only sign-in can set `ALLOW_EMAIL_PASSWORD_LOGIN=false`. #2495
+- Suggested visits at residential addresses are no longer stuck on the placeholder name "Suggested place" indefinitely. The nightly place-naming job now assembles a name from street, house number, city, and state when the geocoder response has no top-level place name — matching how new visits are named at creation time. (#1711)
+- Photos imported from Immich now display at the correct time on Map v2 and import with the correct UTC timestamp, regardless of the host server's timezone or the photo's capture timezone. Previously, photos taken outside the server's timezone could appear up to 24 hours off. Existing imports keep their old timestamps; re-run the Immich import to fix already-imported photos. The photos API now also exposes a `capturedAt` field with the canonical UTC instant alongside the existing `localDateTime` key. #2253
+- Confirmed and declined visits inside an area or assigned to a place are no longer reverted to "suggested" — and any name you gave them is no longer overwritten — by the nightly visit-recompute job. (#2048, #2484)
 - GPX import now streams the file rather than loading the entire XML into memory, so multi-hundred-MB GPX files (e.g. long-running activity exports) no longer OOM the Sidekiq worker. (#2296)
+
+## [1.7.7] - 2026-05-09
+
+### ⚠️ Breaking changes
+
+**Prometheus metrics backend migrated to Yabeda.**
+
+Dawarich now uses the Yabeda monitoring framework instead of `discourse/prometheus_exporter`. Self-hosters who scrape Prometheus metrics from Dawarich should update their configuration.
+
+If Sidekiq is unreachable during a scrape, web returns its own metrics only and
+logs a warning. Prometheus sees a momentary gap in `sidekiq_*` rather than a
+failed scrape.
+
+**Scrape target** (requires HTTP basic auth with `METRICS_USERNAME` / `METRICS_PASSWORD`):
+
+- Web: `http://dawarich_app:3000/metrics`
+
+**Custom `dawarich_archive_*` metric names are unchanged.** Dashboards and alerts built on these metrics continue to work.
+
+**Infrastructure metric names have changed.** If you have dashboards built on `ruby_*`, `active_record_*`, or similar metrics emitted by `prometheus_exporter`, you must update them:
+
+| Category | Before | After |
+|---|---|---|
+| HTTP requests (total) | `ruby_http_requests_total` | `rails_requests_total` |
+| HTTP request duration | `ruby_http_request_duration_seconds` | `rails_request_duration` |
+| Sidekiq job count | `ruby_sidekiq_jobs_total` | `sidekiq_jobs_executed_total` |
+| Sidekiq failed jobs | `ruby_sidekiq_failed_jobs_total` | `sidekiq_jobs_failed_total` |
+| Sidekiq job duration | `ruby_sidekiq_job_duration_seconds` | `sidekiq_job_runtime_seconds` |
+| Sidekiq queue latency | `ruby_sidekiq_queue_latency_seconds` | `sidekiq_queue_latency` |
+| Sidekiq queue backlog | `ruby_sidekiq_queue_backlog_total` | `sidekiq_jobs_waiting_count` |
+| Sidekiq process count | `ruby_sidekiq_process_count` | `sidekiq_active_processes` |
+| Puma workers | `ruby_puma_workers` | `puma_workers` |
+| Puma backlog | `ruby_puma_request_backlog` | `puma_backlog` |
+| Puma thread pool capacity | `ruby_puma_thread_pool_capacity` | `puma_pool_capacity` |
+| ActiveRecord pool | `active_record_connection_pool_connections` | `activerecord_connection_pool_size` |
+| Process/GC (e.g. `ruby_rss`, `ruby_heap_live_slots`) | emitted | not emitted by default; add a custom Yabeda group if needed |
+
+**Removed environment variables:**
+- `PROMETHEUS_EXPORTER_HOST`, `PROMETHEUS_EXPORTER_HOST_SIDEKIQ` — no longer needed. Metrics are served in-process by each application.
+
+**Retained environment variables:**
+- `PROMETHEUS_EXPORTER_ENABLED` — still the single on/off switch.
+- `METRICS_USERNAME`, `METRICS_PASSWORD` — unchanged.
+- `PROMETHEUS_EXPORTER_PORT` — port the in-process Sidekiq metrics exporter binds to (default 9394).
+
+**New optional environment variable:**
+- `SIDEKIQ_METRICS_URL` — internal URL the web container uses to fetch Sidekiq metrics (default `http://dawarich_sidekiq:9394/metrics`). Override on Dokku, Kubernetes, or any deployment where the worker container's hostname differs from the docker-compose default.
+
+**Prometheus scrape config example:**
+
+```yaml
+scrape_configs:
+  - job_name: dawarich
+    metrics_path: /metrics
+    basic_auth:
+      username: prometheus     # set via METRICS_USERNAME
+      password: prometheus     # set via METRICS_PASSWORD
+    static_configs:
+      - targets: ['dawarich_app:3000']
+```
+
+### Fixed
+
+- Fixed monthly stats failing with a "Stats update failed" notification when the month's distance exceeded the int4 limit (2,147,483,647 m ≈ 2.15M km). Affected months stayed stuck on the prior value until recalculated. #1996
+- 500 error on the imports page. #2683
+- Insights weekly pattern now refreshes after monthly stats change, instead of showing a stale snapshot until the next monthly digest job runs. #2478
+- Points with no reverse-geocoding result (ocean, wilderness) are now marked as attempted instead of being re-queued every nightly run; use "Start Reverse Geocoding" to retry after switching providers. #2271
+- Activity detection now falls back to displacement when the tracker reports 0 m/s, so OwnTracks Significant Change mode and similar low-power setups stop misclassifying real movement as stationary. Run **Map v2 → Settings → Recalculate tracks & stats** to apply to existing tracks. #2390
+- Redis no longer balloons (multi-GB) when browsing photos with Immich or Photoprism connected. Photo thumbnails are no longer copied into the server-side Redis cache; the browser caches them directly via `Cache-Control` instead. #1609
+- Drag-selecting a region on the map now includes visits attached to your saved Areas (Home, Work, etc.), instead of silently dropping area-only visits from the visit tray. #2420
+
+## [1.7.6] - 2026-05-09
+
+### Added
+
+- Map v2 timeline: bulk Confirm and Decline in selection mode, capped at 500 visits per request.
+- Trip **Recalculate** button: refresh path, distance, and visited countries on demand. The page updates automatically when it finishes; repeat clicks within 60 seconds are ignored. #2478
+- Google's "Timeline Edits.json" type of Takeout export is now recognized and imported directly.
+
+### Fixed
+
+- Monthly stats now bucket points by your local timezone instead of UTC — fixes phantom day-1 spikes from overnight imports and undercounts near month boundaries. #2546
+- Slider knobs in settings and map-layer toggles now move on click instead of staying left while only the track color changes. #2566
+- Stats and tracks recalculation no longer crashes in midnight-DST timezones (e.g. `America/Santiago`). #2638
+- Mobile map fills the dynamic viewport and respects iPhone safe-area insets — navbar below the notch, date selector / demo banner above the home indicator and Safari URL bar. #1873
+- Transactional emails now build links with HTTPS, fixing reset links that arrived as `http://` even when the site was served over HTTPS via reverse proxy. #1469
+- SMTP authentication and timeouts (`SMTP_AUTHENTICATION`, `SMTP_OPEN_TIMEOUT`, `SMTP_READ_TIMEOUT`) are now env-configurable — Office 365 and similar no longer need a custom initializer. #1469
+- Export zip entry timestamps no longer drift across timezones (was 7h ahead on US Pacific). Applies to per-export and full-archive downloads. #2639
+- Map v2 heatmap stays visible at city and street zoom instead of fading out past city level. #2087
+- Map v2 search panel: visits list no longer flashes and disappears after picking a location — a stale debounced fetch was overwriting it. #2394
+- Transportation-mode sliders (Walking/Cycling/Driving max speed, Min flight distance) in Map v2 settings now respect your unit of measurement (mph/mi when miles are selected). #2634
+- Self-hosting docs (Docker, Synology, intro) now show the correct default password `safepassword` instead of `password`. #2636
+- Map v2 light/white/grayscale basemaps: dense point sequences no longer camouflage as thin white lines — strokes are now dark on light basemaps, white on dark. #2387
+- Activity Overview heatmap opens centered on your most recent active day instead of January 1 — no blank future months on mobile early in the year. #2228
+- Map v2 timeline calendar: a selected day shows visits in your profile timezone — late-evening visits no longer leak across day tabs. #2619
+- Renaming a suggested visit in the timeline now confirms it and saves the typed name as a place under your account. #2621
+- User-data archive import no longer lets the payload overwrite a track's `user_id`, `id`, or timestamps.
+- Track generation no longer creates duplicate tracks — multiple background jobs (daily, realtime, recalc, import) could previously produce the same track per time window, leaving 2–3 copies on your map. Run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to recompute from the merged points. #2677
+- Heatmap on Map V2 looks a lot better than before
+- In notifications section of navbar only "99+" is shown when there are more than 99 notifications, instead of the actual number.
 
 ## [1.7.5] - 2026-05-04
 
@@ -86,18 +191,18 @@ Fixes for several issues found in a static-analysis security audit. None of thes
 
 - Google Phone Takeout `location-history.json` now imports reliably. (#2437, #2587)
 - KMZ files from a wider range of exporters now import.
-- Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. (#2446)
+- Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. #2446
 - FIT files from non-Garmin devices and phone apps now import.
 - CSV files with quoted headers (e.g. `"Latitude","Longitude"`) are now recognized.
 - Empty (0-byte) uploads now produce a clear error instead of crashing.
-- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate`. (#2576)
+- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate`. #2576
 
 
 ## [1.7.2] - 2026-04-29
 
 ### Removed
 
-- `rails_pulse` performance monitoring has been removed entirely. The gem, its initializer (`config/initializers/rails_pulse.rb`), the `/rails_pulse` route mount, the scheduled `RailsPulse::SummaryJob` and `RailsPulse::CleanupJob` cron entries, and all `rails_pulse_*` tables are gone. A new migration `DropRailsPulseTables` cleans up existing installations on upgrade. This resolves a class of upgrade failures where the `rails_pulse_*` tables ended up missing/half-applied on production. (#2549)
+- `rails_pulse` performance monitoring has been removed entirely. The gem, its initializer (`config/initializers/rails_pulse.rb`), the `/rails_pulse` route mount, the scheduled `RailsPulse::SummaryJob` and `RailsPulse::CleanupJob` cron entries, and all `rails_pulse_*` tables are gone. A new migration `DropRailsPulseTables` cleans up existing installations on upgrade. This resolves a class of upgrade failures where the `rails_pulse_*` tables ended up missing/half-applied on production. #2549
 
 ### Added
 
@@ -107,9 +212,9 @@ Fixes for several issues found in a static-analysis security audit. None of thes
 ### Fixed
 
 - Monthly and yearly digest emails now convert distance from stored meters to the user's preferred unit (km/mi). Previously the raw meter value was shown next to the unit label (e.g. `500000 km` instead of `500 km`).
-- Map (Leaflet): route lines no longer revert to their pre-move shape when an unrelated point is deleted after dragging another point. The dragend handler was failing to update the marker array because it looked for the controller in the wrong place. (#1797)
-- Track creation now caps a single track's distance at 100,000 km (with a logged warning) instead of silently truncating at the legacy 999,999 m limit. Long-haul journeys are no longer collapsed to ~1000 km. (#1693)
-- Dev container: bind-mount the project root into the container so `bundle install` can locate the `Gemfile`. Previously only sub-paths were mounted, leaving `/var/app/Gemfile` missing. (#1804)
+- Map (Leaflet): route lines no longer revert to their pre-move shape when an unrelated point is deleted after dragging another point. The dragend handler was failing to update the marker array because it looked for the controller in the wrong place. #1797
+- Track creation now caps a single track's distance at 100,000 km (with a logged warning) instead of silently truncating at the legacy 999,999 m limit. Long-haul journeys are no longer collapsed to ~1000 km. #1693
+- Dev container: bind-mount the project root into the container so `bundle install` can locate the `Gemfile`. Previously only sub-paths were mounted, leaving `/var/app/Gemfile` missing. #1804
 - Map v2: photos without GPS metadata (`latitude`/`longitude` null) no longer render as markers at Null Island (0°, 0°) — they are now correctly excluded from the photos layer. (#2464, #2465)
 
 

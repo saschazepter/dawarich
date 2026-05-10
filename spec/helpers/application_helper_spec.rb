@@ -385,8 +385,8 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       end
 
-      it 'returns true regardless of ALLOW_EMAIL_PASSWORD_REGISTRATION' do
-        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+      it 'returns true regardless of ALLOW_EMAIL_PASSWORD_LOGIN' do
+        stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
 
         expect(helper.email_password_login_enabled?).to be true
       end
@@ -394,13 +394,11 @@ RSpec.describe ApplicationHelper, type: :helper do
 
     context 'in cloud mode with OAuth providers (GitHub/Google)' do
       before do
-        # Cloud mode: self_hosted? is false, so oidc_enabled? returns false
-        # even if there are OAuth providers configured
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       end
 
       it 'always returns true (OAuth is supplementary to email/password)' do
-        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+        stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
 
         expect(helper.email_password_login_enabled?).to be true
       end
@@ -411,9 +409,9 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
       end
 
-      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is true' do
+      context 'when ALLOW_EMAIL_PASSWORD_LOGIN is true' do
         before do
-          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+          stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', true)
         end
 
         it 'returns true' do
@@ -421,9 +419,9 @@ RSpec.describe ApplicationHelper, type: :helper do
         end
       end
 
-      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is false' do
+      context 'when ALLOW_EMAIL_PASSWORD_LOGIN is false' do
         before do
-          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+          stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
         end
 
         it 'returns false (OIDC-only mode)' do

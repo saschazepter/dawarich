@@ -16,8 +16,7 @@ module Places
 
       ActiveRecord::Base.transaction do
         update_place_name(properties, geodata)
-
-        update_visits_name(properties) if properties['name'].present?
+        update_visits_name(properties)
 
         place
       end
@@ -32,7 +31,8 @@ module Places
     attr_reader :place
 
     def update_place_name(properties, geodata)
-      place.name = properties['name'] if properties['name'].present?
+      built_name = ::Visits::Names::Builder.build_from_properties(properties)
+      place.name = built_name if built_name.present?
       place.city = properties['city'] if properties['city'].present?
       place.country = properties['country'] if properties['country'].present?
       place.geodata = geodata.data if DawarichSettings.store_geodata?
@@ -41,7 +41,10 @@ module Places
     end
 
     def update_visits_name(properties)
-      place.visits.where(name: Place::DEFAULT_NAME).update_all(name: properties['name'])
+      built_name = ::Visits::Names::Builder.build_from_properties(properties)
+      return if built_name.blank?
+
+      place.visits.where(name: Place::DEFAULT_NAME).update_all(name: built_name)
     end
   end
 end

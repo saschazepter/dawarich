@@ -26,7 +26,13 @@ class ReverseGeocoding::Points::FetchData
 
   def update_point_with_geocoding_data
     response = Geocoder.search([point.lat, point.lon]).first
-    return if response.blank? || response.data['error'].present?
+
+    if response.blank?
+      with_deadlock_retry { point.update!(reverse_geocoded_at: Time.current) }
+      return
+    end
+
+    return if response.data['error'].present?
 
     country_record = Country.find_by(name: response.country) if response.country
 

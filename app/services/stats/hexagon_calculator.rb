@@ -67,22 +67,28 @@ class Stats::HexagonCalculator
   end
 
   def start_timestamp
-    DateTime.new(year, month, 1).to_i
+    (DateTime.new(year, month, 1) - 2.days).to_i
   end
 
   def end_timestamp
-    DateTime.new(year, month, -1, 23, 59, 59).to_i
+    (DateTime.new(year, month, -1, 23, 59, 59) + 2.days).to_i
   end
 
   def points
     return @points if defined?(@points)
 
+    tz = user.timezone_iana
     @points = user
               .points
               .not_anomaly
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
               .where.not(lonlat: nil)
+              .where(
+                'EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ? ' \
+                'AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE ?)) = ?',
+                tz, year, tz, month
+              )
               .select(:lonlat, :timestamp)
               .order(timestamp: :asc)
   end

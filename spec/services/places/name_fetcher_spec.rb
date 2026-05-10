@@ -46,7 +46,7 @@ RSpec.describe Places::NameFetcher do
       it 'updates place name from geocoder data' do
         expect { service.call }.to change(place, :name)
           .from(Place::DEFAULT_NAME)
-          .to('Central Park')
+          .to('Central Park, New York')
       end
 
       it 'updates place city from geocoder data' do
@@ -106,7 +106,7 @@ RSpec.describe Places::NameFetcher do
           expect { service.call }.to \
             change { visit_with_default_name.reload.name }
             .from(Place::DEFAULT_NAME)
-            .to('Central Park')
+            .to('Central Park, New York')
         end
 
         it 'does not update visits with custom names' do
@@ -136,7 +136,7 @@ RSpec.describe Places::NameFetcher do
       it 'returns the updated place' do
         result = service.call
         expect(result).to eq(place)
-        expect(result.name).to eq('Central Park')
+        expect(result.name).to eq('Central Park, New York')
       end
     end
 

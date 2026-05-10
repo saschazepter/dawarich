@@ -37,9 +37,9 @@ RSpec.describe 'Users::Sessions', type: :request do
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
       end
 
-      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is true' do
+      context 'when ALLOW_EMAIL_PASSWORD_LOGIN is true' do
         before do
-          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+          stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', true)
         end
 
         it 'allows email/password login' do
@@ -52,9 +52,9 @@ RSpec.describe 'Users::Sessions', type: :request do
         end
       end
 
-      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is false (OIDC-only mode)' do
+      context 'when ALLOW_EMAIL_PASSWORD_LOGIN is false (OIDC-only mode)' do
         before do
-          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+          stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
         end
 
         it 'blocks email/password login' do
@@ -82,10 +82,10 @@ RSpec.describe 'Users::Sessions', type: :request do
   end
 
   describe 'GET /users/sign_in' do
-    context 'when OIDC is enabled and ALLOW_EMAIL_PASSWORD_REGISTRATION is false' do
+    context 'when OIDC is enabled and ALLOW_EMAIL_PASSWORD_LOGIN is false' do
       before do
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
-        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+        stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
       end
 
       it 'renders the login page (to show OIDC buttons)' do

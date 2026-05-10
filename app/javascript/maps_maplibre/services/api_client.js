@@ -627,25 +627,6 @@ export class ApiClient {
   }
 
   /**
-   * Bulk delete points
-   * @param {Array<number>} pointIds - Array of point IDs to delete
-   * @returns {Promise<Object>} { message, count }
-   */
-  async bulkDeletePoints(pointIds) {
-    const response = await fetch(`${this.baseURL}/points/bulk_destroy`, {
-      method: "DELETE",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ point_ids: pointIds }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete points: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
-
-  /**
    * Update visit status (confirm/decline)
    * @param {number} visitId - Visit ID
    * @param {string} status - 'confirmed' or 'declined'

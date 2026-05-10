@@ -149,7 +149,7 @@ module TransportationModes
       # Prefer stored velocity from GPS
       if point2.velocity.present?
         stored_speed = point2.velocity.to_f
-        return stored_speed if stored_speed >= 0
+        return stored_speed if stored_speed.positive?
       end
 
       # Calculate from distance and time

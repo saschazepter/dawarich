@@ -73,6 +73,35 @@ RSpec.describe Fit::Importer do
       end
     end
 
+    context 'with flat-record FIT file (sessions may have no laps, as observed with Garmin Connect exports)' do
+      let(:flat_fit_fixture_path) do
+        path = Rails.root.join('tmp', "test_flat_#{SecureRandom.hex(4)}.fit").to_s
+        generate_flat_record_fit_fixture(path)
+        path
+      end
+
+      after { File.delete(flat_fit_fixture_path) if File.exist?(flat_fit_fixture_path) }
+
+      before do
+        described_class.new(import, user.id, flat_fit_fixture_path).call
+      end
+
+      it 'imports points when sessions may have no laps and records are flat on the activity' do
+        expect(user.points.count).to eq(3)
+      end
+
+      it 'parses coordinates correctly' do
+        point = user.points.order(:timestamp).first
+        expect(point.lat).to be_within(0.0001).of(52.5200)
+        expect(point.lon).to be_within(0.0001).of(13.4050)
+      end
+
+      it 'maps activity type from session sport' do
+        point = user.points.order(:timestamp).first
+        expect(point.raw_data['activity_type']).to eq('cycling')
+      end
+    end
+
     context 'with ActiveStorage file (nil file_path)' do
       let(:temp_path) { fit_fixture_path }
       let(:downloader) { instance_double(Imports::SecureFileDownloader, download_to_temp_file: temp_path) }
