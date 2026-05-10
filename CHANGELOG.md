@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.7.8] - Unreleased
 
+### Changed
+
+- Visit detection now uses PostGIS spatial clustering for faster, more accurate stops; the iteration-based detector is removed.
+
+### Added
+
+- "Re-run detection on full history" button under Settings → Visit detection. Confirmed visits and named places are preserved.
+
 ### Fixed
 
 - Fix support of FIT files from Garmin Connect. #2686
