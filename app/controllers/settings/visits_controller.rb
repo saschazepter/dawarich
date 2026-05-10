@@ -6,7 +6,7 @@ class Settings::VisitsController < ApplicationController
   def show; end
 
   def update
-    merged = current_user.safe_settings.settings.merge(coerced_settings_params)
+    merged = (current_user.settings || {}).merge(coerced_settings_params)
     current_user.update!(settings: merged)
 
     redirect_to settings_visits_path, notice: 'Visit detection settings updated'
