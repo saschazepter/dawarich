@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_09_163901) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -465,6 +465,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
     t.text "otp_backup_codes", array: true
     t.integer "subscription_source", default: 0, null: false
     t.string "signup_variant"
+    t.datetime "visits_redetected_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -474,6 +475,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
     t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"
     t.index ["status"], name: "index_users_on_status"
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
+    t.index ["visits_redetected_at"], name: "index_users_on_visits_redetected_at"
   end
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false

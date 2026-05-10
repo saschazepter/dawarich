@@ -1,0 +1,23 @@
+<% cooldown_active = current_user.visits_redetected_at.present? && current_user.visits_redetected_at > 1.hour.ago %>
+
+<div class="card bg-base-200 shadow-xl">
+  <div class="card-body">
+    <h3 class="text-xl font-bold">Re-run detection on full history</h3>
+    <p class="text-sm opacity-80">
+      Replaces all suggested visits across your entire history with fresh detections using the settings above.
+      Confirmed visits and the places you've named are preserved. This usually takes a few minutes.
+    </p>
+
+    <%= button_to visits_redetections_path,
+                  method: :post,
+                  data: { turbo_confirm: "Replace all suggested visits across your full history. Confirmed visits stay. Continue?" },
+                  class: "btn btn-warning #{'btn-disabled' if cooldown_active}",
+                  disabled: cooldown_active do %>
+      Re-run detection on full history
+    <% end %>
+
+    <% if cooldown_active %>
+      <span class="text-xs opacity-70">Available again at <%= (current_user.visits_redetected_at + 1.hour).to_fs(:short) %>.</span>
+    <% end %>
+  </div>
+</div>
