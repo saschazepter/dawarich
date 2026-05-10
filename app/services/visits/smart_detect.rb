@@ -30,15 +30,17 @@ module Visits
 
     def points_exist?
       Point.where(user_id: user.id, visit_id: nil)
+           .not_anomaly
            .where(timestamp: @start_at..@end_at)
-           .where('anomaly IS NULL OR anomaly = FALSE')
            .exists?
     end
 
     def with_user_lock
       if advisory_locks_enabled?
         ActiveRecord::Base.transaction do
-          ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{user.id.to_i})")
+          ActiveRecord::Base.connection.execute(
+            ActiveRecord::Base.sanitize_sql_array(['SELECT pg_advisory_xact_lock(?)', user.id.to_i])
+          )
           yield
         end
       else
@@ -71,8 +73,8 @@ module Visits
         created.concat(Visits::Creator.new(user).create_visits(grouped_visits))
       end
 
-      log_summary(ranges.size, total_points_in, total_clusters, created.compact.size, started_at)
-      created.compact
+      log_summary(ranges.size, total_points_in, total_clusters, created.size, started_at)
+      created
     end
 
     def batch_ranges
