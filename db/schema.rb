@@ -466,9 +466,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_09_163901) do
     t.integer "subscription_source", default: 0, null: false
     t.string "signup_variant"
     t.datetime "visits_redetected_at"
+    t.integer "failed_otp_attempts", default: 0, null: false
+    t.datetime "otp_locked_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["otp_locked_at"], name: "index_users_on_otp_locked_at_not_null", where: "(otp_locked_at IS NOT NULL)"
     t.index ["plan"], name: "index_users_on_plan"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid_present", unique: true, where: "((provider IS NOT NULL) AND (uid IS NOT NULL))"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true

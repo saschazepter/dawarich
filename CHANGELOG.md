@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - "Re-run detection on full history" button under Settings → Visits. Confirmed visits and named places are preserved.
+- Account lockout after 10 failed 2FA attempts (30-minute auto-unlock or password reset). Applies to both the mobile API (`POST /api/v1/auth/otp_challenge`) and the web sign-in flow. A notification email is sent to the account owner when a lockout is triggered. #2575
 
 ### Fixed
 
