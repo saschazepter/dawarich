@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Photos imported from Immich now display at the correct time on Map v2 and import with the correct UTC timestamp, regardless of the host server's timezone or the photo's capture timezone. Previously, photos taken outside the server's timezone could appear up to 24 hours off. Existing imports keep their old timestamps; re-run the Immich import to fix already-imported photos. The photos API now also exposes a `capturedAt` field with the canonical UTC instant alongside the existing `localDateTime` key. #2253
 - Confirmed and declined visits inside an area or assigned to a place are no longer reverted to "suggested" — and any name you gave them is no longer overwritten — by the nightly visit-recompute job. (#2048, #2484)
 - GPX import now streams the file rather than loading the entire XML into memory, so multi-hundred-MB GPX files (e.g. long-running activity exports) no longer OOM the Sidekiq worker. (#2296)
+- Viewing an import on Map v2 or the Points page now selects the import's full date range, instead of defaulting to today or the last month. #1857
 
 ## [1.7.7] - 2026-05-09
 
