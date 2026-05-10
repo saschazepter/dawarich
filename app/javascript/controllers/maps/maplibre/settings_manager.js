@@ -64,6 +64,7 @@ export class SettingsController {
       familyToggle: "familyEnabled",
       speedColoredToggle: "speedColoredRoutes",
       tracksToggle: "tracksEnabled",
+      anomaliesToggle: "anomaliesEnabled",
     }
 
     // Gated layer toggles that Lite users cannot persist
@@ -990,7 +991,7 @@ export class SettingsController {
    */
   getDistanceUnit() {
     // Try to get from settings, default to 'km'
-    return this.settings?.distanceUnit || "km"
+    return this.settings?.distance_unit || "km"
   }
 
   /**

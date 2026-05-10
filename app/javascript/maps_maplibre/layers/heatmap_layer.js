@@ -27,56 +27,58 @@ export class HeatmapLayer extends BaseLayer {
         type: "heatmap",
         source: this.sourceId,
         paint: {
-          // Fixed weight
-          "heatmap-weight": 1,
+          // Tuned for typical Dawarich point density across country→street zoom;
+          // first non-zero color stop kept above the sparse-noise floor.
+          "heatmap-weight": 0.2,
 
-          // low intensity to view major clusters
           "heatmap-intensity": [
             "interpolate",
             ["linear"],
             ["zoom"],
             0,
-            0.01,
+            0.5,
             10,
-            0.1,
+            1,
             15,
-            0.3,
+            1.5,
+            20,
+            2,
+            22,
+            2,
           ],
 
-          // Color ramp
+          // Color ramp matching Map v1 (leaflet.heat default gradient)
           "heatmap-color": [
             "interpolate",
             ["linear"],
             ["heatmap-density"],
             0,
-            "rgba(0,0,0,0)",
+            "rgba(0,0,255,0)",
             0.4,
-            "rgba(0,0,0,0)",
-            0.65,
-            "rgba(33,102,172,0.4)",
+            "rgb(0,0,255)",
+            0.6,
+            "rgb(0,255,255)",
             0.7,
-            "rgb(103,169,207)",
+            "rgb(0,255,0)",
             0.8,
-            "rgb(209,229,240)",
-            0.9,
-            "rgb(253,219,199)",
-            0.95,
-            "rgb(239,138,98)",
+            "rgb(255,255,0)",
             1,
-            "rgb(178,24,43)",
+            "rgb(255,0,0)",
           ],
 
           // Radius in pixels, exponential growth
           "heatmap-radius": [
             "interpolate",
-            ["exponential", 2],
+            ["exponential", 1.5],
             ["zoom"],
             10,
-            5,
+            8,
+            13,
             15,
-            10,
+            15,
+            25,
             20,
-            160,
+            50,
           ],
 
           // Visible when zoomed in, fades when zoomed out
