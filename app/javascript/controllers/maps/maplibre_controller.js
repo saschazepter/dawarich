@@ -329,6 +329,9 @@ export default class extends Controller {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
+      if (this.settings?.anomaliesEnabled) {
+        this.routesManager.refreshAnomalies({ enabled: true })
+      }
     })
 
     // Show family members list immediately (doesn't depend on layer)
@@ -452,7 +455,11 @@ export default class extends Controller {
     this.endDateValue = end
 
     this._clearDayHighlight?.()
-    this.loadMapData()
+    this.loadMapData().then(() => {
+      if (this.settings?.anomaliesEnabled) {
+        this.routesManager.refreshAnomalies({ enabled: true })
+      }
+    })
     this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
   }
