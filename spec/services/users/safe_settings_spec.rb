@@ -55,7 +55,7 @@ RSpec.describe Users::SafeSettings do
             gps_filtering_enabled: true,
             gps_accuracy_threshold: 100,
             timezone: 'UTC',
-            visit_radius_meters: 50,
+            visit_radius_meters: 100,
             visit_min_points: 3,
             visit_density_fill_enabled: true
           }
@@ -136,7 +136,7 @@ RSpec.describe Users::SafeSettings do
             'gps_filtering_enabled' => true,
             'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC',
-            'visit_radius_meters' => 50,
+            'visit_radius_meters' => 100,
             'visit_min_points' => 3,
             'visit_density_fill_enabled' => true
           }
@@ -190,7 +190,7 @@ RSpec.describe Users::SafeSettings do
             gps_filtering_enabled: true,
             gps_accuracy_threshold: 100,
             timezone: 'UTC',
-            visit_radius_meters: 50,
+            visit_radius_meters: 100,
             visit_min_points: 3,
             visit_density_fill_enabled: true
           }
@@ -710,7 +710,7 @@ RSpec.describe Users::SafeSettings do
 
   describe '#visit_radius_meters' do
     it 'returns 50 when missing' do
-      expect(described_class.new({}).visit_radius_meters).to eq(50)
+      expect(described_class.new({}).visit_radius_meters).to eq(100)
     end
 
     it 'clamps below the minimum to 5' do

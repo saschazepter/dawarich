@@ -6,7 +6,7 @@ class Settings::VisitsController < ApplicationController
   def show; end
 
   def update
-    merged = current_user.safe_settings.settings.merge(settings_params.to_h)
+    merged = current_user.safe_settings.settings.merge(coerced_settings_params)
     current_user.update!(settings: merged)
 
     redirect_to settings_visits_path, notice: 'Visit detection settings updated'
@@ -16,5 +16,17 @@ class Settings::VisitsController < ApplicationController
 
   def settings_params
     params.require(:settings).permit(:visit_radius_meters, :visit_min_points, :visit_density_fill_enabled)
+  end
+
+  def coerced_settings_params
+    raw = settings_params.to_h
+    coerced = {}
+    coerced['visit_radius_meters'] = raw['visit_radius_meters'].to_i if raw.key?('visit_radius_meters')
+    coerced['visit_min_points']    = raw['visit_min_points'].to_i    if raw.key?('visit_min_points')
+    if raw.key?('visit_density_fill_enabled')
+      coerced['visit_density_fill_enabled'] =
+        ActiveModel::Type::Boolean.new.cast(raw['visit_density_fill_enabled'])
+    end
+    coerced
   end
 end

@@ -5,6 +5,7 @@ module Visits
     MIN_DURATION_SECONDS = 180
     QUERY_TIMEOUT_MS = 30_000
     MAX_SYNTHETIC_PER_GAP = 200
+    MAX_CANDIDATE_POINTS = 100_000
     DENSITY_GAP_THRESHOLD_SECONDS = 60
     DENSITY_MAX_GAP_SECONDS = 12 * 3600
     DENSITY_MAX_DISTANCE_METERS = 50
@@ -19,13 +20,22 @@ module Visits
     end
 
     def call
+      candidate_count = count_candidate_points
+      if candidate_count > MAX_CANDIDATE_POINTS
+        Rails.logger.warn(
+          "[Visits::DbscanClusterer skip] user_id=#{user.id} range=#{start_at}..#{end_at} " \
+          "candidate_points=#{candidate_count} max=#{MAX_CANDIDATE_POINTS}"
+        )
+        return []
+      end
+
       conn = ActiveRecord::Base.connection
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       conn.execute("SET statement_timeout = #{QUERY_TIMEOUT_MS}")
       begin
         result = conn.exec_query(dbscan_sql, 'DBSCAN')
         clusters = parse_results(result)
-        log_success(clusters, started_at)
+        log_success(clusters, candidate_count, started_at)
         clusters
       ensure
         conn.execute('RESET statement_timeout')
@@ -56,12 +66,20 @@ module Visits
       value.gsub(/[{}]/, '').split(',').map(&:to_i)
     end
 
-    def log_success(clusters, started_at)
+    def log_success(clusters, candidate_count, started_at)
       duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).to_i
       Rails.logger.info(
         "[Visits::DbscanClusterer] user_id=#{user.id} range=#{start_at}..#{end_at} " \
-        "clusters=#{clusters.size} duration_ms=#{duration_ms}"
+        "candidate_points=#{candidate_count} clusters=#{clusters.size} duration_ms=#{duration_ms}"
       )
+    end
+
+    def count_candidate_points
+      Point.where(user_id: user.id, visit_id: nil)
+           .where(timestamp: start_at..end_at)
+           .where('lonlat IS NOT NULL')
+           .where('anomaly IS NULL OR anomaly = FALSE')
+           .count
     end
 
     def eps_meters

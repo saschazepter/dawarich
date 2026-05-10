@@ -77,7 +77,9 @@ Rails.application.routes.draw do
     resource :recalculation, only: :create
   end
 
-  resource :redetections, only: :create, controller: 'visits/redetections', as: :visits_redetections
+  namespace :visits do
+    resource :redetections, only: :create
+  end
 
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key

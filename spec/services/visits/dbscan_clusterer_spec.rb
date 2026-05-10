@@ -48,7 +48,8 @@ RSpec.describe Visits::DbscanClusterer do
                        timestamp: ts + i * 60, accuracy: 10, visit_id: nil)
       end
 
-      log_pattern = /\[Visits::DbscanClusterer\] user_id=#{user.id} range=\d+\.\.\d+ clusters=\d+ duration_ms=\d+/
+      header = /\[Visits::DbscanClusterer\] user_id=#{user.id} range=\d+\.\.\d+/
+      log_pattern = /#{header} candidate_points=\d+ clusters=\d+ duration_ms=\d+/
       expect(Rails.logger).to receive(:info).with(a_string_matching(log_pattern))
 
       described_class.new(user, start_at: ts - 1, end_at: ts + 600).call

@@ -2,6 +2,8 @@
 
 module Visits
   class SmartDetect
+    include Visits::AdvisoryLockable
+
     BATCH_THRESHOLD_DAYS = 31
     BATCH_OVERLAP_SECONDS = 1.hour.to_i
 
@@ -46,10 +48,6 @@ module Visits
       else
         yield
       end
-    end
-
-    def advisory_locks_enabled?
-      ActiveRecord::Base.connection_pool.db_config.configuration_hash[:advisory_locks] != false
     end
 
     def run

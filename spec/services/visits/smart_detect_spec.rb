@@ -71,4 +71,28 @@ RSpec.describe Visits::SmartDetect do
       described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
     end
   end
+
+  describe 'plan window clamping' do
+    let(:lite_user) { create(:user, plan: :lite) }
+
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'clamps start_at to the data window for plan-restricted users' do
+      window_start = lite_user.data_window_start.to_i
+      requested_start = window_start - 30.days.to_i
+
+      detector = described_class.new(lite_user, start_at: requested_start, end_at: window_start + 60)
+
+      expect(detector.start_at).to eq(window_start)
+    end
+
+    it 'leaves start_at untouched for unrestricted (Pro) users' do
+      pro_user = create(:user, plan: :pro)
+      requested_start = base_ts - 365.days.to_i
+
+      detector = described_class.new(pro_user, start_at: requested_start, end_at: base_ts)
+
+      expect(detector.start_at).to eq(requested_start)
+    end
+  end
 end

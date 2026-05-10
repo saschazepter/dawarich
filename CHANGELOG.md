@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- "Re-run detection on full history" button under Settings → Visit detection. Confirmed visits and named places are preserved.
+- "Re-run detection on full history" button under Settings → Visits. Confirmed visits and named places are preserved.
 
 ### Fixed
 

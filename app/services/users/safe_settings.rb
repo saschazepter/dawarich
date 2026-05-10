@@ -54,7 +54,7 @@ class Users::SafeSettings
     'gps_filtering_enabled' => true,
     'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
-    'visit_radius_meters' => 50,
+    'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_density_fill_enabled' => true
   }.freeze
