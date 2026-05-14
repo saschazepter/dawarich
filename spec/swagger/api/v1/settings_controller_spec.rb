@@ -117,8 +117,6 @@ describe 'Settings API', type: :request do
         let(:settings) { { settings: { route_opacity: 60 } } }
         let(:api_key)  { create(:user).api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -262,8 +260,6 @@ describe 'Settings API', type: :request do
         let(:settings) { { settings: user.settings } }
         let(:api_key)  { user.api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -295,8 +291,6 @@ describe 'Settings API', type: :request do
 
         let(:user) { create(:user) }
         let(:api_key) { user.api_key }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

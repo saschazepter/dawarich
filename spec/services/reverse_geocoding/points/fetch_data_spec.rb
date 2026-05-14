@@ -5,10 +5,16 @@ require 'rails_helper'
 RSpec.describe ReverseGeocoding::Points::FetchData do
   subject(:fetch_data) { described_class.new(point.id).call }
 
-  let(:point) { create(:point) }
+  let(:point) do
+    pt = create(:point)
+    pt.update_columns(country_id: nil, country_name: nil, city: nil)
+    pt.reload
+  end
 
   context 'when Geocoder returns city and country' do
-    let!(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+    let!(:germany) do
+      Country.find_by(name: 'Germany') || create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+    end
 
     before do
       allow(Geocoder).to receive(:search).and_return(

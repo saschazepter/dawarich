@@ -40,7 +40,7 @@ class Tracks::BoundaryResolverJob < ApplicationJob
   end
 
   def resolve_boundary_tracks
-    Tracks::PerUserLock.with_user_lock(user.id) do
+    ActiveRecord::Base.with_advisory_lock!("tracks:user:#{user.id}", timeout_seconds: 30) do
       Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
     end
   end
