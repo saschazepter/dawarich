@@ -24,4 +24,12 @@ RSpec.describe 'tracks unique index allows two devices with the same start/end w
       create(:track, user: user, tracker_id: 'iphone', start_at: start_at, end_at: end_at)
     end.to raise_error(ActiveRecord::RecordNotUnique)
   end
+
+  it 'two tracks with NULL tracker_id and same start/end still collide (NULLS NOT DISTINCT)' do
+    create(:track, user: user, tracker_id: nil, start_at: start_at, end_at: end_at)
+
+    expect do
+      create(:track, user: user, tracker_id: nil, start_at: start_at, end_at: end_at)
+    end.to raise_error(ActiveRecord::RecordNotUnique)
+  end
 end

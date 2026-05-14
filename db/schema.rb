@@ -411,7 +411,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
-    t.index ["user_id", "tracker_id", "start_at", "end_at"], name: "index_tracks_on_user_tracker_start_end_unique", unique: true
+    t.index ["user_id", "tracker_id", "start_at", "end_at"], name: "index_tracks_on_user_tracker_start_end_unique", unique: true, nulls_not_distinct: true
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 

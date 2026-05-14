@@ -8,14 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- **Historical tracks auto-recalculate on upgrade.** A background job recalculates stats, tracks, and digests for every user with existing tracks; expect a temporary spike in Sidekiq queue depth, CPU, and database IO for the first few hours after upgrade, scaling with user count and history length.
+- **Historical tracks auto-recalculate on upgrade.** A background job recalculates stats, tracks, and digests for every user that still has tracks predating the per-device fix. Per-user jobs are staggered over the first hour to soften the spike, but expect elevated Sidekiq queue depth, CPU, and database IO until they finish — duration scales with user count and history length, and is heavier on single-CPU self-hosted instances. The job is self-healing: if Sidekiq is interrupted, the next deploy (or any subsequent migration re-run) re-enqueues users whose tracks still need backfilling.
 
 ### Fixed
 
 - Tracks recorded by multiple devices on the same account (phone + watch + GPS unit) no longer get merged into one zigzagging track on the map. Each device's points are kept on their own track, and Map v2 draws routes per-device. (#337, #1726)
-- Importing a GPX file with multiple `<trk>` or `<trkseg>` elements no longer merges them into a single track when timestamps overlap or arrive out of order (e.g. Garmin daily-file exports); each track and segment becomes its own track, and when a `<trk>` declares `<src>` or `<name>` that identity is used so consecutive re-imports of the same device stay on the same track stream. (#1726)
+- Importing a GPX file with multiple `<trk>` or `<trkseg>` elements no longer merges them into a single track when timestamps overlap or arrive out of order (e.g. Garmin daily-file exports); each track and segment becomes its own track. When a `<trk>` declares `<src>`, that identity is used so consecutive imports of the same device stay on the same track stream; with only `<name>`, identity is scoped to the import filename to prevent unrelated devices from colliding. (#1726)
 - Importing a Google Records.json export with positions from more than one device no longer "teleports" between devices and inflates distance travelled; points are scoped per-device using Google's `deviceTag`. (#337)
-- The `tracks` unique index now scopes by `tracker_id`, so two devices producing a journey with the same start/end timestamps for one account no longer collide on insert.
+- The `tracks` unique index now scopes by `tracker_id` (with `NULLS NOT DISTINCT`), so two devices producing a journey with the same start/end timestamps for one account no longer collide on insert, while legacy NULL-tracker rows still cannot duplicate themselves.
 
 ## [1.7.8] - 2026-05-10
 

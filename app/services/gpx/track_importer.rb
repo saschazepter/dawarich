@@ -41,7 +41,7 @@ class Gpx::TrackImporter
     path = resolve_file_path
     File.open(path, 'rb') do |io|
       seek_to_document_start(io)
-      handler = TrkptStreamHandler.new(import.id, &block)
+      handler = TrkptStreamHandler.new(import.id, import.name, &block)
       Nokogiri::XML::SAX::Parser.new(handler).parse(io)
     end
   end
@@ -91,16 +91,19 @@ class Gpx::TrackImporter
   end
 
   class TrkptStreamHandler < Nokogiri::XML::SAX::Document
-    def initialize(import_id, &block)
+    def initialize(import_id, import_name, &block)
       super()
       @import_id = import_id
+      @import_name = import_name
       @callback = block
       @stack = nil
       @text = +''
       @trk_index = -1
       @seg_index = -1
       @trk_identity = nil
+      @trk_identity_source = nil
       @capturing_trk_field = nil
+      @capture_depth = 0
     end
 
     def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
@@ -109,15 +112,21 @@ class Gpx::TrackImporter
         @trk_index += 1
         @seg_index = -1
         @trk_identity = nil
+        @trk_identity_source = nil
         return
       when 'trkseg'
         @seg_index += 1
         return
       end
 
-      # Capture <trk><src> or <trk><name> for stable cross-import identity (preferred order: src).
+      if @capturing_trk_field
+        @capture_depth += 1
+        return
+      end
+
       if @stack.nil? && !@trk_index.negative? && @seg_index.negative? && %w[src name].include?(name)
         @capturing_trk_field = name
+        @capture_depth = 0
         @text = +''
         return
       end
@@ -134,18 +143,24 @@ class Gpx::TrackImporter
     end
 
     def characters(string)
+      return if @capturing_trk_field && @capture_depth.positive?
+
       @text << string if @stack || @capturing_trk_field
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)
-      if @capturing_trk_field && name == @capturing_trk_field
-        value = @text.strip
-        # src wins over name when both present.
-        @trk_identity ||= value if value.present?
-        @trk_identity = value if @capturing_trk_field == 'src' && value.present?
-        @capturing_trk_field = nil
-        @text = +''
-        return
+      if @capturing_trk_field
+        if @capture_depth.positive?
+          @capture_depth -= 1
+          return
+        end
+
+        if name == @capturing_trk_field
+          assign_trk_identity(@text.strip, @capturing_trk_field)
+          @capturing_trk_field = nil
+          @text = +''
+          return
+        end
       end
 
       return if %w[trk trkseg].include?(name)
@@ -163,6 +178,14 @@ class Gpx::TrackImporter
 
     private
 
+    def assign_trk_identity(value, source)
+      return if value.blank?
+      return if source == 'name' && @trk_identity_source == 'src'
+
+      @trk_identity = value
+      @trk_identity_source = source
+    end
+
     def tracker_id
       return "import-#{@import_id}-orphan" if @trk_index.negative?
 
@@ -173,7 +196,8 @@ class Gpx::TrackImporter
     def stable_trk_key
       return nil if @trk_identity.blank?
 
-      "gpx-#{Digest::SHA1.hexdigest(@trk_identity)[0, 16]}-trk-#{@trk_index}"
+      identity = @trk_identity_source == 'src' ? @trk_identity : "#{@trk_identity}|import:#{@import_name}"
+      "gpx-#{Digest::SHA1.hexdigest(identity)[0, 16]}-trk-#{@trk_index}"
     end
   end
 end

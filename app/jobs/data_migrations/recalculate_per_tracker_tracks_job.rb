@@ -3,25 +3,33 @@
 class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
   queue_as :data_migrations
 
-  FLAG_KEY = 'per_tracker_recalculation_queued_at'
+  STAGGER_WINDOW_SECONDS = 3600
 
-  def perform
-    user_ids = User.where('EXISTS (SELECT 1 FROM tracks WHERE tracks.user_id = users.id)').pluck(:id)
+  def perform(user_id = nil)
+    return enqueue_pending_users if user_id.nil?
+
+    user = User.find_by(id: user_id)
+    return unless user
+    return unless user.tracks.where(tracker_id: nil).exists?
+
+    Users::RecalculateDataJob.new.perform(user.id)
+  end
+
+  private
+
+  def enqueue_pending_users
+    user_ids = User
+               .where('EXISTS (SELECT 1 FROM tracks WHERE tracks.user_id = users.id AND tracks.tracker_id IS NULL)')
+               .pluck(:id)
     return if user_ids.empty?
 
     Rails.logger.info(
       "[DataMigrations::RecalculatePerTrackerTracks] enqueuing recalculation for #{user_ids.size} user(s)"
     )
 
-    user_ids.each do |user_id|
-      user = User.find_by(id: user_id)
-      next unless user
-      next if user.settings.is_a?(Hash) && user.settings[FLAG_KEY].present?
-
-      Users::RecalculateDataJob.perform_later(user_id)
-
-      user.settings = (user.settings || {}).merge(FLAG_KEY => Time.current.iso8601)
-      user.save!(touch: false)
+    user_ids.each do |id|
+      delay = rand(0..STAGGER_WINDOW_SECONDS).seconds
+      self.class.set(wait: delay).perform_later(id)
     end
   end
 end

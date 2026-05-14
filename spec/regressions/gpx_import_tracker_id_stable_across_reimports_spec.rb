@@ -16,19 +16,22 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
     end
   end
 
-  def write_gpx(filename, base_time)
+  def write_gpx(filename, base_time, trk_name: 'Morning Run', trk_src: 'Garmin Forerunner 245')
     points = (0..3).map do |i|
       t = (base_time + (i * 60)).utc.iso8601
       %(<trkpt lat="#{52.52 + (i * 0.0001)}" lon="#{13.405 + (i * 0.0001)}"><time>#{t}</time></trkpt>)
     end.join("\n")
 
+    trk_inner = []
+    trk_inner << "<name>#{trk_name}</name>" if trk_name
+    trk_inner << "<src>#{trk_src}</src>" if trk_src
+    trk_inner << "<trkseg>#{points}</trkseg>"
+
     content = <<~GPX
       <?xml version="1.0" encoding="UTF-8"?>
       <gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
         <trk>
-          <name>Morning Run</name>
-          <src>Garmin Forerunner 245</src>
-          <trkseg>#{points}</trkseg>
+          #{trk_inner.join("\n      ")}
         </trk>
       </gpx>
     GPX
@@ -52,7 +55,7 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
     Gpx::TrackImporter.new(import, user.id, path).call
   end
 
-  it 'two imports of the same device on different days produce identical tracker_ids' do
+  it 'two imports of the same device on different days produce identical tracker_ids when <src> present' do
     path_a = write_gpx('day_a', 2.hours.ago)
     path_b = write_gpx('day_b', 4.hours.ago)
 
@@ -78,5 +81,20 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
 
     expect(tracker_id).to include(src_hash)
     expect(tracker_id).not_to include(name_hash)
+  end
+
+  it 'differentiates two devices sharing a <trk><name> via import.name when <src> is absent' do
+    path_a = write_gpx('shared_a', 2.hours.ago, trk_src: nil)
+    path_b = write_gpx('shared_b', 4.hours.ago, trk_src: nil)
+
+    attach_and_import(import_a, path_a, 'shared_a.gpx')
+    attach_and_import(import_b, path_b, 'shared_b.gpx')
+
+    id_a = Point.where(import_id: import_a.id).pick(:tracker_id)
+    id_b = Point.where(import_id: import_b.id).pick(:tracker_id)
+
+    expect(id_a).not_to eq(id_b)
+    expect(id_a).to start_with('gpx-')
+    expect(id_b).to start_with('gpx-')
   end
 end

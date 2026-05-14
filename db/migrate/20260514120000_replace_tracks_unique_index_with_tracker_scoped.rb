@@ -10,6 +10,7 @@ class ReplaceTracksUniqueIndexWithTrackerScoped < ActiveRecord::Migration[8.0]
     unless index_name_exists?(:tracks, NEW_INDEX)
       add_index :tracks, %i[user_id tracker_id start_at end_at],
                 unique: true,
+                nulls_not_distinct: true,
                 algorithm: :concurrently,
                 name: NEW_INDEX
     end
