@@ -83,15 +83,14 @@ class Track < ApplicationRecord
           id,
           timestamp,
           lonlat,
-          COALESCE(tracker_id, '') AS bucket_key,
           tracker_id,
-          LAG(lonlat) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp) as prev_lonlat,
-          LAG(timestamp) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp) as prev_timestamp,
+          LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_lonlat,
+          LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_timestamp,
           ST_Distance(
             lonlat::geography,
-            LAG(lonlat) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp)::geography
+            LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp)::geography
           ) as distance_meters,
-          (timestamp - LAG(timestamp) OVER (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp)) as time_diff_seconds
+          (timestamp - LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp)) as time_diff_seconds
         FROM points
         #{where_clause}
       ),
@@ -107,12 +106,11 @@ class Track < ApplicationRecord
       ),
       segments AS (
         SELECT *,
-          SUM(is_break) OVER (PARTITION BY bucket_key ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
+          SUM(is_break) OVER (PARTITION BY tracker_id ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
         FROM segment_breaks
       )
       SELECT
-        bucket_key,
-        MAX(tracker_id) AS tracker_id,
+        tracker_id,
         segment_id,
         array_agg(id ORDER BY timestamp) as point_ids,
         count(*) as point_count,
@@ -120,9 +118,9 @@ class Track < ApplicationRecord
         max(timestamp) as end_timestamp,
         sum(COALESCE(distance_meters, 0)) as total_distance_meters
       FROM segments
-      GROUP BY bucket_key, segment_id
+      GROUP BY tracker_id, segment_id
       HAVING count(*) >= 2
-      ORDER BY bucket_key, segment_id
+      ORDER BY tracker_id NULLS FIRST, segment_id
     SQL
 
     results = Point.connection.exec_query(

@@ -6,11 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### ⚠️ Upgrade notes
+
+- **Historical tracks auto-recalculate on upgrade.** A background job recalculates stats, tracks, and digests for every user with existing tracks; expect a temporary spike in Sidekiq queue depth, CPU, and database IO for the first few hours after upgrade, scaling with user count and history length.
+
 ### Fixed
 
-- Tracks recorded by multiple devices on the same account (phone + watch + GPS unit) no longer get merged into one zigzagging track on the map. Each device's points are now kept on their own track, and Map v2 routes are drawn per-device so straight lines no longer connect points from different devices. To split historical tracks per device, press **Map v2 → Settings → Recalculate tracks & stats** once after upgrading. (#337, #1726)
-- Importing a GPX file with multiple `<trk>` or `<trkseg>` elements no longer merges them into a single track when their timestamps overlap or arrive out of order (e.g. Garmin daily-file exports). Each track and segment now becomes its own track. (#1726)
-- Importing a Google Records.json export with positions from more than one device no longer "teleports" between devices, inflating the distance travelled. Points are now scoped per-device using Google's `deviceTag` field. (#337)
+- Tracks recorded by multiple devices on the same account (phone + watch + GPS unit) no longer get merged into one zigzagging track on the map. Each device's points are kept on their own track, and Map v2 draws routes per-device. (#337, #1726)
+- Importing a GPX file with multiple `<trk>` or `<trkseg>` elements no longer merges them into a single track when timestamps overlap or arrive out of order (e.g. Garmin daily-file exports); each track and segment becomes its own track, and when a `<trk>` declares `<src>` or `<name>` that identity is used so consecutive re-imports of the same device stay on the same track stream. (#1726)
+- Importing a Google Records.json export with positions from more than one device no longer "teleports" between devices and inflates distance travelled; points are scoped per-device using Google's `deviceTag`. (#337)
+- The `tracks` unique index now scopes by `tracker_id`, so two devices producing a journey with the same start/end timestamps for one account no longer collide on insert.
 
 ## [1.7.8] - 2026-05-10
 

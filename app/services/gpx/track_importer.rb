@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'digest/sha1'
 require 'nokogiri'
 
 class Gpx::TrackImporter
@@ -98,6 +99,8 @@ class Gpx::TrackImporter
       @text = +''
       @trk_index = -1
       @seg_index = -1
+      @trk_identity = nil
+      @capturing_trk_field = nil
     end
 
     def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
@@ -105,9 +108,17 @@ class Gpx::TrackImporter
       when 'trk'
         @trk_index += 1
         @seg_index = -1
+        @trk_identity = nil
         return
       when 'trkseg'
         @seg_index += 1
+        return
+      end
+
+      # Capture <trk><src> or <trk><name> for stable cross-import identity (preferred order: src).
+      if @stack.nil? && !@trk_index.negative? && @seg_index.negative? && %w[src name].include?(name)
+        @capturing_trk_field = name
+        @text = +''
         return
       end
 
@@ -123,10 +134,20 @@ class Gpx::TrackImporter
     end
 
     def characters(string)
-      @text << string if @stack
+      @text << string if @stack || @capturing_trk_field
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)
+      if @capturing_trk_field && name == @capturing_trk_field
+        value = @text.strip
+        # src wins over name when both present.
+        @trk_identity ||= value if value.present?
+        @trk_identity = value if @capturing_trk_field == 'src' && value.present?
+        @capturing_trk_field = nil
+        @text = +''
+        return
+      end
+
       return if %w[trk trkseg].include?(name)
       return unless @stack
 
@@ -143,7 +164,16 @@ class Gpx::TrackImporter
     private
 
     def tracker_id
-      "import-#{@import_id}-trk-#{[@trk_index, 0].max}-seg-#{[@seg_index, 0].max}"
+      return "import-#{@import_id}-orphan" if @trk_index.negative?
+
+      trk_key = stable_trk_key || "import-#{@import_id}-trk-#{@trk_index}"
+      "#{trk_key}-seg-#{[@seg_index, 0].max}"
+    end
+
+    def stable_trk_key
+      return nil if @trk_identity.blank?
+
+      "gpx-#{Digest::SHA1.hexdigest(@trk_identity)[0, 16]}-trk-#{@trk_index}"
     end
   end
 end

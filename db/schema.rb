@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_09_163901) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -409,9 +409,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_09_163901) do
     t.integer "dominant_mode", default: 0
     t.string "tracker_id"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
-    t.index ["user_id", "start_at", "end_at"], name: "index_tracks_on_user_start_end_unique", unique: true
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
+    t.index ["user_id", "tracker_id", "start_at", "end_at"], name: "index_tracks_on_user_tracker_start_end_unique", unique: true
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 

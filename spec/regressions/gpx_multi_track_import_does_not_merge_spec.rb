@@ -18,7 +18,7 @@ RSpec.describe 'GPX multi-track import does not merge tracks into one' do
     file.path
   end
 
-  let(:base_time) { 1.day.ago.beginning_of_day }
+  let(:base_time) { 4.hours.ago }
 
   let(:gpx_content) do
     day_one = (0..3).map do |i|
@@ -27,7 +27,7 @@ RSpec.describe 'GPX multi-track import does not merge tracks into one' do
     end.join("\n")
 
     day_two = (0..3).map do |i|
-      t = (base_time + 86_400 + (i * 60)).utc.iso8601
+      t = (base_time + 7200 + (i * 60)).utc.iso8601
       %(<trkpt lat="#{48.8566 + (i * 0.0001)}" lon="#{2.3522 + (i * 0.0001)}"><time>#{t}</time></trkpt>)
     end.join("\n")
 
@@ -59,10 +59,9 @@ RSpec.describe 'GPX multi-track import does not merge tracks into one' do
 
   it 'tags each <trk> with its own synthetic tracker_id, not just per <trkseg>' do
     tracker_ids = Point.where(import_id: import.id).pluck(:tracker_id).uniq
-    expect(tracker_ids).to contain_exactly(
-      "import-#{import.id}-trk-0-seg-0",
-      "import-#{import.id}-trk-1-seg-0"
-    )
+    expect(tracker_ids.size).to eq(2)
+    expect(tracker_ids).to all(start_with('gpx-'))
+    expect(tracker_ids).to all(end_with('-seg-0'))
   end
 
   it 'generates one track per <trk>, with no phantom Berlin-Paris leg' do

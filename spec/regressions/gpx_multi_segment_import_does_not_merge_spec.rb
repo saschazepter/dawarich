@@ -56,10 +56,9 @@ RSpec.describe 'GPX multi-segment import does not merge segments into one track'
 
   it 'tags each segment with a distinct synthetic tracker_id' do
     tracker_ids = Point.where(import_id: import.id).pluck(:tracker_id).uniq
-    expect(tracker_ids).to contain_exactly(
-      "import-#{import.id}-trk-0-seg-0",
-      "import-#{import.id}-trk-0-seg-1"
-    )
+    expect(tracker_ids.size).to eq(2)
+    expect(tracker_ids).to all(start_with('gpx-'))
+    expect(tracker_ids).to all(match(/-trk-0-seg-[01]\z/))
   end
 
   it 'generates one track per segment, with no phantom Berlin-Paris leg' do
