@@ -18,9 +18,7 @@ class Tracks::ParallelGenerator
   end
 
   def call
-    if mode.in?(%i[bulk daily]) && !untracked_only
-      ActiveRecord::Base.with_advisory_lock!("tracks:user:#{user.id}", timeout_seconds: 30) { clean_existing_tracks }
-    end
+    Tracks::PerUserLock.with_user_lock(user.id) { clean_existing_tracks } if mode.in?(%i[bulk daily]) && !untracked_only
 
     time_chunks = generate_time_chunks
     return 0 if time_chunks.empty?
