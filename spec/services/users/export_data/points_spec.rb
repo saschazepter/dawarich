@@ -55,12 +55,14 @@ RSpec.describe Users::ExportData::Points, type: :service do
                lonlat: 'POINT(-74.006 40.7128)')
       end
       let(:point_without_relationships) do
-        create(:point,
-               user: user,
-               timestamp: 1_640_995_260,
-               longitude: -73.9857,
-               latitude: 40.7484,
-               lonlat: 'POINT(-73.9857 40.7484)')
+        pt = create(:point,
+                    user: user,
+                    timestamp: 1_640_995_260,
+                    longitude: -73.9857,
+                    latitude: 40.7484,
+                    lonlat: 'POINT(-73.9857 40.7484)')
+        pt.update_columns(country_id: nil, country_name: nil)
+        pt.reload
       end
 
       before do
