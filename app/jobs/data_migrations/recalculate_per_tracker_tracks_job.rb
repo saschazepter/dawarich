@@ -10,9 +10,12 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
 
     user = User.find_by(id: user_id)
     return unless user
+
+    Points::TrackerIdBackfiller.new(user).call
+
     return unless user.tracks.where(tracker_id: nil).exists?
 
-    Users::RecalculateDataJob.new.perform(user.id)
+    Users::RecalculateDataJob.perform_now(user.id)
   end
 
   private

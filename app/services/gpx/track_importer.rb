@@ -113,6 +113,8 @@ class Gpx::TrackImporter
         @seg_index = -1
         @trk_identity = nil
         @trk_identity_source = nil
+        @capturing_trk_field = nil
+        @capture_depth = 0
         return
       when 'trkseg'
         @seg_index += 1
