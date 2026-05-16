@@ -396,7 +396,7 @@ class Users::ExportData
         relative_path = file.sub(%r{#{export_directory}/}, '')
 
         entry = ::Zip::Entry.new(zipfile, relative_path)
-        entry.time = Time.now
+        entry.time = Time.now # rubocop:disable Rails/TimeZone
         zipfile.add(entry, file)
       end
     end
