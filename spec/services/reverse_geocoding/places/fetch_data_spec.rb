@@ -98,14 +98,14 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         it 'updates the original place and creates others' do
           service.call
 
-          created_place = Place.global.where.not(id: place.id).first
+          created_place = Place.where.not(id: place.id).first
           expect(created_place.name).to include('Second Place')
           expect(created_place.city).to eq('Hamburg')
         end
       end
 
       context 'with existing places in database' do
-        let!(:existing_place) { create(:place, :with_geodata) }
+        let!(:existing_place) { create(:place, :with_geodata, user: place.user) }
 
         before do
           # Mock geocoded place with same OSM ID as existing place
@@ -283,9 +283,9 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
     end
 
     describe '#find_existing_places' do
-      let!(:existing_place1) { create(:place, :with_geodata) }
+      let!(:existing_place1) { create(:place, :with_geodata, user: place.user) }
       let!(:existing_place2) do
-        create(:place, geodata: {
+        create(:place, user: place.user, geodata: {
                  'properties' => { 'osm_id' => 999 }
                })
       end
@@ -647,7 +647,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         place # Force creation
         expect { service.call }.to change { Place.count }.by(1)
 
-        created_place = Place.global.where.not(id: place.id).first
+        created_place = Place.where.not(id: place.id).first
         expect(created_place.name).to include('Nice Cafe')
         expect(created_place.city).to eq('Hamburg')
       end
@@ -719,7 +719,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         place # Force place creation
         expect { service.call }.to change { Place.count }.by(1)
 
-        created_place = Place.global.where.not(id: place.id).first
+        created_place = Place.where.not(id: place.id).first
         expect(created_place.latitude).to eq(54.0)
         expect(created_place.longitude).to eq(13.0)
       end

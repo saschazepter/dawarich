@@ -7,7 +7,7 @@ class Place < ApplicationRecord
 
   DEFAULT_NAME = 'Suggested place'
 
-  belongs_to :user, optional: true # Optional during migration period
+  belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
   has_many :visits, dependent: :destroy
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
@@ -20,7 +20,6 @@ class Place < ApplicationRecord
   enum :source, { manual: 0, photon: 1 }
 
   scope :for_user, ->(user) { where(user: user) }
-  scope :global, -> { where(user: nil) }
   scope :ordered, -> { order(:name) }
 
   def lon
