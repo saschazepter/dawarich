@@ -121,12 +121,6 @@ Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
-Rack::Attack.throttle('subscriptions/callback', limit: 60, period: 1.minute) do |req|
-  next unless req.path == '/api/v1/subscriptions/callback' && req.post?
-
-  req.ip
-end
-
 Rack::Attack.throttle('signups/api_ip_burst', limit: 5, period: 1.minute) do |req|
   next if DawarichSettings.self_hosted?
 
