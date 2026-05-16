@@ -396,7 +396,7 @@ class Users::ExportData
         relative_path = file.sub(%r{#{export_directory}/}, '')
 
         entry = ::Zip::Entry.new(zipfile, relative_path)
-        entry.time = Time.current
+        entry.time = Time.now
         zipfile.add(entry, file)
       end
     end
