@@ -63,6 +63,7 @@ class Tracks::BoundaryDetector
 
     window = adjacency_window
     recent_ids = recent_tracks.map(&:id)
+    tracker_ids = recent_tracks.map(&:tracker_id).uniq
 
     conditions = recent_tracks.flat_map do |track|
       [
@@ -76,6 +77,7 @@ class Tracks::BoundaryDetector
 
     user.tracks
         .where.not(id: recent_ids)
+        .where(tracker_id: tracker_ids)
         .where(sql, *bindings)
         .includes(:points)
   end
@@ -98,6 +100,7 @@ class Tracks::BoundaryDetector
 
     all_tracks.each do |candidate|
       next if candidate.id == track.id
+      next if candidate.tracker_id != track.tracker_id
 
       candidate_start = candidate.start_at.to_i
       candidate_end = candidate.end_at.to_i

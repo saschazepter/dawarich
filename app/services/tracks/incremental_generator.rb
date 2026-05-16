@@ -38,7 +38,8 @@ class Tracks::IncrementalGenerator
 
         track = create_track_from_points(
           segment[:points],
-          segment[:pre_calculated_distance]
+          segment[:pre_calculated_distance],
+          tracker_id: segment[:tracker_id]
         )
 
         merge_with_recent_track(track) if track
@@ -77,6 +78,7 @@ class Tracks::IncrementalGenerator
     # Find a track that ended shortly before this one started
     # (within the time threshold, suggesting they're part of the same journey)
     preceding = user.tracks
+                    .where(tracker_id: new_track.tracker_id)
                     .where('end_at < ?', new_track.start_at)
                     .where('end_at > ?', new_track.start_at - time_threshold_minutes.minutes)
                     .where.not(id: new_track.id)

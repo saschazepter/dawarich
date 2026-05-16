@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'digest/sha1'
 require 'nokogiri'
 
 class Gpx::TrackImporter
@@ -19,8 +20,8 @@ class Gpx::TrackImporter
 
   def call
     batch = []
-    each_trkpt do |point_hash|
-      data = prepare_point(point_hash)
+    each_trkpt do |point_hash, tracker_id|
+      data = prepare_point(point_hash, tracker_id)
       next unless data
 
       batch << data
@@ -40,7 +41,7 @@ class Gpx::TrackImporter
     path = resolve_file_path
     File.open(path, 'rb') do |io|
       seek_to_document_start(io)
-      handler = TrkptStreamHandler.new(&block)
+      handler = TrkptStreamHandler.new(import.id, import.name, &block)
       Nokogiri::XML::SAX::Parser.new(handler).parse(io)
     end
   end
@@ -55,18 +56,17 @@ class Gpx::TrackImporter
     broadcast_import_progress(import, inserted)
   end
 
-  def prepare_point(point)
+  def prepare_point(point, tracker_id)
     return if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
 
     elevation = point['ele'].to_f
 
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
-      # During the integer→decimal altitude migration we write to both
-      # columns; readers (`Point#altitude`) prefer altitude_decimal.
       altitude: elevation,
       altitude_decimal: elevation,
       timestamp: Time.zone.parse(point['time']).utc.to_i,
+      tracker_id: tracker_id,
       import_id: import.id,
       velocity: speed(point),
       raw_data: point,
@@ -91,14 +91,48 @@ class Gpx::TrackImporter
   end
 
   class TrkptStreamHandler < Nokogiri::XML::SAX::Document
-    def initialize(&block)
+    def initialize(import_id, import_name, &block)
       super()
+      @import_id = import_id
+      @import_name = import_name
       @callback = block
       @stack = nil
       @text = +''
+      @trk_index = -1
+      @seg_index = -1
+      @trk_identity = nil
+      @trk_identity_source = nil
+      @capturing_trk_field = nil
+      @capture_depth = 0
     end
 
     def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
+      case name
+      when 'trk'
+        @trk_index += 1
+        @seg_index = -1
+        @trk_identity = nil
+        @trk_identity_source = nil
+        @capturing_trk_field = nil
+        @capture_depth = 0
+        return
+      when 'trkseg'
+        @seg_index += 1
+        return
+      end
+
+      if @capturing_trk_field
+        @capture_depth += 1
+        return
+      end
+
+      if @stack.nil? && !@trk_index.negative? && @seg_index.negative? && %w[src name].include?(name)
+        @capturing_trk_field = name
+        @capture_depth = 0
+        @text = +''
+        return
+      end
+
       attrs_h = attrs.each_with_object({}) { |a, h| h[a.localname] = a.value }
       if name == 'trkpt' && @stack.nil?
         @stack = [attrs_h]
@@ -111,20 +145,61 @@ class Gpx::TrackImporter
     end
 
     def characters(string)
-      @text << string if @stack
+      return if @capturing_trk_field && @capture_depth.positive?
+
+      @text << string if @stack || @capturing_trk_field
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)
+      if @capturing_trk_field
+        if @capture_depth.positive?
+          @capture_depth -= 1
+          return
+        end
+
+        if name == @capturing_trk_field
+          assign_trk_identity(@text.strip, @capturing_trk_field)
+          @capturing_trk_field = nil
+          @text = +''
+          return
+        end
+      end
+
+      return if %w[trk trkseg].include?(name)
       return unless @stack
 
       closed = @stack.pop
       if @stack.empty?
-        @callback.call(closed)
+        @callback.call(closed, tracker_id)
         @stack = nil
       else
         @stack.last[name] = @text.strip if closed.empty?
         @text = +''
       end
+    end
+
+    private
+
+    def assign_trk_identity(value, source)
+      return if value.blank?
+      return if source == 'name' && @trk_identity_source == 'src'
+
+      @trk_identity = value
+      @trk_identity_source = source
+    end
+
+    def tracker_id
+      return "import-#{@import_id}-orphan" if @trk_index.negative?
+
+      trk_key = stable_trk_key || "import-#{@import_id}-trk-#{@trk_index}"
+      "#{trk_key}-seg-#{[@seg_index, 0].max}"
+    end
+
+    def stable_trk_key
+      return nil if @trk_identity.blank?
+
+      identity = @trk_identity_source == 'src' ? @trk_identity : "#{@trk_identity}|import:#{@import_name}"
+      "gpx-#{Digest::SHA1.hexdigest(identity)[0, 16]}-trk-#{@trk_index}"
     end
   end
 end
