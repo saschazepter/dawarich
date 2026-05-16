@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - **Self-hosters running OIDC-only sign-in:** the `ALLOW_EMAIL_PASSWORD_REGISTRATION` env var no longer doubles as a login gate. Email/password sign-in is now controlled by the new `ALLOW_EMAIL_PASSWORD_LOGIN` env var (defaults to `true`). To preserve OIDC-only sign-in after upgrade, set `ALLOW_EMAIL_PASSWORD_LOGIN=false`.
 - **Visit detection rewrite:** the next nightly run after upgrade will produce different suggested visits. Confirmed visits and named places are preserved; only suggestions change.
+- **Places backfill (irreversible):** the place-ownership migration backfills `places.user_id` from owning visits and **permanently deletes any place that has no linked visits**. Multi-user instances and instances with orphan rows from prior bugs should run `rake places:backfill_user_id_dry_run` first to see assigned/deleted counts. Single-user self-hosted instances are unaffected. The follow-up release will add a `NOT NULL` constraint, so any new places created between this release and the next must carry a `user_id`.
 
 ### Changed
 

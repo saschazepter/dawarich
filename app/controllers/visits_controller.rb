@@ -87,9 +87,11 @@ class VisitsController < ApplicationController
     auto_confirm_result = maybe_auto_confirm_with_user_place!(params_to_update)
     return render_unprocessable('Could not save the typed name as a place.') if auto_confirm_result == :place_invalid
 
-    # Cross-tenant IDOR guard: place_id must belong to current_user.
-    if params_to_update[:place_id].present? && !current_user.places.exists?(id: params_to_update[:place_id])
-      return render_unprocessable('Invalid place')
+    if params_to_update[:place_id].present?
+      raw_place_id = params_to_update[:place_id]
+      allowed = current_user.places.where(id: raw_place_id).exists? ||
+                @visit.suggested_places.where(id: raw_place_id).exists?
+      return render_unprocessable('Invalid place') unless allowed
     end
 
     # Capture both old and new month so cache busts cover edits that move
@@ -287,7 +289,8 @@ class VisitsController < ApplicationController
   end
 
   def update_visit_name_from_place(place_id)
-    place = current_user.places.find_by(id: place_id)
+    place = current_user.places.find_by(id: place_id) ||
+            @visit.suggested_places.find_by(id: place_id)
     @visit.name = place.name if place && place.name.present?
   end
 
