@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 class Visits::FullHistoryRedetectJob < ApplicationJob
-  include Visits::AdvisoryLockable
-
   queue_as :visit_suggesting
   sidekiq_options retry: 0
 
   BATCH_OVERLAP_SECONDS = 1.hour.to_i
   COOLDOWN = 1.hour
+  LOCK_TTL = 2.hours
 
   def perform(user_id)
     user = User.find(user_id)
@@ -17,8 +16,41 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
       return
     end
 
+    Tracks::PerUserLock.with_user_lock(user_id, ttl: LOCK_TTL) do
+      user.reload
+      if recently_redetected?(user)
+        Rails.logger.info("[Visits::FullHistoryRedetectJob skip] user_id=#{user.id} reason=cooldown_active_after_lock")
+        next
+      end
+
+      run_redetection(user)
+    end
+  rescue Tracks::PerUserLock::AcquisitionTimeout => e
+    Rails.logger.warn(
+      "[Visits::FullHistoryRedetectJob lock_timeout] user_id=#{user_id} message=#{e.message}"
+    )
+    user_for_notify = defined?(user) ? user : User.find_by(id: user_id)
+    if user_for_notify
+      notify!(
+        user_for_notify, kind: :warning, title: 'Visit re-detection busy',
+        content: 'Another re-detection is already running. Try again in a few minutes.'
+      )
+    end
+  rescue StandardError => e
+    Rails.logger.error(
+      "[Visits::FullHistoryRedetectJob error] user_id=#{user_id} " \
+      "class=#{e.class} message=#{e.message}"
+    )
+    user_for_notify = defined?(user) ? user : User.find_by(id: user_id)
+    notify_failure(user_for_notify, e) if user_for_notify
+    ExceptionReporter.call(e)
+    raise
+  end
+
+  private
+
+  def run_redetection(user)
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    acquire_lock(user_id)
 
     min_ts = user.points.minimum(:timestamp)
     max_ts = user.points.maximum(:timestamp)
@@ -76,42 +108,11 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
                     content: "#{visits_created} visits across #{ok_months} of #{months.size} months. " \
                              "#{months_failed.size} month(s) failed; re-run after the cooldown to retry.")
     end
-  rescue StandardError => e
-    Rails.logger.error(
-      "[Visits::FullHistoryRedetectJob error] user_id=#{user_id} " \
-      "class=#{e.class} message=#{e.message}"
-    )
-    user_for_notify = defined?(user) ? user : User.find_by(id: user_id)
-    notify_failure(user_for_notify, e) if user_for_notify
-    ExceptionReporter.call(e)
-    raise
-  ensure
-    release_lock(user_id)
   end
-
-  private
 
   def recently_redetected?(user)
     last = user.visits_redetected_at
     last.present? && last > COOLDOWN.ago
-  end
-
-  def acquire_lock(user_id)
-    return unless advisory_locks_enabled?
-
-    ActiveRecord::Base.connection.execute(
-      ActiveRecord::Base.sanitize_sql_array(['SELECT pg_advisory_lock(?)', user_id.to_i])
-    )
-  end
-
-  def release_lock(user_id)
-    return unless advisory_locks_enabled?
-
-    ActiveRecord::Base.connection.execute(
-      ActiveRecord::Base.sanitize_sql_array(['SELECT pg_advisory_unlock(?)', user_id.to_i])
-    )
-  rescue StandardError
-    nil
   end
 
   def monthly_ranges(min_ts, max_ts)

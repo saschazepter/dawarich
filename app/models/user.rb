@@ -59,6 +59,7 @@ class User < ApplicationRecord
 
   MAX_FAILED_OTP_ATTEMPTS = 10
   OTP_LOCK_DURATION = 30.minutes
+  OTP_LOCK_EMAIL_THROTTLE = 1.hour
 
   def otp_locked?
     otp_locked_at.present? && otp_locked_at > OTP_LOCK_DURATION.ago
@@ -67,7 +68,6 @@ class User < ApplicationRecord
   def register_failed_otp_attempt!
     return if otp_locked?
 
-    # Stale (expired) lockout — start a fresh counting window.
     User.where(id: id).update_all(failed_otp_attempts: 0, otp_locked_at: nil) if otp_locked_at.present?
 
     User.where(id: id).update_all('failed_otp_attempts = failed_otp_attempts + 1')
@@ -79,6 +79,13 @@ class User < ApplicationRecord
     return unless transitioned.positive?
 
     reload
+    send_otp_lockout_email
+  end
+
+  def send_otp_lockout_email
+    key = "otp_lockout_email_throttle/user/#{id}"
+    return unless Rails.cache.write(key, true, expires_in: OTP_LOCK_EMAIL_THROTTLE, unless_exist: true)
+
     UsersMailer.with(user: self).otp_account_locked.deliver_later
   end
 

@@ -879,6 +879,9 @@ subscription_source: :none)
     end
 
     describe '#register_failed_otp_attempt!' do
+      before  { Rails.cache.delete("otp_lockout_email_throttle/user/#{user.id}") }
+      after   { Rails.cache.delete("otp_lockout_email_throttle/user/#{user.id}") }
+
       it 'increments failed_otp_attempts' do
         expect { user.register_failed_otp_attempt! }
           .to change { user.reload.failed_otp_attempts }.from(0).to(1)

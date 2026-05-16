@@ -150,6 +150,10 @@ class Gpx::TrackImporter
       @text << string if @stack || @capturing_trk_field
     end
 
+    def error(message)
+      raise Nokogiri::XML::SyntaxError, "GPX parse error: #{message}"
+    end
+
     def end_element_namespace(name, _prefix = nil, _uri = nil)
       if @capturing_trk_field
         if @capture_depth.positive?
