@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- **Historical tracks auto-recalculate on upgrade.** A background job backfills `points.tracker_id` from each point's `raw_data` (Google `deviceTag`, OwnTracks `tid` — both stored as-is) or its `import_id` (`legacy-import-<id>`, visible in points and tracks API responses for backfilled rows), then recalculates stats, tracks, and digests for every user with tracks predating the fix. Per-user jobs are staggered over the first hour; expect elevated Sidekiq queue depth, CPU, and database IO until they finish, with duration scaling by user count and history length. The job is re-entrant — pending migrations re-enqueue unfinished users on the next deploy. New installs are unaffected.
+- **Historical tracks auto-recalculate on upgrade.** A background job backfills `points.tracker_id` from each point's `raw_data` (Google `deviceTag`, OwnTracks `tid` — both stored as-is) or its `import_id` (`legacy-import-<id>`, visible in points and tracks API responses for backfilled rows), then recalculates stats, tracks, and digests for every user with tracks predating the fix. The enqueue job is Sidekiq-retry-safe and re-checks its predicate on each retry, so a crashed/restarted Sidekiq resumes cleanly without re-processing finished users. New installs are unaffected.
+- **Expect a temporary spike during the recalc window.** Per-user jobs are staggered over the first hour; expect elevated Sidekiq queue depth, CPU, and database IO until they finish, with duration scaling by user count and history length. Tracks may appear merged on the map for individual accounts until their recalc completes.
 
 ### Fixed
 
