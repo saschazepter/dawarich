@@ -16,7 +16,6 @@ class Place < ApplicationRecord
 
   validates :name, presence: true
   validates :lonlat, presence: true
-  validates :user_id, presence: true
 
   enum :source, { manual: 0, photon: 1 }
 
