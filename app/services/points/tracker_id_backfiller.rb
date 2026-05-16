@@ -11,12 +11,14 @@ class Points::TrackerIdBackfiller
 
   def call
     total = 0
+    cursor = 0
 
     loop do
-      updated = update_batch
+      updated, max_id = update_batch(cursor)
       break if updated.zero?
 
       total += updated
+      cursor = max_id
     end
 
     Rails.logger.info("[Points::TrackerIdBackfiller] user_id=#{user.id} backfilled=#{total}") if total.positive?
@@ -26,35 +28,43 @@ class Points::TrackerIdBackfiller
 
   private
 
-  def update_batch
+  def update_batch(cursor)
     sql = <<~SQL.squish
       WITH batch AS (
         SELECT id FROM points
         WHERE user_id = #{user.id.to_i}
+          AND id > #{cursor.to_i}
           AND tracker_id IS NULL
           AND (
-            raw_data->>'deviceTag' IS NOT NULL
-            OR raw_data->>'tid' IS NOT NULL
+            length(btrim(raw_data->>'deviceTag')) > 0
+            OR length(btrim(raw_data->>'tid')) > 0
             OR import_id IS NOT NULL
           )
+        ORDER BY id
         LIMIT #{BATCH_SIZE}
-      )
+      ),
+      bounds AS (SELECT MAX(id) AS max_id FROM batch)
       UPDATE points
       SET
         tracker_id = (
           CASE
-            WHEN points.raw_data->>'deviceTag' IS NOT NULL
-              THEN 'google-records-device-' || (points.raw_data->>'deviceTag')
-            WHEN points.raw_data->>'tid' IS NOT NULL
-              THEN points.raw_data->>'tid'
+            WHEN length(btrim(points.raw_data->>'deviceTag')) > 0
+              THEN 'google-records-device-' || btrim(points.raw_data->>'deviceTag')
+            WHEN length(btrim(points.raw_data->>'tid')) > 0
+              THEN btrim(points.raw_data->>'tid')
             ELSE 'legacy-import-' || points.import_id::text
           END
         ),
         updated_at = NOW()
-      FROM batch
+      FROM batch, bounds
       WHERE points.id = batch.id
+      RETURNING bounds.max_id
     SQL
 
-    ActiveRecord::Base.connection.exec_update(sql, 'TrackerIdBackfill')
+    result = ActiveRecord::Base.connection.exec_query(sql, 'TrackerIdBackfill')
+    rows = result.rows
+    return [0, cursor] if rows.empty?
+
+    [rows.length, rows.first.first.to_i]
   end
 end

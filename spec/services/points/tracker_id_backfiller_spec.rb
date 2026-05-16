@@ -83,4 +83,22 @@ RSpec.describe Points::TrackerIdBackfiller do
     described_class.new(user).call
     expect(described_class.new(user).call).to eq(0)
   end
+
+  it 'treats blank/whitespace-only tid and deviceTag as missing so they fall through to legacy-import-* (no empty-string tracker_id)' do
+    point_blank_tid = create(:point, user: user, tracker_id: nil, raw_data: { 'tid' => '' }, import: import)
+    point_ws_device = create(:point, user: user, tracker_id: nil, raw_data: { 'deviceTag' => '   ' }, import: import)
+
+    described_class.new(user).call
+
+    expect(point_blank_tid.reload.tracker_id).to eq("legacy-import-#{import.id}")
+    expect(point_ws_device.reload.tracker_id).to eq("legacy-import-#{import.id}")
+  end
+
+  it 'btrims whitespace around tid/deviceTag values so " ph " becomes "ph"' do
+    point = create(:point, user: user, tracker_id: nil, raw_data: { 'tid' => '  ph  ' })
+
+    described_class.new(user).call
+
+    expect(point.reload.tracker_id).to eq('ph')
+  end
 end
