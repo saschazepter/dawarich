@@ -330,7 +330,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
   create_table "stats", force: :cascade do |t|
     t.integer "year", null: false
     t.integer "month", null: false
-    t.bigint "distance", default: 0, null: false
+    t.bigint "distance", null: false
     t.jsonb "toponyms"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -449,13 +449,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
+    t.string "provider"
+    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
-    t.string "provider"
-    t.string "uid"
     t.datetime "deleted_at"
     t.integer "plan", default: 1, null: false
     t.integer "failed_attempts", default: 0, null: false
@@ -467,9 +467,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.text "otp_backup_codes", array: true
     t.integer "subscription_source", default: 0, null: false
     t.string "signup_variant"
-    t.datetime "visits_redetected_at"
     t.integer "failed_otp_attempts", default: 0, null: false
     t.datetime "otp_locked_at"
+    t.datetime "visits_redetected_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
