@@ -26,10 +26,11 @@ RSpec.describe 'Immich photo timestamps render as canonical UTC instants regardl
   let(:asset_hash) { JSON.parse(asset_attrs.to_json) }
 
   describe Api::PhotoSerializer do
-    it 'emits the UTC instant for an Immich asset, not the wall-clock localDateTime' do
+    it 'emits the UTC instant for an Immich asset on the capturedAt field' do
       result = described_class.new(asset_hash, 'immich').call
 
-      expect(result[:localDateTime]).to eq(utc_instant_iso)
+      expect(result[:capturedAt]).to eq(utc_instant_iso)
+      expect(result[:localDateTime]).to eq('2026-01-15T08:01:32.000')
     end
   end
 
