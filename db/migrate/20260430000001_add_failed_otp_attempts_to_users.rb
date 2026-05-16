@@ -6,7 +6,9 @@ class AddFailedOtpAttemptsToUsers < ActiveRecord::Migration[8.0]
   INDEX_NAME = 'index_users_on_otp_locked_at_not_null'
 
   def up
-    add_column :users, :failed_otp_attempts, :integer, default: 0, null: false unless column_exists?(:users, :failed_otp_attempts)
+    unless column_exists?(:users, :failed_otp_attempts)
+      add_column :users, :failed_otp_attempts, :integer, default: 0, null: false
+    end
     add_column :users, :otp_locked_at, :datetime unless column_exists?(:users, :otp_locked_at)
 
     return if index_name_exists?(:users, INDEX_NAME)

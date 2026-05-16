@@ -22,7 +22,7 @@ RSpec.describe Points::TrackerIdBackfiller do
     expect(point.reload.tracker_id).to eq('ph')
   end
 
-  it "falls back to legacy-import-<import_id> when raw_data has no device info" do
+  it 'falls back to legacy-import-<import_id> when raw_data has no device info' do
     point = create(:point, user: user, tracker_id: nil, raw_data: {}, import: import)
 
     described_class.new(user).call
@@ -84,7 +84,7 @@ RSpec.describe Points::TrackerIdBackfiller do
     expect(described_class.new(user).call).to eq(0)
   end
 
-  it 'treats blank/whitespace-only tid and deviceTag as missing so they fall through to legacy-import-* (no empty-string tracker_id)' do
+  it 'treats blank/whitespace-only tid and deviceTag as missing, falling through to legacy-import-*' do
     point_blank_tid = create(:point, user: user, tracker_id: nil, raw_data: { 'tid' => '' }, import: import)
     point_ws_device = create(:point, user: user, tracker_id: nil, raw_data: { 'deviceTag' => '   ' }, import: import)
 

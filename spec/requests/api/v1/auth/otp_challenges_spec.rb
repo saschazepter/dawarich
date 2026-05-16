@@ -83,9 +83,9 @@ RSpec.describe 'POST /api/v1/auth/otp_challenge', type: :request do
     end
 
     it 'increments failed_otp_attempts on a wrong code' do
-      expect {
+      expect do
         post '/api/v1/auth/otp_challenge', params: { challenge_token: challenge_token, otp_code: '000000' }
-      }.to change { user.reload.failed_otp_attempts }.by(1)
+      end.to change { user.reload.failed_otp_attempts }.by(1)
     end
 
     it 'resets failed_otp_attempts on a successful login' do
@@ -97,9 +97,9 @@ RSpec.describe 'POST /api/v1/auth/otp_challenge', type: :request do
 
     it 'enqueues the lockout email when the threshold is reached' do
       user.update_columns(failed_otp_attempts: User::MAX_FAILED_OTP_ATTEMPTS - 1)
-      expect {
+      expect do
         post '/api/v1/auth/otp_challenge', params: { challenge_token: challenge_token, otp_code: '000000' }
-      }.to have_enqueued_mail(UsersMailer, :otp_account_locked)
+      end.to have_enqueued_mail(UsersMailer, :otp_account_locked)
     end
   end
 
