@@ -8,15 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- **Requires PostgreSQL 15 or newer** — the new `tracks` unique index uses `NULLS NOT DISTINCT`, which was introduced in PG 15. The migration aborts with a clear error on older servers; upgrade Postgres before deploying.
-- **Historical tracks auto-recalculate on upgrade.** A background job backfills `points.tracker_id` from each point's `raw_data` (Google `deviceTag`, OwnTracks `tid`) or its `import_id` (`legacy-import-<id>`), then recalculates stats, tracks, and digests for every user that still has tracks predating the per-device fix. Per-user jobs are staggered over the first hour to soften the spike, but expect elevated Sidekiq queue depth, CPU, and database IO until they finish — duration scales with user count and history length, and is heavier on single-CPU self-hosted instances. The job is self-healing: if Sidekiq is interrupted, the next deploy (or any subsequent migration re-run) re-enqueues users whose tracks still need backfilling.
+- **Historical tracks auto-recalculate on upgrade.** A background job backfills `points.tracker_id` from each point's `raw_data` (Google `deviceTag`, OwnTracks `tid` device identifier) or its `import_id` (`legacy-import-<id>` — visible via the points API for backfilled rows), then recalculates stats, tracks, and digests for every user that still has tracks predating the per-device fix. Per-user jobs are staggered over the first hour; expect elevated Sidekiq queue depth, CPU, and database IO until they finish, with duration scaling by user count and history length and heavier impact on single-CPU self-hosted instances. The job is re-entrant: re-running pending migrations on the next deploy re-enqueues unfinished users. New installs and accounts created after this release are unaffected.
 
 ### Fixed
 
 - Tracks recorded by multiple devices on the same account (phone + watch + GPS unit) no longer get merged into one zigzagging track on the map. Each device's points are kept on their own track, and Map v2 draws routes per-device. (#337, #1726)
 - Importing a GPX file with multiple `<trk>` or `<trkseg>` elements no longer merges them into a single track when timestamps overlap or arrive out of order (e.g. Garmin daily-file exports); each track and segment becomes its own track. When a `<trk>` declares `<src>`, that value is SHA1-hashed and used as a stable device identity so consecutive imports of the same device stay on the same track stream; with only `<name>`, identity is scoped to the import filename to prevent unrelated devices from colliding. (#1726)
 - Importing a Google Records.json export with positions from more than one device no longer "teleports" between devices and inflates distance travelled; points are scoped per-device using Google's `deviceTag`. (#337)
-- The `tracks` unique index now scopes by `tracker_id` (with `NULLS NOT DISTINCT`), so two devices producing a journey with the same start/end timestamps for one account no longer collide on insert, while legacy NULL-tracker rows still cannot duplicate themselves.
+- The `tracks` unique index now scopes by `tracker_id` (via a `COALESCE(tracker_id, '')` expression so legacy NULL-tracker rows still can't duplicate), letting two devices produce a journey with the same start/end timestamps on one account without colliding on insert.
 
 ## [1.7.8] - 2026-05-10
 
