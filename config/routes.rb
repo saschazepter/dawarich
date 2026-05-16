@@ -47,6 +47,7 @@ Rails.application.routes.draw do
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
+    resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
         post 'regenerate_api_key'
@@ -74,6 +75,10 @@ Rails.application.routes.draw do
 
   namespace :tracks do
     resource :recalculation, only: :create
+  end
+
+  namespace :visits do
+    resource :redetections, only: :create
   end
 
   get 'settings/theme', to: 'settings#theme'

@@ -3,6 +3,7 @@
 module Map
   class MaplibreController < ApplicationController
     include SafeTimestampParser
+    include ImportTimeWindow
 
     before_action :authenticate_user!
     layout 'map'
@@ -46,12 +47,14 @@ module Map
 
     def start_at
       return safe_timestamp(params[:start_at]) if params[:start_at].present?
+      return import_window_start if import_window_start
 
       Time.zone.today.beginning_of_day.to_i
     end
 
     def end_at
       return safe_timestamp(params[:end_at]) if params[:end_at].present?
+      return import_window_end if import_window_end
 
       Time.zone.today.end_of_day.to_i
     end

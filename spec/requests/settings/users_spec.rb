@@ -154,7 +154,8 @@ RSpec.describe '/settings/users', type: :request do
             end
 
             it 'prevents removing admin from the last admin user' do
-              # admin (from let!) is the only admin
+              User.where(admin: true).where.not(id: admin.id).update_all(admin: false)
+
               patch settings_user_url(admin), params: { user: { admin: '0' } }
 
               expect(admin.reload.admin?).to be true
@@ -186,6 +187,8 @@ RSpec.describe '/settings/users', type: :request do
             end
 
             it 'prevents disabling the last admin user' do
+              User.where(admin: true).where.not(id: admin.id).update_all(admin: false)
+
               patch settings_user_url(admin), params: { user: { status: 'inactive' } }
 
               expect(admin.reload.status).to eq('active')

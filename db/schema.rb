@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -330,7 +330,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
   create_table "stats", force: :cascade do |t|
     t.integer "year", null: false
     t.integer "month", null: false
-    t.bigint "distance", default: 0, null: false
+    t.bigint "distance", null: false
     t.jsonb "toponyms"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -407,9 +407,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "dominant_mode", default: 0
+    t.string "tracker_id"
+    t.index "user_id, COALESCE(tracker_id, ''::character varying), start_at, end_at", name: "index_tracks_on_user_tracker_start_end_unique", unique: true
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
-    t.index ["user_id", "start_at", "end_at"], name: "index_tracks_on_user_start_end_unique", unique: true
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
+    t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
@@ -447,13 +449,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
+    t.string "provider"
+    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
-    t.string "provider"
-    t.string "uid"
     t.datetime "deleted_at"
     t.integer "plan", default: 1, null: false
     t.integer "failed_attempts", default: 0, null: false
@@ -465,15 +467,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_08_193923) do
     t.text "otp_backup_codes", array: true
     t.integer "subscription_source", default: 0, null: false
     t.string "signup_variant"
+    t.integer "failed_otp_attempts", default: 0, null: false
+    t.datetime "otp_locked_at"
+    t.datetime "visits_redetected_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["otp_locked_at"], name: "index_users_on_otp_locked_at_not_null", where: "(otp_locked_at IS NOT NULL)"
     t.index ["plan"], name: "index_users_on_plan"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid_present", unique: true, where: "((provider IS NOT NULL) AND (uid IS NOT NULL))"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"
     t.index ["status"], name: "index_users_on_status"
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
+    t.index ["visits_redetected_at"], name: "index_users_on_visits_redetected_at"
   end
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false

@@ -431,7 +431,7 @@ export class DataLoader {
             properties: {
               id: photo.id,
               thumbnail_url: thumbnailUrl,
-              taken_at: photo.localDateTime,
+              taken_at: photo.capturedAt || photo.localDateTime,
               filename: photo.originalFileName,
               city: photo.city,
               state: photo.state,

@@ -5,7 +5,6 @@ require 'rails_helper'
 RSpec.describe '/areas', type: :request do
   let(:user) { create(:user) }
 
-
   describe 'POST /create' do
     let(:valid_params) { { name: 'Test Area', latitude: 52.52, longitude: 13.405, radius: 200 } }
 

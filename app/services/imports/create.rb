@@ -35,6 +35,7 @@ class Imports::Create
     filter_anomalies(user, import)
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
+    schedule_track_generation(user.id, import)
     update_import_points_count(import)
   rescue StandardError => e
     return if import.destroyed?
@@ -107,13 +108,36 @@ class Imports::Create
   def schedule_visit_suggesting(user_id, import)
     return unless user.safe_settings.visits_suggestions_enabled?
 
-    min_max = import.points.pick('MIN(timestamp), MAX(timestamp)')
-    return if min_max.compact.empty?
+    summary = import_points_summary(import)
+    return if summary.nil?
 
-    start_at = Time.zone.at(min_max[0])
-    end_at = Time.zone.at(min_max[1])
+    VisitSuggestingJob.perform_later(user_id:, start_at: summary[:start_at], end_at: summary[:end_at])
+  end
 
-    VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
+  def schedule_track_generation(user_id, import)
+    summary = import_points_summary(import)
+    return if summary.nil? || summary[:count] < 2
+
+    Tracks::ParallelGeneratorJob.perform_later(
+      user_id,
+      start_at: summary[:start_at],
+      end_at: summary[:end_at],
+      mode: :bulk,
+      untracked_only: true
+    )
+  end
+
+  def import_points_summary(import)
+    return @import_points_summary if defined?(@import_points_summary)
+
+    count, min_ts, max_ts = import.points.pick(Arel.sql('COUNT(*), MIN(timestamp), MAX(timestamp)'))
+
+    @import_points_summary =
+      if min_ts.nil? || max_ts.nil?
+        nil
+      else
+        { count: count, start_at: Time.zone.at(min_ts), end_at: Time.zone.at(max_ts) }
+      end
   end
 
   def create_import_failed_notification(import, user, error)

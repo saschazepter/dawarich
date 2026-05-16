@@ -5,7 +5,7 @@
 class Tracks::ParallelGeneratorJob < ApplicationJob
   queue_as :tracks
 
-  def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day)
+  def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false)
     user = find_user_or_skip(user_id) || return
 
     Tracks::ParallelGenerator.new(
@@ -13,7 +13,8 @@ class Tracks::ParallelGeneratorJob < ApplicationJob
       start_at: start_at,
       end_at: end_at,
       mode: mode,
-      chunk_size: chunk_size
+      chunk_size: chunk_size,
+      untracked_only: untracked_only
     ).call
   rescue StandardError => e
     ExceptionReporter.call(e, 'Failed to start parallel track generation')

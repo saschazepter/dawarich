@@ -74,13 +74,16 @@ RSpec.describe Auth::FindOrCreateOauthUser do
 
   describe 'missing email from apple (subsequent sign-in with no local record)' do
     it 'raises MissingOauthEmail instead of fabricating a synthetic address' do
-      expect do
+      error = nil
+      begin
         build(provider: 'apple', claims: { sub: 'apple-orphan', email: '' }).call
-      end.to raise_error(Auth::FindOrCreateOauthUser::MissingOauthEmail) do |e|
-        expect(e.provider).to eq('apple')
-        expect(e.uid).to eq('apple-orphan')
+      rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
+        error = e
       end
 
+      expect(error).to be_a(Auth::FindOrCreateOauthUser::MissingOauthEmail)
+      expect(error.provider).to eq('apple')
+      expect(error.uid).to eq('apple-orphan')
       expect(User.find_by(provider: 'apple', uid: 'apple-orphan')).to be_nil
     end
 

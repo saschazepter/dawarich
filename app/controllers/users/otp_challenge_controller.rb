@@ -15,11 +15,19 @@ class Users::OtpChallengeController < ApplicationController
 
     otp_code = params[:otp_attempt]
 
-    if user.validate_and_consume_otp!(otp_code) || user.invalidate_otp_backup_code!(otp_code)
+    if authenticate_otp(user, otp_code)
       clear_otp_session
+      user.reset_failed_otp_attempts!
       sign_in(user)
       redirect_to after_sign_in_path_for(user), notice: 'Signed in successfully.'
+    elsif user.otp_locked?
+      clear_otp_session
+      redirect_to new_user_session_path,
+                  alert: 'Account temporarily locked due to too many failed 2FA attempts. ' \
+                         'Use a backup code, wait 30 minutes, or reset your password.'
     else
+      user.register_failed_otp_attempt!
+
       session[:otp_failed_attempts] = (session[:otp_failed_attempts] || 0) + 1
       if session[:otp_failed_attempts] >= MAX_FAILED_ATTEMPTS
         clear_otp_session
@@ -34,6 +42,12 @@ class Users::OtpChallengeController < ApplicationController
   end
 
   private
+
+  def authenticate_otp(user, otp_code)
+    return user.invalidate_otp_backup_code!(otp_code) if user.otp_locked?
+
+    user.validate_and_consume_otp!(otp_code) || user.invalidate_otp_backup_code!(otp_code)
+  end
 
   def otp_challenge_valid?
     challenge_at = session[:otp_challenge_at]

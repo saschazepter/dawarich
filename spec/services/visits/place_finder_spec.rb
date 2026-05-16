@@ -21,7 +21,7 @@ RSpec.describe Visits::PlaceFinder do
 
     context 'when an existing place is found' do
       let!(:existing_place) do
-        create(:place, latitude: latitude, longitude: longitude, lonlat: "POINT(#{longitude} #{latitude})")
+        create(:place, user: user, latitude: latitude, longitude: longitude, lonlat: "POINT(#{longitude} #{latitude})")
       end
 
       it 'returns the existing place as main_place' do
@@ -42,6 +42,7 @@ RSpec.describe Visits::PlaceFinder do
         # Place is outside the global proximity radius (50m) but within the name search radius (100m)
         offset = 0.0006 # ~67m offset
         similar_named_place = create(:place,
+                                     user: user,
                                      name: 'Test Place',
                                      latitude: latitude + offset,
                                      longitude: longitude + offset,
@@ -182,9 +183,13 @@ RSpec.describe Visits::PlaceFinder do
     end
 
     context 'with multiple potential places' do
-      let!(:place1) { create(:place, name: 'Place 1', latitude: latitude, longitude: longitude) }
-      let!(:place2) { create(:place, name: 'Place 2', latitude: latitude + 0.0005, longitude: longitude + 0.0005) }
-      let!(:place3) { create(:place, name: 'Place 3', latitude: latitude + 0.001, longitude: longitude + 0.001) }
+      let!(:place1) { create(:place, user: user, name: 'Place 1', latitude: latitude, longitude: longitude) }
+      let!(:place2) do
+        create(:place, user: user, name: 'Place 2', latitude: latitude + 0.0005, longitude: longitude + 0.0005)
+      end
+      let!(:place3) do
+        create(:place, user: user, name: 'Place 3', latitude: latitude + 0.001, longitude: longitude + 0.001)
+      end
 
       it 'selects the closest place as main_place' do
         result = subject.find_or_create_place(visit_data)
@@ -200,7 +205,7 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'may include places with the same name' do
-        create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
+        create(:place, user: user, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
 
         result = subject.find_or_create_place(visit_data)
 
@@ -266,8 +271,9 @@ RSpec.describe Visits::PlaceFinder do
     it 'limits suggested places to MAX_SUGGESTED_PLACES' do
       # Create more places than the limit, all within search radius
       30.times do |i|
-        tiny_offset = i * 0.00001 # ~1m apart, all within 100m radius
+        tiny_offset = i * 0.00001
         create(:place,
+               user: user,
                name: "Place #{i}",
                latitude: latitude + tiny_offset,
                longitude: longitude + tiny_offset,
@@ -288,35 +294,26 @@ RSpec.describe Visits::PlaceFinder do
   end
 
   describe 'cross-user isolation (IDOR)' do
-    # Regression: PlaceFinder.find_suggested_places (Step 9) queries
-    # Place.near(...) UNSCOPED, returning every user's nearby places. When
-    # user B's auto-suggestion path matches a global place at the same
-    # location, suggested_places must NOT leak user A's user-scoped nearby
-    # places.
     let(:user_a) { create(:user) }
     let(:user_b) { create(:user) }
 
     let(:lat) { 52.5200 }
     let(:lon) { 13.4050 }
 
-    # A global place at the location triggers find_existing_place to return
-    # a match, which is what causes find_suggested_places to be invoked.
-    let!(:global_place) do
+    let!(:user_a_place) do
       create(:place,
-             user: nil,
-             name: 'Global Landmark',
+             user: user_a,
+             name: "User A's Place",
              latitude: lat,
              longitude: lon,
              lonlat: "POINT(#{lon} #{lat})")
     end
 
-    # User A's private place near the same location. Must NOT be returned
-    # to user B as a suggestion.
-    let!(:user_a_private_place) do
-      offset = 0.0001 # ~11m
+    let!(:user_a_nearby_place) do
+      offset = 0.0001
       create(:place,
              user: user_a,
-             name: "User A's Private Place",
+             name: "User A's Nearby Place",
              latitude: lat + offset,
              longitude: lon + offset,
              lonlat: "POINT(#{lon + offset} #{lat + offset})")
@@ -335,17 +332,17 @@ RSpec.describe Visits::PlaceFinder do
       allow(Geocoder).to receive(:search).and_return([])
     end
 
-    it 'does not return user A\'s user-scoped place to user B' do
+    it 'does not return any of user A\'s places to user B' do
       finder = described_class.new(user_b)
       result = finder.find_or_create_place(visit_data)
 
-      # The main place is the global one (legitimately shared).
-      expect(result[:main_place]).to eq(global_place)
+      expect(result[:main_place]).not_to eq(user_a_place)
+      expect(result[:main_place].user_id).to eq(user_b.id)
 
-      # Suggested places must NOT include user A's private place.
-      expect(result[:suggested_places]).not_to include(user_a_private_place)
+      expect(result[:suggested_places]).not_to include(user_a_place)
+      expect(result[:suggested_places]).not_to include(user_a_nearby_place)
 
-      foreign_user_ids = result[:suggested_places].map(&:user_id).compact - [user_b.id]
+      foreign_user_ids = result[:suggested_places].map(&:user_id).uniq - [user_b.id]
       expect(foreign_user_ids).to be_empty
     end
   end

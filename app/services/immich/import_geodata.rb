@@ -53,7 +53,7 @@ class Immich::ImportGeodata
       asset.dig('exifInfo', 'latitude') != 0 &&
       asset.dig('exifInfo', 'longitude') &&
       asset.dig('exifInfo', 'longitude') != 0 &&
-      asset.dig('exifInfo', 'dateTimeOriginal')
+      (asset['fileCreatedAt'] || asset.dig('exifInfo', 'dateTimeOriginal'))
   end
 
   def extract_geodata(asset)
@@ -61,7 +61,7 @@ class Immich::ImportGeodata
       latitude: asset['exifInfo']['latitude'],
       longitude: asset['exifInfo']['longitude'],
       lonlat: "SRID=4326;POINT(#{asset['exifInfo']['longitude']} #{asset['exifInfo']['latitude']})",
-      timestamp: Time.iso8601(asset['exifInfo']['dateTimeOriginal']).utc.to_i
+      timestamp: Time.iso8601(asset['fileCreatedAt'] || asset['exifInfo']['dateTimeOriginal']).utc.to_i
     }
   end
 

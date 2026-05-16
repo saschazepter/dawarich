@@ -57,6 +57,50 @@ class User < ApplicationRecord
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
+  MAX_FAILED_OTP_ATTEMPTS = 10
+  OTP_LOCK_DURATION = 30.minutes
+  OTP_LOCK_EMAIL_THROTTLE = 1.hour
+
+  def otp_locked?
+    otp_locked_at.present? && otp_locked_at > OTP_LOCK_DURATION.ago
+  end
+
+  def register_failed_otp_attempt!
+    return if otp_locked?
+
+    User.where(id: id).update_all(failed_otp_attempts: 0, otp_locked_at: nil) if otp_locked_at.present?
+
+    User.where(id: id).update_all('failed_otp_attempts = failed_otp_attempts + 1')
+    reload
+
+    return if failed_otp_attempts < MAX_FAILED_OTP_ATTEMPTS
+
+    transitioned = User.where(id: id, otp_locked_at: nil).update_all(otp_locked_at: Time.current)
+    return unless transitioned.positive?
+
+    reload
+    send_otp_lockout_email
+  end
+
+  def send_otp_lockout_email
+    key = "otp_lockout_email_throttle/user/#{id}"
+    return unless Rails.cache.write(key, true, expires_in: OTP_LOCK_EMAIL_THROTTLE, unless_exist: true)
+
+    UsersMailer.with(user: self).otp_account_locked.deliver_later
+  end
+
+  def reset_failed_otp_attempts!
+    return if failed_otp_attempts.zero? && otp_locked_at.nil?
+
+    update_columns(failed_otp_attempts: 0, otp_locked_at: nil)
+  end
+
+  # Devise hook: clearing the password should also clear the OTP lockout so
+  # the user-facing "or reset your password" guidance actually works.
+  def reset_password(*)
+    super.tap { |success| reset_failed_otp_attempts! if success }
+  end
+
   def oauth_user?
     provider.present?
   end

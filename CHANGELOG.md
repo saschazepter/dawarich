@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.8] - 2026-05-16
+
+### ⚠️ Upgrade notes
+
+- **Self-hosters running OIDC-only sign-in:** the `ALLOW_EMAIL_PASSWORD_REGISTRATION` env var no longer doubles as a login gate. Email/password sign-in is now controlled by the new `ALLOW_EMAIL_PASSWORD_LOGIN` env var (defaults to `true`). To preserve OIDC-only sign-in after upgrade, set `ALLOW_EMAIL_PASSWORD_LOGIN=false`.
+- **Visit detection rewrite:** the next nightly run after upgrade will produce different suggested visits. Confirmed visits and named places are preserved; only suggestions change.
+- **Places backfill (irreversible):** the place-ownership migration backfills `places.user_id` from owning visits and **permanently deletes any place that has no linked visits**. Multi-user instances and instances with orphan rows from prior bugs should run `rake places:backfill_user_id_dry_run` first to see assigned/deleted counts. Single-user self-hosted instances are unaffected. The follow-up release will add a `NOT NULL` constraint, so any new places created between this release and the next must carry a `user_id`.
+- **Historical tracks auto-recalculate on upgrade.** A background job backfills `points.tracker_id` from each point's `raw_data` (Google `deviceTag`, OwnTracks `tid` — both stored as-is) or its `import_id` (`legacy-import-<id>`, visible in points and tracks API responses for backfilled rows), then recalculates stats, tracks, and digests for every user with tracks predating the fix. The enqueue job is Sidekiq-retry-safe and re-checks its predicate on each retry, so a crashed/restarted Sidekiq resumes cleanly without re-processing finished users. New installs are unaffected.
+- **Expect a temporary spike during the recalc window.** Per-user jobs are staggered over the first hour; expect elevated Sidekiq queue depth, CPU, and database IO until they finish, with duration scaling by user count and history length. Tracks may appear merged on the map for individual accounts until their recalc completes.
+- **2FA lockout recovery on instances without SMTP:** the new 10-attempt 2FA lockout sends an unlock email; self-hosters without SMTP configured will not receive it. Locked users can be unlocked from the Rails console with `User.find(<id>).reset_failed_otp_attempts!`, or by completing the password-reset flow (which also clears the lockout).
+
+
+### Changed
+
+- Visit detection now uses PostGIS spatial clustering for faster, more accurate stops; the iteration-based detector is removed.
+- Places are now strictly per-user. Suggestion, photo-geotagging, and reverse-geocoding all use your own place catalogue exclusively; no places are shared across users. Existing shared places have been backfilled to their most-active owner. Self-hosted single-user instances see no behaviour change.
+
+### Added
+
+- "Re-run detection on full history" button under Settings → Visits. Confirmed visits and named places are preserved.
+- Account lockout after 10 failed 2FA attempts (30-minute auto-unlock or password reset). Applies to both the mobile API (`POST /api/v1/auth/otp_challenge`) and the web sign-in flow. Backup codes still work during a lockout so users with one stored can recover immediately. A notification email is sent to the account owner when a lockout is triggered. #2575
+
+### Fixed
+
+- Fix support of FIT files from Garmin Connect. #2686
+- The Anomalies map layer no longer requires manually toggling off and on after a page reload or timeframe change. The toggle state is restored on reload, and the layer refetches anomalies for the active date range. #2568
+- Email/password login is now shown alongside the OIDC button on self-hosted instances by default, instead of being hidden whenever OIDC is configured. Operators who want to enforce OIDC-only sign-in can set `ALLOW_EMAIL_PASSWORD_LOGIN=false`. See the upgrade note above. #2495
+- Suggested visits at residential addresses are no longer stuck on the placeholder name "Suggested place" indefinitely. The nightly place-naming job now assembles a name from street, house number, city, and state when the geocoder response has no top-level place name — matching how new visits are named at creation time. #1711
+- Photos imported from Immich now display at the correct time on Map v2 and import with the correct UTC timestamp, regardless of the host server's timezone or the photo's capture timezone. Previously, photos taken outside the server's timezone could appear up to 24 hours off. Existing imports keep their old timestamps; to fix already-imported photos, re-run the Immich import from **Settings → Integrations → Immich**. The photos API now exposes a `capturedAt` field with the canonical UTC instant (from Immich's `fileCreatedAt` / PhotoPrism's `TakenAt`) alongside the existing `localDateTime` key, which continues to return the source's wall-clock value. Map v2 uses `capturedAt` for time display. #2253
+- Confirmed and declined visits inside an area or assigned to a place are no longer reverted to "suggested" — and any name you gave them is no longer overwritten — by the nightly visit-recompute job. #2048, #2484
+- GPX import now streams the file rather than loading the entire XML into memory, so multi-hundred-MB GPX files (e.g. long-running activity exports) no longer OOM the Sidekiq worker. #2296
+- Viewing an import on Map v2 or the Points page now selects the import's full date range, instead of defaulting to today or the last month. #1857
+- Imports (GPX, KML, GeoJSON, FIT, TCX, Google Timeline, OwnTracks .rec, CSV, Polarsteps) now generate tracks for the imported point range. To rebuild every track in a range — including manually-corrected ones — use Map v2 → Settings → **Recalculate tracks & stats**. #2224
+- Tracks recorded by multiple devices on the same account (phone + watch + GPS unit) no longer get merged into one zigzagging track on the map. Each device's points are kept on their own track, and Map v2 draws routes per-device. #337, #1726
+- Importing a GPX file with multiple `<trk>` or `<trkseg>` elements no longer merges them into a single track when timestamps overlap or arrive out of order (e.g. Garmin daily-file exports); each track and segment becomes its own track. When a `<trk>` declares `<src>`, that value is SHA1-hashed and used as a stable device identity so consecutive imports of the same device stay on the same track stream; with only `<name>`, identity is scoped to the import filename to prevent unrelated devices from colliding. #1726
+- Importing a Google Records.json export with positions from more than one device no longer "teleports" between devices and inflates distance travelled; points are scoped per-device using Google's `deviceTag`. #337
+- The `tracks` unique index now scopes by `tracker_id` (via a `COALESCE(tracker_id, '')` expression so legacy NULL-tracker rows still can't duplicate), letting two devices produce a journey with the same start/end timestamps on one account without colliding on insert.
+
+
 ## [1.7.7] - 2026-05-09
 
 ### ⚠️ Breaking changes
