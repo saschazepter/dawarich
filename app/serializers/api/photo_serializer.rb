@@ -42,7 +42,7 @@ class Api::PhotoSerializer
   def local_date_time
     case source
     when 'immich'
-      photo['fileCreatedAt'] || photo['localDateTime']
+      photo['localDateTime']
     when 'photoprism'
       photo['TakenAtLocal']
     else
@@ -53,11 +53,11 @@ class Api::PhotoSerializer
   def captured_at
     case source
     when 'immich'
-      photo['fileCreatedAt'] || photo['localDateTime']
+      photo['fileCreatedAt']
     when 'photoprism'
-      photo['TakenAt'] || photo['TakenAtLocal']
+      photo['TakenAt']
     else
-      photo['fileCreatedAt'] || photo['TakenAt'] || photo['localDateTime'] || photo['TakenAtLocal']
+      photo['fileCreatedAt'] || photo['TakenAt']
     end
   end
 

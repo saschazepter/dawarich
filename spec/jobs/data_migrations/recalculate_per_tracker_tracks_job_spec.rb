@@ -64,7 +64,7 @@ RSpec.describe DataMigrations::RecalculatePerTrackerTracksJob do
 
       backfiller = instance_double(Points::TrackerIdBackfiller, call: 0)
       expect(Points::TrackerIdBackfiller).to receive(:new).with(user).and_return(backfiller)
-      expect(Users::RecalculateDataJob).to receive(:perform_now).with(user.id)
+      expect(Users::RecalculateDataJob).to receive(:perform_now).with(user.id, notify: false)
 
       described_class.new.perform(user.id)
     end

@@ -15,7 +15,7 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
 
     return unless user.tracks.where(tracker_id: nil).exists?
 
-    Users::RecalculateDataJob.perform_now(user.id)
+    Users::RecalculateDataJob.perform_now(user.id, notify: false)
   end
 
   private

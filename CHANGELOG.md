@@ -19,15 +19,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Visit detection now uses PostGIS spatial clustering for faster, more accurate stops; the iteration-based detector is removed.
+- Places are now strictly per-user. Suggestion, photo-geotagging, and reverse-geocoding all use your own place catalogue exclusively; no places are shared across users. Existing shared places have been backfilled to their most-active owner. Self-hosted single-user instances see no behaviour change.
 
 ### Added
 
 - "Re-run detection on full history" button under Settings → Visits. Confirmed visits and named places are preserved.
-- Account lockout after 10 failed 2FA attempts (30-minute auto-unlock or password reset). Applies to both the mobile API (`POST /api/v1/auth/otp_challenge`) and the web sign-in flow. A notification email is sent to the account owner when a lockout is triggered. #2575
-
-### Changed
-
-- Places are now strictly per-user. Suggestion, photo-geotagging, and reverse-geocoding all use your own place catalogue exclusively; no places are shared across users. Existing shared places have been backfilled to their most-active owner. Self-hosted single-user instances see no behaviour change.
+- Account lockout after 10 failed 2FA attempts (30-minute auto-unlock or password reset). Applies to both the mobile API (`POST /api/v1/auth/otp_challenge`) and the web sign-in flow. Backup codes still work during a lockout so users with one stored can recover immediately. A notification email is sent to the account owner when a lockout is triggered. #2575
 
 ### Fixed
 
@@ -35,7 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Anomalies map layer no longer requires manually toggling off and on after a page reload or timeframe change. The toggle state is restored on reload, and the layer refetches anomalies for the active date range. #2568
 - Email/password login is now shown alongside the OIDC button on self-hosted instances by default, instead of being hidden whenever OIDC is configured. Operators who want to enforce OIDC-only sign-in can set `ALLOW_EMAIL_PASSWORD_LOGIN=false`. See the upgrade note above. #2495
 - Suggested visits at residential addresses are no longer stuck on the placeholder name "Suggested place" indefinitely. The nightly place-naming job now assembles a name from street, house number, city, and state when the geocoder response has no top-level place name — matching how new visits are named at creation time. #1711
-- Photos imported from Immich now display at the correct time on Map v2 and import with the correct UTC timestamp, regardless of the host server's timezone or the photo's capture timezone. Previously, photos taken outside the server's timezone could appear up to 24 hours off. Existing imports keep their old timestamps; to fix already-imported photos, re-run the Immich import from **Settings → Integrations → Immich**. The photos API now also exposes a `capturedAt` field with the canonical UTC instant alongside the existing `localDateTime` key. #2253
+- Photos imported from Immich now display at the correct time on Map v2 and import with the correct UTC timestamp, regardless of the host server's timezone or the photo's capture timezone. Previously, photos taken outside the server's timezone could appear up to 24 hours off. Existing imports keep their old timestamps; to fix already-imported photos, re-run the Immich import from **Settings → Integrations → Immich**. The photos API now exposes a `capturedAt` field with the canonical UTC instant (from Immich's `fileCreatedAt` / PhotoPrism's `TakenAt`) alongside the existing `localDateTime` key, which continues to return the source's wall-clock value. Map v2 uses `capturedAt` for time display. #2253
 - Confirmed and declined visits inside an area or assigned to a place are no longer reverted to "suggested" — and any name you gave them is no longer overwritten — by the nightly visit-recompute job. #2048, #2484
 - GPX import now streams the file rather than loading the entire XML into memory, so multi-hundred-MB GPX files (e.g. long-running activity exports) no longer OOM the Sidekiq worker. #2296
 - Viewing an import on Map v2 or the Points page now selects the import's full date range, instead of defaulting to today or the last month. #1857

@@ -5,7 +5,8 @@
     <h3 class="text-xl font-bold">Re-run detection on full history</h3>
     <p class="text-sm opacity-80">
       Replaces all suggested visits across your entire history with fresh detections using the settings above.
-      Confirmed visits and the places you've named are preserved. This usually takes a few minutes.
+      Confirmed visits and the places you've named are preserved. Small accounts usually finish in a few minutes;
+      multi-year histories can take 30&ndash;60 minutes and will temporarily increase server load.
     </p>
     <% if current_user.respond_to?(:plan_restricted?) && current_user.plan_restricted? %>
       <p class="text-xs opacity-70">On the Lite plan, re-detection covers your visible 12-month window only.</p>
