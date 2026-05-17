@@ -20,12 +20,12 @@ namespace :demo do
     user = User.find_or_initialize_by(email: 'demo@dawarich.app')
 
     if user.new_record?
-      user.password = 'password'
-      user.password_confirmation = 'password'
+      user.password = 'safepassword'
+      user.password_confirmation = 'safepassword'
       user.save!
       user.update!(status: :active, active_until: 1000.years.from_now)
       puts "✅ User created: #{user.email}"
-      puts '   Password: password'
+      puts '   Password: safepassword'
     else
       puts "ℹ️  User already exists: #{user.email}"
     end
@@ -102,8 +102,8 @@ namespace :demo do
     puts "\n📝 Creating Lite demo user..."
     lite_user = User.find_or_initialize_by(email: 'lite@dawarich.app')
     if lite_user.new_record?
-      lite_user.password = 'password'
-      lite_user.password_confirmation = 'password'
+      lite_user.password = 'safepassword'
+      lite_user.password_confirmation = 'safepassword'
       lite_user.save!
       puts "✅ Lite user created: #{lite_user.email}"
     else
@@ -163,12 +163,12 @@ namespace :demo do
     puts "   Lite Areas: #{lite_user.areas.count}"
     puts "\n🔐 Login credentials:"
     puts '   Email: demo@dawarich.app'
-    puts '   Password: password'
+    puts '   Password: safepassword'
     puts "\n   Lite Email: lite@dawarich.app"
-    puts '   Lite Password: password'
+    puts '   Lite Password: safepassword'
     puts "\n👨‍👩‍👧‍👦 Family member credentials:"
     family_members.each_with_index do |member, index|
-      puts "   Member #{index + 1}: #{member.email} / password / API Key: #{member.api_key}"
+      puts "   Member #{index + 1}: #{member.email} / safepassword / API Key: #{member.api_key}"
     end
   end
 
@@ -342,8 +342,8 @@ namespace :demo do
       member = User.find_or_initialize_by(email: email)
 
       if member.new_record?
-        member.password = 'password'
-        member.password_confirmation = 'password'
+        member.password = 'safepassword'
+        member.password_confirmation = 'safepassword'
         member.save!
         member.update!(status: :active, active_until: 1000.years.from_now)
         puts "   Created family member: #{member.email}"
