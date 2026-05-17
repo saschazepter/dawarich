@@ -49,27 +49,37 @@ export class ProgressiveLoader {
           page: currentPage,
           per_page: batchSize,
           signal: this.abortController.signal,
-        }).then((result) => {
-          allData.push(...result.data)
-
-          if (result.totalPages) {
-            totalPages = result.totalPages
-          }
-
-          this.onProgress?.({
-            loaded: allData.length,
-            newData: result.data,
-            total: Math.min(totalPages * batchSize, maxPoints),
-            currentPage,
-            totalPages,
-            progress: currentPage / totalPages,
-          })
-
-          const idx = activeRequests.indexOf(requestPromise)
-          if (idx > -1) activeRequests.splice(idx, 1)
-
-          return result
         })
+          .then((result) => {
+            allData.push(...result.data)
+
+            if (result.totalPages) {
+              totalPages = result.totalPages
+            }
+
+            this.onProgress?.({
+              loaded: allData.length,
+              newData: result.data,
+              total: Math.min(totalPages * batchSize, maxPoints),
+              currentPage,
+              totalPages,
+              progress: currentPage / totalPages,
+            })
+
+            const idx = activeRequests.indexOf(requestPromise)
+            if (idx > -1) activeRequests.splice(idx, 1)
+
+            return result
+          })
+          .catch((error) => {
+            if (
+              error.name === "AbortError" ||
+              error.message === "Load cancelled"
+            ) {
+              return null
+            }
+            throw error
+          })
 
         activeRequests.push(requestPromise)
         page++
