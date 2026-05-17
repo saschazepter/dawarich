@@ -196,6 +196,7 @@ export class HexagonLayer extends BaseLayer {
     this.aggregator = new Map()
     this.rawBuffer = []
     this.lastFetchedPage = 0
+    this._quotaWarned = false
     this._repaint()
     await this.load({ start_at, end_at })
   }
@@ -231,13 +232,14 @@ export class HexagonLayer extends BaseLayer {
 
     try {
       const result = await this.loader.load(
-        ({ page, per_page }) =>
+        ({ page, per_page, signal }) =>
           this.api
             .fetchPoints({
               start_at: this.startAt,
               end_at: this.endAt,
               page,
               per_page,
+              signal,
             })
             .then((r) => ({
               data: r.points,
@@ -297,19 +299,20 @@ export class HexagonLayer extends BaseLayer {
 
     try {
       await this.loader.load(
-        ({ page, per_page }) =>
+        ({ page, per_page, signal }) =>
           this.api
             .fetchPoints({
               start_at: this.startAt,
               end_at: this.endAt,
               page,
               per_page,
+              signal,
             })
             .then((r) => ({ data: r.points, totalPages: r.totalPages })),
         {
           batchSize: 1000,
           maxConcurrent: 3,
-          maxPoints: 100_000,
+          maxPoints: Math.max(0, 100_000 - this.rawBuffer.length),
           resumeFrom: this.lastFetchedPage + 1,
         },
       )
@@ -339,6 +342,9 @@ export class HexagonLayer extends BaseLayer {
 
   dispose() {
     this.cancel()
+    this.popup.remove()
+    this.hoveredId = null
+    this.map.getCanvas().style.cursor = ""
     this.aggregator = new Map()
     this.rawBuffer = []
     this.lastFetchedPage = 0

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.7.9] - Unreleased
 
+### Added
+
+- Map v2 **Density Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
@@ -104,10 +108,6 @@ scrape_configs:
     static_configs:
       - targets: ['dawarich_app:3000']
 ```
-
-### Added
-
-- Map v2 **Density Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
 
 ### Fixed
 

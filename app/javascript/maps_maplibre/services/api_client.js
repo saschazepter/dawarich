@@ -13,7 +13,7 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, page, per_page }
    * @returns {Promise<Object>} { points, currentPage, totalPages }
    */
-  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000 }) {
+  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000, signal }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
@@ -25,6 +25,7 @@ export class ApiClient {
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
+      signal,
     })
 
     if (!response.ok) {
