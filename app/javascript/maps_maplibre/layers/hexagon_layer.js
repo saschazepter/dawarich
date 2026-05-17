@@ -71,6 +71,7 @@ export class HexagonLayer extends BaseLayer {
   }
 
   _handleZoomEnd() {
+    if (!this.visible) return
     if (!h3Module) return
     const newRes = resolutionForZoom(this.map.getZoom())
     if (newRes === this.currentRes) return
@@ -209,9 +210,10 @@ export class HexagonLayer extends BaseLayer {
 
     this.controller?.showLoading?.()
 
-    await loadH3()
-
     const generation = ++this._loadGeneration
+    await loadH3()
+    if (generation !== this._loadGeneration) return
+
     this.loader = new ProgressiveLoader({
       onProgress: ({ newData, currentPage, loaded }) => {
         if (generation !== this._loadGeneration) return
@@ -252,7 +254,7 @@ export class HexagonLayer extends BaseLayer {
       if (result.length >= 100_000 && !this._quotaWarned) {
         this._quotaWarned = true
         Toast.warning(
-          "Showing the first 100k points in this range — narrow the dates to see everything.",
+          "Showing the first 100,000 points in this range — narrow the date range for denser detail.",
         )
       }
       this.controller?.updateLoadingCounts?.({
@@ -274,9 +276,10 @@ export class HexagonLayer extends BaseLayer {
   async resumeLoad() {
     if (!this.startAt || !this.endAt) return
 
-    await loadH3()
-
     const generation = ++this._loadGeneration
+    await loadH3()
+    if (generation !== this._loadGeneration) return
+
     this.loader = new ProgressiveLoader({
       onProgress: ({ newData, currentPage, loaded }) => {
         if (generation !== this._loadGeneration) return
@@ -310,6 +313,13 @@ export class HexagonLayer extends BaseLayer {
           resumeFrom: this.lastFetchedPage + 1,
         },
       )
+
+      if (generation !== this._loadGeneration) return
+      this.controller?.updateLoadingCounts?.({
+        counts: { hexagons: this.rawBuffer.length },
+        isComplete: true,
+      })
+      this.controller?.hideLoading?.()
     } catch (error) {
       if (generation !== this._loadGeneration) return
       console.error("HexagonLayer resumeLoad failed:", error)
@@ -325,6 +335,15 @@ export class HexagonLayer extends BaseLayer {
     this.loader?.cancel?.()
     this.loader = null
     this._loadGeneration += 1
+  }
+
+  dispose() {
+    this.cancel()
+    this.aggregator = new Map()
+    this.rawBuffer = []
+    this.lastFetchedPage = 0
+    this._quotaWarned = false
+    this._repaint()
   }
 
   _recordCell(cell, ts) {

@@ -277,31 +277,13 @@ export class RoutesManager {
    */
   async toggleHexagons(event) {
     const toggle = event.target
-    let hexagonLayer = this.layerManager.getLayer("hexagons")
-
-    const showHexagons = async () => {
-      if (!hexagonLayer) {
-        hexagonLayer = this.layerManager._addHexagonLayer()
-      }
-      hexagonLayer.show()
-      const start_at = this.controller.startDateValue
-      const end_at = this.controller.endDateValue
-      await hexagonLayer.load({ start_at, end_at })
-    }
-
-    const hideHexagons = () => {
-      if (hexagonLayer) {
-        hexagonLayer.cancel()
-        hexagonLayer.hide()
-      }
-    }
 
     const intercepted = gatedToggle({
       layerName: "Hexagons",
       userPlan: this.controller.userPlanValue,
       toggle,
-      showFn: showHexagons,
-      hideFn: hideHexagons,
+      showFn: () => this._showHexagons(),
+      hideFn: () => this._hideHexagons(),
       upgradeUrl: this.controller.upgradeUrlValue,
     })
     if (intercepted) return
@@ -310,9 +292,33 @@ export class RoutesManager {
     SettingsManager.updateSetting("hexagonsEnabled", enabled)
 
     if (enabled) {
-      await showHexagons()
+      await this._showHexagons()
     } else {
-      hideHexagons()
+      this._hideHexagons()
+    }
+  }
+
+  async _showHexagons() {
+    let hexagonLayer = this.layerManager.getLayer("hexagons")
+    if (!hexagonLayer) hexagonLayer = this.layerManager._addHexagonLayer()
+    hexagonLayer.show()
+    await hexagonLayer.load({
+      start_at: this.controller.startDateValue,
+      end_at: this.controller.endDateValue,
+    })
+  }
+
+  _hideHexagons() {
+    const hexagonLayer = this.layerManager.getLayer("hexagons")
+    if (hexagonLayer) {
+      hexagonLayer.dispose()
+      hexagonLayer.hide()
+    }
+  }
+
+  async restoreHexagons() {
+    if (this.controller.hexagonsToggleTarget?.checked) {
+      await this._showHexagons()
     }
   }
 

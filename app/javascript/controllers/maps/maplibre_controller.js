@@ -338,6 +338,9 @@ export default class extends Controller {
       if (this.settings?.anomaliesEnabled) {
         this.routesManager.refreshAnomalies({ enabled: true })
       }
+      if (this.hasHexagonsToggleTarget && this.hexagonsToggleTarget.checked) {
+        this.routesManager.restoreHexagons()
+      }
     })
 
     // Show family members list immediately (doesn't depend on layer)
@@ -1302,6 +1305,9 @@ export default class extends Controller {
   }
   toggleHeatmap(event) {
     return this.routesManager.toggleHeatmap(event)
+  }
+  toggleHexagons(event) {
+    return this.routesManager.toggleHexagons(event)
   }
   toggleFog(event) {
     return this.routesManager.toggleFog(event)
