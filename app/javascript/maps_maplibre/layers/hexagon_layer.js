@@ -156,17 +156,17 @@ export class HexagonLayer extends BaseLayer {
             ["linear"],
             ["get", "log_count"],
             0,
-            "#0d2b4a",
+            "#1E3A8A",
             1,
-            "#1d6e98",
+            "#3B82F6",
             2,
-            "#3fa7c7",
+            "#06B6D4",
             3,
-            "#88d3b6",
+            "#0D9488",
             4,
-            "#fde58a",
+            "#F59E0B",
           ],
-          "fill-opacity": 0.55,
+          "fill-opacity": 0.6,
         },
       },
       {
@@ -204,6 +204,7 @@ export class HexagonLayer extends BaseLayer {
   async load({ start_at, end_at }) {
     this.startAt = start_at
     this.endAt = end_at
+    this.currentRes = resolutionForZoom(this.map.getZoom())
     this.aggregator = new Map()
     this.rawBuffer = []
     this.lastFetchedPage = 0

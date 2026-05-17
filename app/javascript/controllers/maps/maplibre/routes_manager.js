@@ -316,12 +316,6 @@ export class RoutesManager {
     }
   }
 
-  async restoreHexagons() {
-    if (this.controller.hexagonsToggleTarget?.checked) {
-      await this._showHexagons()
-    }
-  }
-
   /**
    * Toggle fog of war layer
    */

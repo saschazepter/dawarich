@@ -48,6 +48,7 @@ export class LayerManager {
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
+    this._addHexagonLayer()
     this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(tracksGeoJSON)
     this._addRoutesLayer(routesGeoJSON)
@@ -257,7 +258,7 @@ export class LayerManager {
   _addHexagonLayer() {
     if (this.layers.hexagonsLayer) return this.layers.hexagonsLayer
     this.layers.hexagonsLayer = new HexagonLayer(this.map, {
-      visible: false,
+      visible: this.settings.hexagonsEnabled || false,
       api: this.api,
       controller: this.controller,
     })
