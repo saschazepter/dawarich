@@ -580,6 +580,75 @@
 
           <div class="divider"></div>
 
+          <!-- Points Rendering Mode -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Points Rendering Mode</span>
+            </label>
+            <div class="flex flex-col gap-2">
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="raw"
+                       class="radio radio-primary radio-sm"
+                       checked />
+                <span class="label-text">Raw (all points)</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="simplified"
+                       class="radio radio-primary radio-sm" />
+                <span class="label-text">Simplified (reduced points)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Speed-Colored Routes -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="speedColoredRoutes"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium">Speed-Colored Routes</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Live Mode -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps--maplibre-realtime#toggleLiveMode"
+                     data-maps--maplibre-realtime-target="liveModeToggle" />
+              <span class="label-text font-medium">Live Mode</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Update Button -->
+          <button type="button" data-action="click->maps--maplibre#updateAdvancedSettings" class="btn btn-sm btn-primary btn-block">
+              <%= icon 'save' %>
+              Apply Settings
+          </button>
+
+          <!-- Reset Settings -->
+          <button type="button"
+                  class="btn btn-sm btn-outline btn-block"
+                  data-action="click->maps--maplibre#resetSettings">
+            <%= icon 'rotate-ccw' %>
+            Reset to Defaults
+          </button>
+
+          <div class="divider"></div>
+
           <!-- Transportation Mode Detection Thresholds -->
           <details class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
@@ -928,75 +997,6 @@
               </div>
             </div>
           </details>
-
-          <div class="divider"></div>
-
-          <!-- Points Rendering Mode -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">Points Rendering Mode</span>
-            </label>
-            <div class="flex flex-col gap-2">
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="raw"
-                       class="radio radio-primary radio-sm"
-                       checked />
-                <span class="label-text">Raw (all points)</span>
-              </label>
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="simplified"
-                       class="radio radio-primary radio-sm" />
-                <span class="label-text">Simplified (reduced points)</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Speed-Colored Routes -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     name="speedColoredRoutes"
-                     class="toggle toggle-primary" />
-              <span class="label-text font-medium">Speed-Colored Routes</span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Live Mode -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     class="toggle toggle-primary"
-                     data-action="change->maps--maplibre-realtime#toggleLiveMode"
-                     data-maps--maplibre-realtime-target="liveModeToggle" />
-              <span class="label-text font-medium">Live Mode</span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Update Button -->
-          <button type="submit" class="btn btn-sm btn-primary btn-block">
-            <%= icon 'save' %>
-            Apply Settings
-          </button>
-
-          <!-- Reset Settings -->
-          <button type="button"
-                  class="btn btn-sm btn-outline btn-block"
-                  data-action="click->maps--maplibre#resetSettings">
-            <%= icon 'rotate-ccw' %>
-            Reset to Defaults
-          </button>
         </form>
       </div>
 
