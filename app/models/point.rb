@@ -5,6 +5,8 @@ class Point < ApplicationRecord
   include Distanceable
   include Archivable
 
+  self.ignored_columns += %w[latitude longitude]
+
   belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
   belongs_to :user

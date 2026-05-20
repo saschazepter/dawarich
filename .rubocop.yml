@@ -13,8 +13,6 @@ Dawarich/PointsLatLonAccess:
     - 'app/**/*.rb'
     - 'lib/**/*.rb'
   Exclude:
-    - 'app/services/users/export_data/points.rb'
-    - 'app/jobs/data_migrations/**/*.rb'
     - 'lib/rubocop/**/*.rb'
 
 Style/Documentation:
