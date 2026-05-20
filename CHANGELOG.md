@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Imports table now shows how many points were skipped as duplicates (already in your timeline at the same coordinates and timestamp), and notifies you when an import completes without inserting any points because every row in the file was a duplicate. Previously these imports looked indistinguishable from empty files. (#2721)
 - Family members' positions now update in real time on the map as they arrive, instead of only refreshing every 60 seconds. (#2733)
 - Photos from Immich and Photoprism integrations now reappear on the map after a transient empty response from the upstream, instead of staying hidden for 30 minutes due to a cached empty result. (#1071, #784)
 - Map v2 **Select Area** now includes anomaly points, so the "Delete points" button can bulk-delete them instead of forcing one-by-one deletion via My Data → Points (#2476)
