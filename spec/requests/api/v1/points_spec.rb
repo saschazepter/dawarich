@@ -244,6 +244,29 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(response).to have_http_status(:success)
     end
 
+    context 'when the point belongs to a track' do
+      let(:track) { create(:track, user: user) }
+      let!(:tracked_point) { create(:point, user: user, track: track) }
+
+      it 'enqueues a recalculation job for the track' do
+        expect do
+          delete "/api/v1/points/#{tracked_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+
+        expect(response).to have_http_status(:success)
+      end
+    end
+
+    context 'when the point has no track' do
+      let!(:trackless_point) { create(:point, user: user, track: nil) }
+
+      it 'does not enqueue a recalculation job' do
+        expect do
+          delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
+        end.not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
@@ -292,6 +315,36 @@ RSpec.describe 'Api::V1::Points', type: :request do
              params: { point_ids: }
 
       expect(response).to have_http_status(:ok)
+    end
+
+    context 'when deleted points belong to one or more tracks' do
+      let(:track1) { create(:track, user: user) }
+      let(:track2) { create(:track, user: user) }
+      let!(:p1) { create(:point, user: user, track: track1) }
+      let!(:p2) { create(:point, user: user, track: track1) }
+      let!(:p3) { create(:point, user: user, track: track2) }
+      let!(:p4) { create(:point, user: user, track: nil) }
+
+      it 'enqueues a recalculation job for each distinct affected track' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: [p1.id, p2.id, p3.id, p4.id] }
+        end.to have_enqueued_job(Tracks::RecalculateJob).with(track1.id)
+                                                        .and have_enqueued_job(Tracks::RecalculateJob).with(track2.id)
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when no deleted points belong to a track' do
+      let!(:trackless) { create_list(:point, 2, user: user, track: nil) }
+
+      it 'does not enqueue any recalculation jobs' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: trackless.map(&:id) }
+        end.not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
     end
 
     it 'deletes multiple points' do

@@ -70,7 +70,7 @@ export class RoutesManager {
     let modal = document.getElementById("speed-color-editor-modal")
     if (!modal) {
       modal = this.createSpeedColorEditorModal(currentScale)
-      document.body.appendChild(modal)
+      this.controller.element.appendChild(modal)
     } else {
       const controller =
         this.controller.application.getControllerForElementAndIdentifier(

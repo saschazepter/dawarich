@@ -8,7 +8,7 @@ class Place < ApplicationRecord
   DEFAULT_NAME = 'Suggested place'
 
   belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
-  has_many :visits, dependent: :destroy
+  has_many :visits, dependent: :nullify
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
