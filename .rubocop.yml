@@ -1,8 +1,21 @@
+require:
+  - ./lib/rubocop/cop/dawarich/points_lat_lon_access
+
 AllCops:
   NewCops: disable
   Exclude:
     - 'db/schema.rb'
 plugins: rubocop-rails
+
+Dawarich/PointsLatLonAccess:
+  Enabled: true
+  Include:
+    - 'app/**/*.rb'
+    - 'lib/**/*.rb'
+  Exclude:
+    - 'app/services/users/export_data/points.rb'
+    - 'app/jobs/data_migrations/**/*.rb'
+    - 'lib/rubocop/**/*.rb'
 
 Style/Documentation:
   Enabled: false
