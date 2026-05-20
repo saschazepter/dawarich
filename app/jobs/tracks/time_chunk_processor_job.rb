@@ -105,7 +105,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
         Rails.logger.error(
           "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"
         )
-        Rails.logger.debug "Point coordinates: #{points.map { |p| [p.latitude, p.longitude] }.inspect}"
+        Rails.logger.debug "Point coordinates: #{points.map { |p| [p.lat, p.lon] }.inspect}"
         return nil
       end
 
