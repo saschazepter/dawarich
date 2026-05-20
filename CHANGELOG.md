@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
+- **Existing overlapping tracks** from before this release will not auto-merge — clean them up via **Settings → Recalculate tracks & stats** after upgrading. New tracks from this release onward stay consistent automatically. #2463
 - **Visit detection no longer fan-outs candidate places.** Previously, every detected visit persisted up to 25 reverse-geocoded "possible place" rows. Now each visit owns exactly one Place (named synchronously from Photon at creation time). Alternative suggestions are available live via `GET /api/v1/visits/:id/possible_places` and the new `POST /api/v1/visits/:id/select_place` endpoint. Existing pre-rollout candidate rows can be cleaned up with the new `bin/rails dawarich:cleanup_suggested_places` task. The `place_visits` table is preserved for one release and will be dropped in a follow-up after operators verify the drain completed.
 - **Web timeline picker** (the radio-list under "Needs review" for suggested visits) still reads from the legacy `place_visits` association in this release. After running the cleanup rake task, that list will show only the visit's main place. A follow-up release will switch the timeline picker to use real-time Photon suggestions via the new endpoints. Mobile clients consuming the JSON API see the new behavior immediately.
 - **Two one-time operator tasks** ship in this release. Run after deploy:
@@ -48,6 +49,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Anomaly-flagged GPS points are no longer included when "Recalculate tracks & stats" or "Re-evaluate past data" rebuilds tracks — anomalies now stay off the track line and out of `track_id` assignment, matching the behaviour of real-time track generation. #2630
 - Trip photos now appear on trips shorter than one day. Previously, the start and end timestamps were truncated to dates, so Immich and Photoprism received `takenAfter == takenBefore` and returned no photos. #2708
 
+
+### Fixed
+
+- Tracks no longer split into overlapping segments when location points arrive out of order (e.g. delayed or batched uploads from Colota / OwnTracks). Late-arriving points whose timestamps fall inside an existing track's window are absorbed back into that track, and any tracks that already overlap for the same device are merged automatically on the next real-time generation run. #2463
 
 ## [1.7.8] - 2026-05-16
 
