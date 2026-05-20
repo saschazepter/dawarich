@@ -4,12 +4,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## [1.7.9] - Unreleased
+
+### ⚠️ Upgrade notes
+
+- **Existing overlapping tracks** from before this release will not auto-merge — clean them up via **Settings → Recalculate tracks & stats** after upgrading. New tracks from this release onward stay consistent automatically. #2463
+- **Visit detection no longer fan-outs candidate places.** Previously, every detected visit persisted up to 25 reverse-geocoded "possible place" rows. Now each visit owns exactly one Place, created with a default name and enriched by an enqueued `Places::NameFetchingJob` (so visit detection itself never blocks on Photon). Alternative suggestions are available live via `GET /api/v1/visits/:id/possible_places` and the new `POST /api/v1/visits/:id/select_place` endpoint. Existing pre-rollout candidate rows can be cleaned up with the new `bin/rails dawarich:cleanup_suggested_places` task. The `place_visits` table is preserved for one release and will be dropped in a follow-up after operators verify the drain completed.
+- **Web timeline picker** (the radio-list under "Needs review" for suggested visits) still reads from the legacy `place_visits` association in this release. After running the cleanup rake task, that list will show only the visit's main place. A follow-up release will switch the timeline picker to use real-time Photon suggestions via the new endpoints. Mobile clients consuming the JSON API see the new behavior immediately.
+- **Two one-time operator tasks** ship in this release. Run after deploy:
+  1. `bin/rails dawarich:backfill_place_names` — names any remaining legacy `Place::DEFAULT_NAME` rows.
+  2. `bin/rails dawarich:cleanup_suggested_places` — drains orphan suggested-place rows.
+  Self-hosters can run them on their own schedule; both are safe to re-run.
 
 ### Added
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
 - Map v2 area-selection bulk delete: draw an area on the map, then a "Delete N Points" action in the settings panel permanently removes every point inside the selection (with a confirmation prompt).
+- Download a trip's points as GPX or GeoJSON directly from the trip page — no need to enter dates manually in the Exports page (#2400)
+- OIDC PKCE support for sign-in. Set `OIDC_PKCE_ENABLED=true` when your OIDC client (e.g., Pocket ID) enforces PKCE. Defaults to off so existing providers keep working. #2282
+- `POST /api/v1/visits/:id/select_place` — assigns a Photon candidate to a visit, lazy-creating the Place row in the user's catalogue. Returns the materialized Place.
+- Visit self-cleanup: when a visit's `place_id` changes or the visit is destroyed, the previous Place is deleted automatically if it has no notes, no tags, and no other referring visits.
+
+### Changed
+
+- Visit detection no longer creates 25 candidate Places per visit. Each visit now has exactly one Place, named asynchronously via `Places::NameFetchingJob` so the detection pipeline never waits on Photon.
+- `GET /api/v1/visits/:id/possible_places` returns real-time Photon suggestions instead of pre-persisted candidates. The currently-assigned place is prepended to the list with its `id`; suggestions below have `id: null` and round-trip via the new `select_place` endpoint.
+- `GET /api/v1/places/nearby` and `POST /api/v1/places/nearby` now include `id` (always `null` for Photon results), `source`, and `geodata` keys in each item (additive — existing consumers unaffected).
+- `Place#has_many :visits` is now `dependent: :nullify` (was `:destroy`). Deleting a Place leaves its visits intact with `place_id = nil`, preventing accidental visit loss.
+
+### Removed
+
+- `place_name_fetching_job` daily cron entry. Place naming now happens per-place asynchronously when each Place is created — no nightly catch-up needed.
+
+### Fixed
+
+- `POST /api/v1/visits/:id/select_place` now validates latitude is within [-90, 90] and longitude within [-180, 180], rejecting out-of-range coordinates with 422.
+- Concurrent `POST /api/v1/visits/:id/select_place` calls for the same Photon result are now serialized via a PG advisory lock keyed on `(user_id, osm_id|name+coords)`, preventing duplicate Place rows (skipped automatically when advisory locks are disabled, e.g. behind PgBouncer transaction-pool).
+- Self-hosted instances no longer return 500 on the Stats / Insights page when `JWT_SECRET_KEY` is unset. The internal "upgrade URL" helper is now a no-op on self-hosted, matching the existing guards in other call sites. The `/trial/upgrade` route, which had the same unguarded crash, now redirects self-hosted users to the home page. #2682
+- Imports table now shows how many points were skipped as duplicates (already in your timeline at the same coordinates and timestamp), and notifies you when an import completes without inserting any points because every row in the file was a duplicate. Previously these imports looked indistinguishable from empty files. (#2721)
+- Family members' positions now update in real time on the map as they arrive, instead of only refreshing every 60 seconds. (#2733)
+- Photos from Immich and Photoprism integrations now reappear on the map after a transient empty response from the upstream, instead of staying hidden for 30 minutes due to a cached empty result. (#1071, #784)
+- Map v2 **Select Area** now includes anomaly points, so the "Delete points" button can bulk-delete them instead of forcing one-by-one deletion via My Data → Points (#2476)
+- Clicking a day in the Timeline panel no longer puts the Search end-time into an invalid state; the time fields now match the minute precision of the date picker (#2624)
+- Map v2 speed-color gradient editor: saving the gradient now actually recolors the routes and persists the scale (#2120)
+- Trips now respect the GPS anomaly filter when building their route, total distance, and visited-countries list. Previously, anomaly-flagged points still polluted trip geometry and stats, so a trip could show a "connected" route through anomaly points that the main map drew as disconnected. Use **Recalculate trip** after enabling GPS noise filtering (or after the anomaly backfill finishes) to refresh existing trips. #2474
+- Bulk and single point deletion now recalculate affected tracks so cached track geometry stays consistent. (#2496)
+- Anomaly-flagged GPS points are no longer included when "Recalculate tracks & stats" or "Re-evaluate past data" rebuilds tracks — anomalies now stay off the track line and out of `track_id` assignment, matching the behaviour of real-time track generation. #2630
+- Trip photos now appear on trips shorter than one day. Previously, the start and end timestamps were truncated to dates, so Immich and Photoprism received `takenAfter == takenBefore` and returned no photos. #2708
+
+
+### Fixed
+
+- Tracks no longer split into overlapping segments when location points arrive out of order (e.g. delayed or batched uploads from Colota / OwnTracks). Late-arriving points whose timestamps fall inside an existing track's window are absorbed back into that track, and any tracks that already overlap for the same device are merged automatically on the next real-time generation run. #2463
+
+### Fixed
+
+- Database migrations no longer crash with `Multiple indexes found on points columns` when upgrading from 0.36.x with orphan indexes left behind by failed `REINDEX CONCURRENTLY`. The `RemoveUnusedIndexes` migration now drops any invalid indexes on `points` before removing the unused ones. The dropped indexes were intentionally removed in 0.37.0 after profiling and do not need to be recreated. #2124
 
 ## [1.7.8] - 2026-05-16
 
