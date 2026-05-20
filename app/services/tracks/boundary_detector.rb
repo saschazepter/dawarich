@@ -7,6 +7,7 @@ class Tracks::BoundaryDetector
   include Tracks::TrackBuilder
 
   ORPHAN_REABSORPTION_FRESHNESS_BUFFER = 60.seconds
+  ORPHAN_REABSORPTION_LOOKBACK = 6.hours
 
   attr_reader :user
 
@@ -26,7 +27,10 @@ class Tracks::BoundaryDetector
   end
 
   def reabsorb_orphan_points
-    user.tracks.find_each.sum { |track| absorb_orphans_into(track) }
+    user.tracks
+        .where('end_at >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago)
+        .find_each
+        .sum { |track| absorb_orphans_into(track) }
   end
 
   private
@@ -35,25 +39,37 @@ class Tracks::BoundaryDetector
     orphan_ids = orphan_point_ids_for(track)
     return 0 if orphan_ids.empty?
 
-    Point.where(id: orphan_ids).update_all(track_id: track.id)
+    succeeded = false
+    ActiveRecord::Base.transaction(requires_new: true) do
+      Point.where(id: orphan_ids).update_all(track_id: track.id)
 
-    bounds = Point.where(track_id: track.id).pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
-    return orphan_ids.size if bounds.nil?
+      bounds = Point.where(track_id: track.id).pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
+      raise ActiveRecord::Rollback if bounds.nil?
 
-    new_start = Time.zone.at(bounds[0])
-    new_end = Time.zone.at(bounds[1])
+      new_start = Time.zone.at(bounds[0])
+      new_end = Time.zone.at(bounds[1])
 
-    if track.start_at != new_start || track.end_at != new_end
-      track.update!(start_at: new_start, end_at: new_end)
-    else
-      track.recalculate_path_and_distance!
+      if track.start_at != new_start || track.end_at != new_end
+        track.update!(start_at: new_start, end_at: new_end)
+      else
+        track.recalculate_path_and_distance!
+      end
+
+      succeeded = true
     end
 
-    orphan_ids.size
+    succeeded ? orphan_ids.size : 0
   rescue ActiveRecord::RecordNotUnique
     Rails.logger.warn(
       'event=tracks.reabsorb_orphan_points_failed reason=unique_violation ' \
-      "user_id=#{user.id} track_id=#{track.id}"
+      "user_id=#{user.id} track_id=#{track.id} orphan_ids=#{orphan_ids.join(',')}"
+    )
+    0
+  rescue ActiveRecord::RecordInvalid => e
+    Rails.logger.warn(
+      'event=tracks.reabsorb_orphan_points_failed reason=invalid ' \
+      "user_id=#{user.id} track_id=#{track.id} orphan_ids=#{orphan_ids.join(',')} " \
+      "error=#{e.message}"
     )
     0
   end

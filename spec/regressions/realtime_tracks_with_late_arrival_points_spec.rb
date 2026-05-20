@@ -48,6 +48,19 @@ RSpec.describe 'Real-time track generation with late-arriving GPS points' do
       expect(user.tracks.count).to eq(1)
       expect(existing_track.reload.points.count).to eq(4)
     end
+
+    it 'recalculates distance and path to include the absorbed point' do
+      pre_distance = existing_track.distance
+      pre_path = existing_track.original_path.to_s
+
+      generator.call
+
+      existing_track.reload
+      expect(existing_track.distance).to be > 0
+      expect(existing_track.distance).not_to eq(pre_distance)
+      expect(existing_track.original_path).to be_present
+      expect(existing_track.original_path.to_s).not_to eq(pre_path)
+    end
   end
 
   context 'when late points sandwiched between batches form a new track inside an existing window' do
