@@ -25,8 +25,8 @@ class Trips::Photos
 
     photos = Photos::Search.new(
       user,
-      start_date: trip.started_at.to_date.to_s,
-      end_date: trip.ended_at.to_date.to_s
+      start_date: trip.started_at.iso8601,
+      end_date: trip.ended_at.iso8601
     ).call
 
     @photos = photos.map { |photo| photo_thumbnail(photo) }

@@ -84,8 +84,17 @@ class Api::V1::PointsController < ApiController
 
   def destroy
     point = current_api_user.points.find(params[:id])
+    affected_track_id = point.track_id
     point.destroy
     User.update_counters(current_api_user.id, points_count: -1)
+
+    if affected_track_id.present?
+      Rails.logger.info(
+        "[PointsController] Point #{point.id} destroyed, " \
+        "enqueuing Tracks::RecalculateJob for track #{affected_track_id}"
+      )
+      Tracks::RecalculateJob.perform_later(affected_track_id)
+    end
 
     render json: { message: 'Point deleted successfully' }
   end
@@ -95,8 +104,28 @@ class Api::V1::PointsController < ApiController
 
     render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
 
-    deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
+    affected_track_ids = nil
+    deleted_count = 0
+
+    ActiveRecord::Base.transaction do
+      affected_track_ids = current_api_user.points
+                                           .where(id: point_ids)
+                                           .where.not(track_id: nil)
+                                           .distinct
+                                           .pluck(:track_id)
+      deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
+    end
+
     User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
+
+    if affected_track_ids.any?
+      Rails.logger.info(
+        "[PointsController] bulk_destroy deleted #{deleted_count} points, " \
+        "enqueuing Tracks::RecalculateJob for #{affected_track_ids.size} tracks: " \
+        "#{affected_track_ids.inspect}"
+      )
+      affected_track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
+    end
 
     render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
   end

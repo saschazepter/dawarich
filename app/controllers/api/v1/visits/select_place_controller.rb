@@ -23,10 +23,18 @@ class Api::V1::Visits::SelectPlaceController < ApiController
       raise ActionController::ParameterMissing, :name      if p[:name].blank?
       raise ActionController::ParameterMissing, :latitude  if p[:latitude].blank?
       raise ActionController::ParameterMissing, :longitude if p[:longitude].blank?
+
+      lat = p[:latitude].to_f
+      lon = p[:longitude].to_f
+      raise ActionController::ParameterMissing, :latitude  unless lat.between?(-90, 90)
+      raise ActionController::ParameterMissing, :longitude unless lon.between?(-180, 180)
     end
   end
 
   def serialize_place(place)
+    tags = place.tags.to_a
+    first_tag = tags.first
+
     {
       id: place.id,
       name: place.name,
@@ -34,11 +42,11 @@ class Api::V1::Visits::SelectPlaceController < ApiController
       longitude: place.lon,
       source: place.source,
       note: place.note,
-      icon: place.tags.first&.icon,
-      color: place.tags.first&.color,
+      icon: first_tag&.icon,
+      color: first_tag&.color,
       visits_count: place.visits.size,
       created_at: place.created_at,
-      tags: place.tags.map do |tag|
+      tags: tags.map do |tag|
         {
           id: tag.id,
           name: tag.name,
