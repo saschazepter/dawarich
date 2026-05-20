@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Trips now respect the GPS anomaly filter when building their route, total distance, and visited-countries list. Previously, anomaly-flagged points still polluted trip geometry and stats, so a trip could show a "connected" route through anomaly points that the main map drew as disconnected. Use **Recalculate trip** after enabling GPS noise filtering (or after the anomaly backfill finishes) to refresh existing trips. #2474
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
