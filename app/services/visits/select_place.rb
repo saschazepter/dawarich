@@ -2,6 +2,8 @@
 
 module Visits
   class SelectPlace
+    include AdvisoryLockable
+
     PROXIMITY_METERS = 50
 
     def initialize(user:, visit:, photon:)
@@ -11,12 +13,21 @@ module Visits
     end
 
     def call
-      place = find_by_osm_id || find_by_name_and_proximity || create_place
-      @visit.update!(place_id: place.id, name: place.name)
-      place
+      with_dedup_lock do
+        place = find_by_osm_id || find_by_name_and_proximity || create_place
+        @visit.update!(place_id: place.id, name: place.name)
+        place
+      end
     end
 
     private
+
+    def with_dedup_lock(&block)
+      return block.call unless advisory_locks_enabled?
+
+      ident = @photon[:osm_id].presence || "#{@photon[:name]}:#{@photon[:latitude]}:#{@photon[:longitude]}"
+      ActiveRecord::Base.with_advisory_lock("select_place:#{@user.id}:#{ident}", &block)
+    end
 
     def find_by_osm_id
       osm_id = @photon[:osm_id]

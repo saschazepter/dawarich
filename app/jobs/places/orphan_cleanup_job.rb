@@ -29,14 +29,8 @@ class Places::OrphanCleanupJob < ApplicationJob
       victim_ids = conn.exec_query(victims_sql, 'OrphanCleanup victims', victim_binds(user.id)).rows.map { |r| r[0] }
       break if victim_ids.empty?
 
-      conn.exec_delete(
-        "DELETE FROM place_visits WHERE place_id IN (#{victim_ids.join(',')})",
-        'OrphanCleanup place_visits'
-      )
-      deleted = conn.exec_delete(
-        "DELETE FROM places WHERE id IN (#{victim_ids.join(',')})",
-        'OrphanCleanup places'
-      )
+      PlaceVisit.where(place_id: victim_ids).delete_all
+      deleted = Place.where(id: victim_ids).delete_all
     end
 
     deleted

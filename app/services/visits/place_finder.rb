@@ -32,18 +32,17 @@ module Visits
     end
 
     def create_default_place(lat, lon, suggested_name)
-      attrs = Places::NameFetcher.lookup_attrs(lat, lon) || {}
-
-      user.places.create!(
-        name:      attrs[:name].presence || suggested_name.presence || Place::DEFAULT_NAME,
-        city:      attrs[:city],
-        country:   attrs[:country],
-        geodata:   DawarichSettings.store_geodata? ? (attrs[:geodata] || {}) : {},
+      place = user.places.create!(
+        name:      suggested_name.presence || Place::DEFAULT_NAME,
+        geodata:   {},
         latitude:  lat,
         longitude: lon,
         lonlat:    "POINT(#{lon} #{lat})",
         source:    :photon
       )
+
+      Places::NameFetchingJob.perform_later(place.id) if DawarichSettings.reverse_geocoding_enabled?
+      place
     end
   end
 end
