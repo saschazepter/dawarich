@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Tracks no longer split into overlapping segments when location points arrive out of order (e.g. delayed or batched uploads from Colota / OwnTracks). Late-arriving points whose timestamps fall inside an existing track's window are absorbed back into that track, and any tracks that already overlap for the same device are merged automatically on the next real-time generation run. #2463
+- Same-tracker boundary merging no longer stitches together tracks more than 5 km apart, so a GPS jump or plane hop won't be silently fused into one continuous track.
+- Visit place self-cleanup runs in a background job (`Places::DeleteIfOrphanJob`) instead of inline on `after_commit`, so visit updates no longer block the request thread.
+- `DataMigrations::BackfillPlacesUserIdJob` now correctly excludes just-assigned places from the orphan-delete pass; previously the IDs returned by the bulk UPDATE were strings, so the subtraction set was wrong and the `user_id: nil` filter was the only thing preventing over-deletion.
+- Vendored `h3-js` now retains the upstream Apache-2.0 license header and attribution.
 
 ### Fixed
 
