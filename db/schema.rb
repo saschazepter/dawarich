@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -256,7 +256,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.string "tracker_id"
     t.string "topic"
     t.integer "altitude"
-    t.decimal "longitude", precision: 10, scale: 6
     t.string "velocity"
     t.integer "trigger"
     t.string "bssid"
@@ -265,7 +264,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.integer "vertical_accuracy"
     t.integer "accuracy"
     t.integer "timestamp"
-    t.decimal "latitude", precision: 10, scale: 6
     t.integer "mode"
     t.text "inrids", default: [], array: true
     t.text "in_regions", default: [], array: true
