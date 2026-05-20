@@ -44,6 +44,17 @@ namespace :e2e do
   E2E_ANOMALY_TRIP_START = '2025-10-15 11:00:00'.freeze
   E2E_ANOMALY_TRIP_END   = '2025-10-15 18:00:00'.freeze
 
+  # Normal (non-anomaly) Berlin points that sit inside the anomaly trip
+  # window. Demo data has many points but most carry country_name=nil, so
+  # without these the trip's calculate_countries returns []. These are the
+  # Germany baseline that the trip spec asserts against.
+  E2E_TRIP_BACKBONE_FIXTURE = [
+    { lat: 52.5170, lon: 13.3880, hour: 11.5, country: 'Germany' },
+    { lat: 52.5180, lon: 13.3900, hour: 12.25, country: 'Germany' },
+    { lat: 52.5160, lon: 13.3950, hour: 13.5, country: 'Germany' },
+    { lat: 52.5140, lon: 13.4000, hour: 16.0, country: 'Germany' }
+  ].freeze
+
   def assert_safe_environment!
     return unless Rails.env.production?
     return if ENV['ALLOW_E2E_RESET'] == '1'
@@ -82,7 +93,21 @@ namespace :e2e do
     user = User.find_by!(email: 'demo@dawarich.app')
     base_day = Time.zone.parse('2025-10-15')
 
-    user.points.where(tracker_id: 'e2e-anomaly').delete_all
+    user.points.where(tracker_id: ['e2e-anomaly', 'e2e-backbone']).delete_all
+
+    E2E_TRIP_BACKBONE_FIXTURE.each do |row|
+      ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
+
+      next if user.points.exists?(timestamp: ts, lonlat: "POINT(#{row[:lon]} #{row[:lat]})")
+
+      user.points.create!(
+        lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
+        timestamp: ts,
+        anomaly: false,
+        tracker_id: 'e2e-backbone',
+        country_name: row[:country]
+      )
+    end
 
     E2E_ANOMALY_FIXTURE.each do |row|
       ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
@@ -155,5 +180,6 @@ namespace :e2e do
     user.areas.delete_all if user.respond_to?(:areas)
     user.imports.destroy_all
     user.exports.destroy_all
+    user.trips.destroy_all if user.respond_to?(:trips)
   end
 end
