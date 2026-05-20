@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
 
+### Fixed
+
+- Family members' positions now update in real time on the map as they arrive, instead of only refreshing every 60 seconds. (#2733)
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
