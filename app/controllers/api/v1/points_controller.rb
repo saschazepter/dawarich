@@ -14,6 +14,8 @@ class Api::V1::PointsController < ApiController
 
     points = if ActiveModel::Type::Boolean.new.cast(params[:anomalies_only])
                scoped_points.anomaly
+             elsif ActiveModel::Type::Boolean.new.cast(params[:include_anomalies])
+               scoped_points
              else
                scoped_points.not_anomaly
              end
