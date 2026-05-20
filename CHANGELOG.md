@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
 
+### Fixed
+
+- Clicking a day in the Timeline panel no longer puts the Search end-time into an invalid state; the time fields now match the minute precision of the date picker (#2624)
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
