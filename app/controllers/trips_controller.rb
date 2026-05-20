@@ -4,7 +4,7 @@ class TripsController < ApplicationController
   include FlashStreamable
 
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[new create recalculate export]
+  before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
   before_action :set_coordinates, only: %i[show edit]
 
@@ -99,11 +99,13 @@ class TripsController < ApplicationController
     unless EXPORTABLE_FORMATS.include?(file_format)
       redirect_to trip_path(@trip),
                   alert: 'Unsupported export format. Choose GPX or GeoJSON.',
-                  status: :see_other
+                  status: :unprocessable_content
       return
     end
 
-    export_name = "trip_#{@trip.name.to_s.parameterize.presence || @trip.id}_#{@trip.started_at.to_date}.#{file_format}"
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    start_date = @trip.started_at.in_time_zone(tz).to_date
+    export_name = "trip_#{@trip.name.to_s.parameterize.presence || @trip.id}_#{start_date}.#{file_format}"
 
     current_user.exports.create!(
       name: export_name,
@@ -119,7 +121,7 @@ class TripsController < ApplicationController
   rescue StandardError => e
     ExceptionReporter.call(e)
     redirect_to trip_path(@trip),
-                alert: "Export failed to initiate: #{e.message}",
+                alert: 'Export failed to initiate. Please try again.',
                 status: :unprocessable_content
   end
 

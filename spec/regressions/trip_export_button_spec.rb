@@ -60,7 +60,7 @@ RSpec.describe 'Trip export button creates a points export over the trip window'
           post export_trip_url(trip), params: { file_format: 'csv' }
         end.not_to change(user.exports, :count)
 
-        expect(response).to redirect_to(trip_url(trip))
+        expect(response).to have_http_status(:unprocessable_content)
         expect(flash[:alert]).to be_present
       end
     end
@@ -75,6 +75,18 @@ RSpec.describe 'Trip export button creates a points export over the trip window'
         end.not_to change(Export, :count)
 
         expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context 'when the user account is inactive' do
+      before { user.update!(status: :inactive, active_until: 1.day.ago) }
+
+      it 'still allows the trip export (matches /exports behavior)' do
+        expect do
+          post export_trip_url(trip), params: { file_format: 'gpx' }
+        end.to change(user.exports, :count).by(1)
+
+        expect(response).to redirect_to(exports_url)
       end
     end
   end
