@@ -13,7 +13,7 @@ class Api::V1::PhotosController < ApiController
 
     search = Photos::Search.new(current_api_user, start_date: params[:start_date], end_date: params[:end_date])
     @photos = search.call
-    Rails.cache.write(cache_key, @photos, expires_in: 30.minutes) if search.errors.blank?
+    Rails.cache.write(cache_key, @photos, expires_in: 30.minutes) if search.errors.blank? && @photos.present?
 
     render json: @photos, status: :ok
   rescue StandardError => e
