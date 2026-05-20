@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
 
+### Fixed
+
+- Self-hosted instances no longer return 500 on the Stats / Insights page when `JWT_SECRET_KEY` is unset. The internal "upgrade URL" helper is now a no-op on self-hosted, matching the existing guards in other call sites. The `/trial/upgrade` route, which had the same unguarded crash, now redirects self-hosted users to the home page. #2682
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
