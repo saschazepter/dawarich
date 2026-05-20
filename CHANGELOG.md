@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## [1.7.9] - Unreleased
 
 ### ⚠️ Upgrade notes
@@ -43,15 +44,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Clicking a day in the Timeline panel no longer puts the Search end-time into an invalid state; the time fields now match the minute precision of the date picker (#2624)
 - Map v2 speed-color gradient editor: saving the gradient now actually recolors the routes and persists the scale (#2120)
 - Trips now respect the GPS anomaly filter when building their route, total distance, and visited-countries list. Previously, anomaly-flagged points still polluted trip geometry and stats, so a trip could show a "connected" route through anomaly points that the main map drew as disconnected. Use **Recalculate trip** after enabling GPS noise filtering (or after the anomaly backfill finishes) to refresh existing trips. #2474
-
-
-### Fixed
-
+- Bulk and single point deletion now recalculate affected tracks so cached track geometry stays consistent. (#2496)
 - Anomaly-flagged GPS points are no longer included when "Recalculate tracks & stats" or "Re-evaluate past data" rebuilds tracks — anomalies now stay off the track line and out of `track_id` assignment, matching the behaviour of real-time track generation. #2630
-
-### Fixed
-
 - Trip photos now appear on trips shorter than one day. Previously, the start and end timestamps were truncated to dates, so Immich and Photoprism received `takenAfter == takenBefore` and returned no photos. #2708
+
 
 ## [1.7.8] - 2026-05-16
 
