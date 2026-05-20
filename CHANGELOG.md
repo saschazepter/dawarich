@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+- Download a trip's points as GPX or GeoJSON directly from the trip page — no need to enter dates manually in the Exports page (#2400)
 - OIDC PKCE support for sign-in. Set `OIDC_PKCE_ENABLED=true` when your OIDC client (e.g., Pocket ID) enforces PKCE. Defaults to off so existing providers keep working. #2282
 - `POST /api/v1/visits/:id/select_place` — assigns a Photon candidate to a visit, lazy-creating the Place row in the user's catalogue. Returns the materialized Place.
 - Visit self-cleanup: when a visit's `place_id` changes or the visit is destroyed, the previous Place is deleted automatically if it has no notes, no tags, and no other referring visits.
