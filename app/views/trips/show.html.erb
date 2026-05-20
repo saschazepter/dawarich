@@ -7,6 +7,29 @@
   <%= render layout: 'shared/page_header', locals: { title: @trip.name } do %>
     <div class="flex items-center gap-2">
       <%= render "trips/recalculate_button", trip: @trip %>
+      <div class="dropdown dropdown-end">
+        <label tabindex="0" class="btn btn-outline btn-sm">
+          <%= icon 'arrow-big-down', class: 'w-4 h-4' %> Download
+        </label>
+        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44 z-10">
+          <li>
+            <%= button_to export_trip_path(@trip, file_format: 'gpx'),
+                          method: :post,
+                          form: { data: { turbo: false } },
+                          class: "btn btn-ghost btn-sm justify-start" do %>
+              GPX
+            <% end %>
+          </li>
+          <li>
+            <%= button_to export_trip_path(@trip, file_format: 'json'),
+                          method: :post,
+                          form: { data: { turbo: false } },
+                          class: "btn btn-ghost btn-sm justify-start" do %>
+              GeoJSON
+            <% end %>
+          </li>
+        </ul>
+      </div>
       <%= link_to edit_trip_path(@trip), class: "btn btn-outline btn-sm" do %>
         <%= icon 'square-pen', class: 'w-4 h-4' %> Edit
       <% end %>

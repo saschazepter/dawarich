@@ -123,6 +123,7 @@ Rails.application.routes.draw do
   resources :trips do
     member do
       post :recalculate
+      post :export
     end
   end
   resources :tags, except: [:show]

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+- Download a trip's points as GPX or GeoJSON directly from the trip page — no need to enter dates manually in the Exports page (#2400)
 
 ## [1.7.8] - 2026-05-16
 
