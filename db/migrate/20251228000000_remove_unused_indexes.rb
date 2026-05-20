@@ -19,7 +19,9 @@ class RemoveUnusedIndexes < ActiveRecord::Migration[8.0]
     remove_index :points, :external_track_id, algorithm: :concurrently, if_exists: true
   end
 
-  def down; end
+  def down
+    raise ActiveRecord::IrreversibleMigration
+  end
 
   def drop_invalid_indexes_on_points!
     invalid = connection.select_values(<<~SQL)

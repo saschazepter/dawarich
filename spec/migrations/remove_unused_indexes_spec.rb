@@ -3,9 +3,7 @@
 require 'rails_helper'
 require Rails.root.join('db/migrate/20251228000000_remove_unused_indexes.rb')
 
-RSpec.describe RemoveUnusedIndexes do
-  self.use_transactional_tests = false
-
+RSpec.describe RemoveUnusedIndexes, :non_transactional do
   let(:connection) { ActiveRecord::Base.connection }
   let(:migration)  { described_class.new }
   let(:test_index_name) { 'tmp_test_orphan_points_idx' }

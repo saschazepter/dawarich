@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Database migrations no longer crash with `Multiple indexes found on points columns` when upgrading from 0.36.x with orphan indexes left behind by failed `REINDEX CONCURRENTLY`. The `RemoveUnusedIndexes` migration now drops any invalid indexes on `points` before removing the unused ones. #2124
+- Database migrations no longer crash with `Multiple indexes found on points columns` when upgrading from 0.36.x with orphan indexes left behind by failed `REINDEX CONCURRENTLY`. The `RemoveUnusedIndexes` migration now drops any invalid indexes on `points` before removing the unused ones. The dropped indexes were intentionally removed in 0.37.0 after profiling and do not need to be recreated. #2124
 
 ## [1.7.8] - 2026-05-16
 
