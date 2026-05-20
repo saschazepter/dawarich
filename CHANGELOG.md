@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+- OIDC PKCE support for sign-in. Set `OIDC_PKCE_ENABLED=true` when your OIDC client (e.g., Pocket ID) enforces PKCE. Defaults to off so existing providers keep working. #2282
 
 ## [1.7.8] - 2026-05-16
 
