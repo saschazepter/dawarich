@@ -123,6 +123,11 @@ module ApplicationHelper
       icon_name: 'github',
       label: 'Sign in with GitHub',
       css_class: 'bg-[#24292f] text-white hover:bg-[#383f47] border-[#24292f]'
+    },
+    apple: {
+      icon_name: 'apple',
+      label: 'Sign in with Apple',
+      css_class: 'bg-black text-white hover:bg-gray-900 border-black'
     }
   }.freeze
 
