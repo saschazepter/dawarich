@@ -4,7 +4,9 @@ require 'rails_helper'
 
 RSpec.describe Trips::Photos do
   let(:user) { instance_double('User') }
-  let(:trip) { instance_double('Trip', started_at: Date.new(2024, 1, 1), ended_at: Date.new(2024, 1, 7)) }
+  let(:started_at) { Time.utc(2024, 1, 1, 10, 0, 0) }
+  let(:ended_at) { Time.utc(2024, 1, 7, 18, 30, 0) }
+  let(:trip) { instance_double('Trip', started_at: started_at, ended_at: ended_at) }
   let(:service) { described_class.new(trip, user) }
 
   describe '#call' do
@@ -44,7 +46,7 @@ RSpec.describe Trips::Photos do
         allow(user).to receive(:api_key).and_return('test-api-key')
 
         allow(Photos::Search).to receive(:new)
-          .with(user, start_date: '2024-01-01', end_date: '2024-01-07')
+          .with(user, start_date: '2024-01-01T10:00:00Z', end_date: '2024-01-07T18:30:00Z')
           .and_return(photo_search)
         allow(photo_search).to receive(:call).and_return(raw_photos)
       end

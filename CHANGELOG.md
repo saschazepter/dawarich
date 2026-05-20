@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Anomaly-flagged GPS points are no longer included when "Recalculate tracks & stats" or "Re-evaluate past data" rebuilds tracks — anomalies now stay off the track line and out of `track_id` assignment, matching the behaviour of real-time track generation. #2630
 
+### Fixed
+
+- Trip photos now appear on trips shorter than one day. Previously, the start and end timestamps were truncated to dates, so Immich and Photoprism received `takenAfter == takenBefore` and returned no photos. #2708
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
