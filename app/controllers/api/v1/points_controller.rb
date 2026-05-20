@@ -3,6 +3,8 @@
 class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
+  BULK_DESTROY_MAX = 5_000
+
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
   before_action :validate_points_limit, only: %i[create]
@@ -104,8 +106,16 @@ class Api::V1::PointsController < ApiController
 
     render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
 
+    if point_ids.size > BULK_DESTROY_MAX
+      render json: {
+        error: "Too many points selected. Maximum is #{BULK_DESTROY_MAX} per request.",
+        limit: BULK_DESTROY_MAX,
+        requested: point_ids.size
+      }, status: :unprocessable_entity and return
+    end
+
     affected_track_ids = nil
-    deleted_count = 0
+    destroyed = nil
 
     ActiveRecord::Base.transaction do
       affected_track_ids = current_api_user.points
@@ -113,10 +123,20 @@ class Api::V1::PointsController < ApiController
                                            .where.not(track_id: nil)
                                            .distinct
                                            .pluck(:track_id)
-      deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
+      destroyed = current_api_user.points.where(id: point_ids).destroy_all
     end
 
-    User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
+    deleted_count = destroyed.count
+
+    if deleted_count.positive?
+      User.update_counters(current_api_user.id, points_count: -deleted_count)
+
+      destroyed
+        .map { |p| Time.zone.at(p.timestamp) }
+        .map { |ts| [ts.year, ts.month] }
+        .uniq
+        .each { |year, month| Stats::CalculatingJob.perform_later(current_api_user.id, year, month) }
+    end
 
     if affected_track_ids.any?
       Rails.logger.info(

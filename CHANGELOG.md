@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Family members' positions update in real time instead of every 60 s. #2733
 - Immich/Photoprism photos reappear after a transient empty response (no more 30-minute hidden window). #1071, #784
 - Map v2 **Select Area** includes anomaly points so bulk-delete works on them. #2476
+- Map v2 area-selection: restored the "Delete N Points" action that disappeared in 1.7.8. Pro / self-hosted, confirmation prompt, capped at 5,000 per request; recalculates affected tracks and monthly stats. #2754
 - Timeline day click no longer corrupts the Search end-time; fields match date-picker minute precision. #2624
 - Map v2 speed-color gradient editor saves and applies correctly. #2120
 - Trips respect the GPS anomaly filter for route, distance, and countries. Run **Recalculate trip** to refresh existing trips. #2474

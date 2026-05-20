@@ -82,6 +82,8 @@ export default class extends Controller {
     // Area selection
     "selectAreaButton",
     "selectionActions",
+    "deletePointsButton",
+    "deleteButtonText",
     "selectedVisitsContainer",
     "selectedVisitsBulkActions",
     // Info display
@@ -1193,6 +1195,9 @@ export default class extends Controller {
   }
   cancelAreaSelection() {
     return this.areaSelectionManager.cancelAreaSelection()
+  }
+  deleteSelectedPoints() {
+    return this.areaSelectionManager.deleteSelectedPoints()
   }
 
   // Visits Manager methods

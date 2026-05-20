@@ -1336,6 +1336,16 @@
 
           <!-- Selection Actions (shown after area is selected) -->
           <div class="hidden mt-4 space-y-2" data-maps--maplibre-target="selectionActions">
+            <% unless current_user.plan_restricted? %>
+              <button type="button"
+                      class="btn btn-sm btn-outline btn-error btn-block"
+                      data-action="click->maps--maplibre#deleteSelectedPoints"
+                      data-maps--maplibre-target="deletePointsButton">
+                <%= icon 'trash-2' %>
+                <span data-maps--maplibre-target="deleteButtonText">Delete Selected Points</span>
+              </button>
+            <% end %>
+
             <!-- Selected Visits Container -->
             <div class="hidden mt-4 max-h-full overflow-y-auto" data-maps--maplibre-target="selectedVisitsContainer">
               <!-- Visit cards will be dynamically inserted here -->

@@ -487,6 +487,36 @@ RSpec.describe 'Api::V1::Points', type: :request do
         end.not_to(change { user.points.count })
       end
     end
+
+    context 'when more than BULK_DESTROY_MAX point_ids are submitted' do
+      let(:oversized_ids) { (1..(Api::V1::PointsController::BULK_DESTROY_MAX + 1)).to_a }
+
+      it 'returns 422 with the limit and requested counts' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: oversized_ids }, as: :json
+        end.not_to(change { user.points.count })
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        body = JSON.parse(response.body)
+        expect(body['limit']).to eq(Api::V1::PointsController::BULK_DESTROY_MAX)
+        expect(body['requested']).to eq(oversized_ids.size)
+      end
+    end
+
+    context 'when at least one point is deleted' do
+      it 'enqueues Stats::CalculatingJob once per affected (year, month)' do
+        # Two points in Jan 2025, one in Feb 2025 — expect 2 jobs (one per month).
+        jan_a = create(:point, user:, timestamp: Time.zone.local(2025, 1, 10).to_i)
+        jan_b = create(:point, user:, timestamp: Time.zone.local(2025, 1, 20).to_i)
+        feb   = create(:point, user:, timestamp: Time.zone.local(2025, 2, 5).to_i)
+        ids = [jan_a.id, jan_b.id, feb.id]
+
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}", params: { point_ids: ids }
+        end.to have_enqueued_job(Stats::CalculatingJob).exactly(2).times
+      end
+    end
   end
 
   describe 'GET /index (read API scoping for lite plan)' do
