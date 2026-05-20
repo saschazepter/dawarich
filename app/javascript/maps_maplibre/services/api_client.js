@@ -561,6 +561,7 @@ export class ApiClient {
       max_longitude: max_longitude.toString(),
       min_latitude: min_latitude.toString(),
       max_latitude: max_latitude.toString(),
+      include_anomalies: "true",
       per_page: "10000", // Get all points in area (up to 10k)
     })
 
