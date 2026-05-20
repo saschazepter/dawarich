@@ -632,6 +632,7 @@ export class ApiClient {
    * Bulk delete points
    * @param {Array<number>} pointIds - Array of point IDs to delete
    * @returns {Promise<Object>} { message, count }
+   * @throws {Error} with `body` property holding the parsed JSON error response when available
    */
   async bulkDeletePoints(pointIds) {
     const response = await fetch(`${this.baseURL}/points/bulk_destroy`, {
@@ -641,7 +642,18 @@ export class ApiClient {
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to delete points: ${response.statusText}`)
+      let body = null
+      try {
+        body = await response.json()
+      } catch (_) {
+        // Non-JSON error body — leave body as null.
+      }
+      const error = new Error(
+        body?.error || `Failed to delete points: ${response.statusText}`,
+      )
+      error.status = response.status
+      error.body = body
+      throw error
     }
 
     return response.json()

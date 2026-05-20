@@ -82,6 +82,7 @@ export default class extends Controller {
     // Area selection
     "selectAreaButton",
     "selectionActions",
+    "deletePointsButton",
     "deleteButtonText",
     "selectedVisitsContainer",
     "selectedVisitsBulkActions",

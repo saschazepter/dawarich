@@ -525,6 +525,8 @@ export class AreaSelectionManager {
    * Delete selected points
    */
   async deleteSelectedPoints() {
+    if (this.deletingPoints) return
+
     const pointCount = this.selectedPointsLayer.getCount()
     const pointIds = this.selectedPointsLayer.getSelectedPointIds()
 
@@ -539,24 +541,53 @@ export class AreaSelectionManager {
 
     if (!confirmed) return
 
+    this.deletingPoints = true
+    const deleteButton = this.controller.hasDeletePointsButtonTarget
+      ? this.controller.deletePointsButtonTarget
+      : null
+    if (deleteButton) deleteButton.disabled = true
+
     try {
       Toast.info("Deleting points...")
       const result = await this.api.bulkDeletePoints(pointIds)
 
-      this.cancelAreaSelection()
-
-      await this.controller.loadMapData({
-        showLoading: false,
-        fitBounds: false,
-        showToast: false,
-      })
-
       Toast.success(
         `Deleted ${result.count} point${result.count === 1 ? "" : "s"}`,
       )
+
+      this.cancelAreaSelection()
+
+      try {
+        await this.controller.loadMapData({
+          showLoading: false,
+          fitBounds: false,
+          showToast: false,
+        })
+      } catch (reloadError) {
+        console.error("[Maps V2] Map refresh failed after delete:", reloadError)
+        Toast.error(
+          "Map didn't refresh. Reload the page to see updated points.",
+        )
+      }
     } catch (error) {
       console.error("[Maps V2] Failed to delete points:", error)
-      Toast.error("Failed to delete points. Please try again.")
+      const body = error?.body
+      if (error?.status === 403 && body?.upgrade_url) {
+        Toast.error(
+          `${body.error || "Write API requires Pro"} — ${body.upgrade_url}`,
+        )
+      } else if (error?.status === 422 && body?.limit) {
+        Toast.error(
+          `Too many points selected (${body.requested}). Please draw a smaller area; max ${body.limit} per delete.`,
+        )
+      } else {
+        Toast.error(
+          error?.message || "Failed to delete points. Please try again.",
+        )
+      }
+    } finally {
+      this.deletingPoints = false
+      if (deleteButton) deleteButton.disabled = false
     }
   }
 }
