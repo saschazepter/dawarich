@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Clicking a day in the Timeline panel no longer puts the Search end-time into an invalid state; the time fields now match the minute precision of the date picker (#2624)
+- Map v2 speed-color gradient editor: saving the gradient now actually recolors the routes and persists the scale (#2120)
 
 ## [1.7.8] - 2026-05-16
 
