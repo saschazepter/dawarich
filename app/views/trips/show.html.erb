@@ -13,20 +13,14 @@
         </label>
         <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44 z-10">
           <li>
-            <%= button_to export_trip_path(@trip, file_format: 'gpx'),
-                          method: :post,
-                          form: { data: { turbo: false } },
-                          class: "btn btn-ghost btn-sm justify-start" do %>
-              GPX
-            <% end %>
+            <%= link_to 'GPX',
+                        export_trip_path(@trip, file_format: 'gpx'),
+                        data: { turbo_method: :post } %>
           </li>
           <li>
-            <%= button_to export_trip_path(@trip, file_format: 'json'),
-                          method: :post,
-                          form: { data: { turbo: false } },
-                          class: "btn btn-ghost btn-sm justify-start" do %>
-              GeoJSON
-            <% end %>
+            <%= link_to 'GeoJSON',
+                        export_trip_path(@trip, file_format: 'json'),
+                        data: { turbo_method: :post } %>
           </li>
         </ul>
       </div>
