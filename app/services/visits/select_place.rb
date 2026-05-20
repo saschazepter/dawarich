@@ -23,7 +23,7 @@ module Visits
       return nil if osm_id.blank?
 
       @user.places
-           .where("(geodata->'properties'->>'osm_id')::bigint = ?", osm_id.to_i)
+           .where("geodata->'properties'->>'osm_id' = ?", osm_id.to_s)
            .first
     end
 

@@ -48,6 +48,16 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'deletes the place and cascading place_visits rows even when residual ones exist' do
+      place = create(:place, user: user, source: :photon)
+      visit = create(:visit, user: user, area: nil, place: create(:place, user: user, source: :manual))
+      PlaceVisit.create!(place: place, visit: visit)
+
+      expect(described_class.call(place.id)).to be(true)
+      expect(Place.exists?(place.id)).to be(false)
+      expect(PlaceVisit.exists?(place_id: place.id)).to be(false)
+    end
+
     it 'logs and returns false on InvalidForeignKey' do
       place = create(:place, user: user, source: :photon)
       allow_any_instance_of(Place).to receive(:delete).and_raise(ActiveRecord::InvalidForeignKey, 'fk')

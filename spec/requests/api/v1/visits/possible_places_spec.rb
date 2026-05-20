@@ -44,6 +44,17 @@ RSpec.describe 'GET /api/v1/visits/:id/possible_places' do
     expect(body.first['id']).to eq(place.id)
   end
 
+  it 'prepends a manual current place (no osm_id) without false-positive dedup' do
+    allow_any_instance_of(Places::NearbySearch).to receive(:call).and_return(photon_hashes)
+
+    get "/api/v1/visits/#{visit.id}/possible_places", headers: headers
+
+    body = JSON.parse(response.body)
+    expect(body.first['id']).to eq(place.id)
+    expect(body.first['osm_id']).to be_nil
+    expect(body.size).to eq(2)
+  end
+
   it 'returns 404 when visit not found' do
     get '/api/v1/visits/999999999/possible_places', headers: headers
     expect(response).to have_http_status(:not_found)

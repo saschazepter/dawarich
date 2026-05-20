@@ -45,6 +45,13 @@ RSpec.describe Visit, type: :model do
         expect { visit.update!(name: 'Renamed') }
           .not_to(change { Place.exists?(old_place.id) })
       end
+
+      it 'keeps the old place when it is still referenced by another visit' do
+        create(:visit, user: user, place: old_place, area: nil)
+
+        expect { visit.update!(place: new_place) }
+          .not_to(change { Place.exists?(old_place.id) })
+      end
     end
 
     describe 'after_destroy_commit' do

@@ -18,10 +18,13 @@ module Places
       return false if Visit.where(place_id: @place_id).exists?
       return false if Tagging.where(taggable_id: @place_id, taggable_type: 'Place').exists?
 
-      place.delete
+      Place.transaction do
+        PlaceVisit.where(place_id: @place_id).delete_all
+        place.delete
+      end
       true
     rescue ActiveRecord::InvalidForeignKey => e
-      Rails.logger.warn("[DeleteIfOrphan] place=#{@place_id} #{e.message}")
+      Rails.logger.warn("[DeleteIfOrphan] place=#{@place_id} FK race: #{e.message}")
       false
     end
   end
