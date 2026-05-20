@@ -9,6 +9,12 @@ class Tracks::BoundaryDetector
   ORPHAN_REABSORPTION_FRESHNESS_BUFFER = 60.seconds
   ORPHAN_REABSORPTION_LOOKBACK = 6.hours
 
+  # Distance ceiling for the same-tracker_id connection path. Two tracks from
+  # one physical device that overlap in time should normally be merged, but a
+  # gap larger than this implies a GPS jump or genuine teleport (plane hop) —
+  # don't auto-stitch them into one continuous track.
+  SAME_TRACKER_MAX_GAP_METERS = 5_000
+
   attr_reader :user
 
   def initialize(user)
@@ -27,6 +33,8 @@ class Tracks::BoundaryDetector
   end
 
   def reabsorb_orphan_points
+    return 0 unless untracked_points_in_lookback?
+
     user.tracks
         .where('end_at >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago)
         .find_each
@@ -34,6 +42,15 @@ class Tracks::BoundaryDetector
   end
 
   private
+
+  def untracked_points_in_lookback?
+    user.points
+        .where(track_id: nil)
+        .where('anomaly IS NOT TRUE')
+        .where('timestamp >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago.to_i)
+        .where(created_at: ...ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago)
+        .exists?
+  end
 
   def absorb_orphans_into(track)
     orphan_ids = orphan_point_ids_for(track)
@@ -178,15 +195,13 @@ class Tracks::BoundaryDetector
   def tracks_spatially_connected?(track1, track2)
     return false unless track1.points.exists? && track2.points.exists?
 
-    return true if track1.tracker_id.present? && track1.tracker_id == track2.tracker_id
+    same_tracker = track1.tracker_id.present? && track1.tracker_id == track2.tracker_id
+    connection_threshold = same_tracker ? SAME_TRACKER_MAX_GAP_METERS : distance_threshold_meters
 
     track1_start = track1.points.order(:timestamp).first
     track1_end = track1.points.order(:timestamp).last
     track2_start = track2.points.order(:timestamp).first
     track2_end = track2.points.order(:timestamp).last
-
-    # Check various connection scenarios
-    connection_threshold = distance_threshold_meters
 
     # Track1 end connects to Track2 start
     return true if points_are_close?(track1_end, track2_start, connection_threshold)

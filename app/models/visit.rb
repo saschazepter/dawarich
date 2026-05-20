@@ -64,12 +64,12 @@ class Visit < ApplicationRecord
     old_id, = previous_changes['place_id']
     return unless old_id
 
-    Places::DeleteIfOrphan.call(old_id)
+    Places::DeleteIfOrphanJob.perform_later(old_id)
   end
 
   def cleanup_place_if_orphan
     return unless place_id
 
-    Places::DeleteIfOrphan.call(place_id)
+    Places::DeleteIfOrphanJob.perform_later(place_id)
   end
 end

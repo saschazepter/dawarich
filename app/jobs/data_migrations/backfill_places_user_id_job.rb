@@ -79,7 +79,7 @@ class DataMigrations::BackfillPlacesUserIdJob < ApplicationJob
     SQL
 
     result = ActiveRecord::Base.connection.execute(sql)
-    result.map { |row| row['id'] }
+    result.map { |row| row['id'].to_i }
   end
 
   def delete_orphans(place_ids)

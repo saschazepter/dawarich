@@ -28,6 +28,33 @@ namespace :e2e do
   # keep this aligned.
   E2E_BASE_TIME_STR = '2025-10-15 23:59:00'
 
+  # Deterministic anomaly fixtures for regression specs around
+  # #2474 (Trip anomaly filter), #2476 (Select Area includes anomalies),
+  # #2630 (bulk track recalc excludes anomalies). Keep in sync with
+  # e2e-dawarich-playwright/v2/helpers/anomaly.js.
+  E2E_ANOMALY_FIXTURE = [
+    { lat: 52.5200, lon: 13.4050, hour: 12.0, country: 'Germany' },
+    { lat: 52.5210, lon: 13.4060, hour: 12.5, country: 'Germany' },
+    { lat: 52.5190, lon: 13.4070, hour: 13.0, country: 'Germany' },
+    { lat: 48.8500, lon: 2.3500,  hour: 14.0, country: 'France' },
+    { lat: 52.6000, lon: 13.5000, hour: 15.0, country: 'Germany' }
+  ].freeze
+
+  E2E_ANOMALY_TRIP_NAME = 'E2E Anomaly Day'.freeze
+  E2E_ANOMALY_TRIP_START = '2025-10-15 11:00:00'.freeze
+  E2E_ANOMALY_TRIP_END   = '2025-10-15 18:00:00'.freeze
+
+  # Normal (non-anomaly) Berlin points that sit inside the anomaly trip
+  # window. Demo data has many points but most carry country_name=nil, so
+  # without these the trip's calculate_countries returns []. These are the
+  # Germany baseline that the trip spec asserts against.
+  E2E_TRIP_BACKBONE_FIXTURE = [
+    { lat: 52.5170, lon: 13.3880, hour: 11.5, country: 'Germany' },
+    { lat: 52.5180, lon: 13.3900, hour: 12.25, country: 'Germany' },
+    { lat: 52.5160, lon: 13.3950, hour: 13.5, country: 'Germany' },
+    { lat: 52.5140, lon: 13.4000, hour: 16.0, country: 'Germany' }
+  ].freeze
+
   def assert_safe_environment!
     return unless Rails.env.production?
     return if ENV['ALLOW_E2E_RESET'] == '1'
@@ -51,6 +78,83 @@ namespace :e2e do
 
     puts "\n🚀 Invoking demo:seed_data..."
     Rake::Task['demo:seed_data'].invoke(geojson_path)
+
+    puts "\n⚠️  Planting anomaly fixtures..."
+    Rake::Task['e2e:seed_anomalies'].invoke
+
+    puts "\n🧭 Seeding the anomaly-window demo trip..."
+    Rake::Task['e2e:seed_demo_trip'].invoke
+  end
+
+  desc 'Plant a deterministic set of anomaly points on the demo user (idempotent).'
+  task seed_anomalies: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+    base_day = Time.zone.parse('2025-10-15')
+
+    user.points.where(tracker_id: ['e2e-anomaly', 'e2e-backbone']).delete_all
+
+    E2E_TRIP_BACKBONE_FIXTURE.each do |row|
+      ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
+
+      next if user.points.exists?(timestamp: ts, lonlat: "POINT(#{row[:lon]} #{row[:lat]})")
+
+      user.points.create!(
+        lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
+        timestamp: ts,
+        anomaly: false,
+        tracker_id: 'e2e-backbone',
+        country_name: row[:country]
+      )
+    end
+
+    E2E_ANOMALY_FIXTURE.each do |row|
+      ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
+
+      next if user.points.exists?(timestamp: ts, lonlat: "POINT(#{row[:lon]} #{row[:lat]})")
+
+      user.points.create!(
+        lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
+        timestamp: ts,
+        anomaly: true,
+        tracker_id: 'e2e-anomaly',
+        country_name: row[:country]
+      )
+    end
+
+    count = user.points.where(tracker_id: 'e2e-anomaly').count
+    puts "  ↪ planted #{count} anomaly points (#{count == E2E_ANOMALY_FIXTURE.size ? 'ok' : 'MISMATCH'})"
+
+    polluter = user.points.where(tracker_id: 'e2e-anomaly').order(:timestamp).first
+    polluter_track = user.tracks.order(:start_at).first
+    if polluter && polluter_track
+      polluter.update_columns(track_id: polluter_track.id)
+      puts "  ↪ assigned anomaly ##{polluter.id} to track ##{polluter_track.id} as #2630 controller-filter polluter"
+    else
+      puts '  ↪ no track available to host polluter anomaly (skipping #2630 controller-side check)'
+    end
+  end
+
+  desc 'Create the demo trip covering the anomaly window and recalculate it synchronously.'
+  task seed_demo_trip: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+
+    user.trips.where(name: E2E_ANOMALY_TRIP_NAME).destroy_all
+
+    trip = user.trips.create!(
+      name: E2E_ANOMALY_TRIP_NAME,
+      started_at: Time.zone.parse(E2E_ANOMALY_TRIP_START),
+      ended_at:   Time.zone.parse(E2E_ANOMALY_TRIP_END)
+    )
+
+    trip.recalculate_path_and_distance!
+    trip.calculate_countries
+    trip.update!(last_recalculated_at: Time.current)
+
+    puts "  ↪ trip ##{trip.id} \"#{trip.name}\" countries=#{trip.visited_countries.inspect}"
   end
 
   desc 'Wipe data for the e2e users (demo, lite, family members) without deleting the users themselves'
@@ -76,5 +180,6 @@ namespace :e2e do
     user.areas.delete_all if user.respond_to?(:areas)
     user.imports.destroy_all
     user.exports.destroy_all
+    user.trips.destroy_all if user.respond_to?(:trips)
   end
 end

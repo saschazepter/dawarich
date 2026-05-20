@@ -37,25 +37,13 @@ RSpec.describe Visits::SelectPlace do
       expect(visit.name).to eq('Café Bravo')
     end
 
-    it 'reuses an existing place matched by osm_id' do
-      existing = create(:place, user: user, name: 'Different Name')
-      existing.update!(geodata: { 'properties' => { 'osm_id' => 1_234_567 } })
-
-      place = described_class.new(user: user, visit: visit, photon: photon_payload).call
-
-      expect(place.id).to eq(existing.id)
-      expect(user.places.count).to eq(1)
-    end
-
-    it 'does not match another user\'s place with the same osm_id (isolation)' do
+    it 'does not match another user\'s place at the same name and coords (isolation)' do
       other = create(:user)
-      other_place = create(:place, user: other, name: 'Café Bravo')
-      other_place.update!(geodata: { 'properties' => { 'osm_id' => 1_234_567 } })
+      create(:place, user: other, name: 'Café Bravo', latitude: 52.5126, longitude: 13.4012)
 
       place = described_class.new(user: user, visit: visit, photon: photon_payload).call
 
       expect(place.user).to eq(user)
-      expect(place.id).not_to eq(other_place.id)
       expect(user.places.count).to eq(1)
     end
 

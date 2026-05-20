@@ -179,7 +179,35 @@ RSpec.describe 'Real-time track generation with late-arriving GPS points' do
       make_point(40, lng: -73.502, lat: 40.5020, track: track_b)
     end
 
-    it 'merges them because tracker_id matches and time ranges overlap' do
+    it 'keeps them separate because the gap exceeds the same-tracker distance cap' do
+      generator.call
+
+      expect(user.tracks.count).to eq(2)
+    end
+  end
+
+  context 'when overlapping tracks have the same tracker_id and endpoints are within the same-tracker cap' do
+    let!(:track_a) do
+      create(:track, user: user, tracker_id: tracker,
+                     start_at: Time.zone.at(base_time),
+                     end_at: Time.zone.at(base_time + 30))
+    end
+    let!(:track_b) do
+      create(:track, user: user, tracker_id: tracker,
+                     start_at: Time.zone.at(base_time + 10),
+                     end_at: Time.zone.at(base_time + 40))
+    end
+
+    before do
+      make_point(0,  lng: -74.000, lat: 40.7128, track: track_a)
+      make_point(15, lng: -74.001, lat: 40.7138, track: track_a)
+      make_point(30, lng: -74.002, lat: 40.7148, track: track_a)
+      make_point(10, lng: -74.003, lat: 40.7158, track: track_b)
+      make_point(25, lng: -74.004, lat: 40.7168, track: track_b)
+      make_point(40, lng: -74.005, lat: 40.7178, track: track_b)
+    end
+
+    it 'merges them because tracker_id matches and endpoints are close' do
       generator.call
 
       expect(user.tracks.count).to eq(1)

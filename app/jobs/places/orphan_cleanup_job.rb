@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Places::OrphanCleanupJob < ApplicationJob
-  queue_as :default
+  queue_as :places
   BATCH = 500
 
   def perform(user_id)
