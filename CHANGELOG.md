@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
 
+### Fixed
+
+- Tracks no longer split into overlapping segments when location points arrive out of order (e.g. delayed or batched uploads from Colota / OwnTracks). Late-arriving points whose timestamps fall inside an existing track's window are absorbed back into that track, and any tracks that already overlap for the same device are merged automatically on the next real-time generation run. Existing overlapping tracks from earlier versions can be cleaned up via Settings → Recalculate tracks & stats. #2463
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
