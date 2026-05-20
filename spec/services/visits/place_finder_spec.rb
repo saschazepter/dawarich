@@ -23,36 +23,24 @@ RSpec.describe Visits::PlaceFinder do
 
   describe '#find_or_create_place' do
     it 'returns a Place (not a hash)' do
-      allow(Places::NameFetcher).to receive(:lookup_attrs).and_return(
-        { name: 'Café Bravo', city: 'Berlin', country: 'Germany', geodata: { 'properties' => {} } }
-      )
-
       result = described_class.new(user).find_or_create_place(visit_data)
 
       expect(result).to be_a(Place)
-      expect(result.name).to eq('Café Bravo')
     end
 
     it 'creates exactly ONE place per call (no fan-out)' do
-      allow(Places::NameFetcher).to receive(:lookup_attrs).and_return(
-        { name: 'Café Bravo', city: 'Berlin', country: 'Germany', geodata: {} }
-      )
-
       expect { described_class.new(user).find_or_create_place(visit_data) }
         .to change { Place.count }.by(1)
     end
 
-    it 'falls back to Place::DEFAULT_NAME when Photon returns nothing' do
-      allow(Places::NameFetcher).to receive(:lookup_attrs).and_return(nil)
-
+    it 'creates the place with Place::DEFAULT_NAME when no suggested_name is given' do
       result = described_class.new(user).find_or_create_place(visit_data)
 
       expect(result.name).to eq(Place::DEFAULT_NAME)
       expect(result.source).to eq('photon')
     end
 
-    it 'uses suggested_name when Photon returns nothing and suggested_name is present' do
-      allow(Places::NameFetcher).to receive(:lookup_attrs).and_return(nil)
+    it 'uses suggested_name when present' do
       data = visit_data.merge(suggested_name: 'Home')
 
       expect(described_class.new(user).find_or_create_place(data).name).to eq('Home')
@@ -60,19 +48,28 @@ RSpec.describe Visits::PlaceFinder do
 
     it 'reuses an existing user place near the center' do
       existing = create(:place, user: user, latitude: 52.5126, longitude: 13.4012)
-      expect(Places::NameFetcher).not_to receive(:lookup_attrs)
 
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .not_to have_enqueued_job(Places::NameFetchingJob)
       expect(described_class.new(user).find_or_create_place(visit_data)).to eq(existing)
     end
 
-    it 'does NOT persist geodata when store_geodata? is false' do
-      allow(Places::NameFetcher).to receive(:lookup_attrs).and_return(
-        { name: 'Café Bravo', city: 'Berlin', country: 'Germany',
-          geodata: { 'properties' => { 'osm_id' => 1 } } }
-      )
-
+    it 'never persists geodata at creation (filled by Places::NameFetchingJob)' do
       result = described_class.new(user).find_or_create_place(visit_data)
+
       expect(result.geodata).to eq({})
+    end
+
+    it 'enqueues Places::NameFetchingJob for the new place when reverse geocoding is enabled' do
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+    end
+
+    it 'does not enqueue Places::NameFetchingJob when reverse geocoding is disabled' do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .not_to have_enqueued_job(Places::NameFetchingJob)
     end
   end
 end
