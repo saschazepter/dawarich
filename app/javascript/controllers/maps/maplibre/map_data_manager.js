@@ -103,6 +103,18 @@ export class MapDataManager {
         ])
       }
 
+      // 7. Reload hexagons if currently visible — they own their own fetch
+      // pipeline (raw points + h3 aggregation), so they need a date-range
+      // reload separate from the main data flow.
+      const hexagonLayer = this.layerManager.getLayer("hexagons")
+      if (hexagonLayer?.visible) {
+        hexagonLayer
+          .reload({ start_at: startDate, end_at: endDate })
+          .catch((error) => {
+            console.error("[MapDataManager] Hexagon reload failed:", error)
+          })
+      }
+
       return data
     } catch (error) {
       console.error("[MapDataManager] Failed to load map data:", error)
