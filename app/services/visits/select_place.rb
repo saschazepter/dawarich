@@ -14,7 +14,7 @@ module Visits
 
     def call
       with_dedup_lock do
-        place = find_by_osm_id || find_by_name_and_proximity || create_place
+        place = find_by_name_and_proximity || create_place
         @visit.update!(place_id: place.id, name: place.name)
         place
       end
@@ -27,15 +27,6 @@ module Visits
 
       ident = @photon[:osm_id].presence || "#{@photon[:name]}:#{@photon[:latitude]}:#{@photon[:longitude]}"
       ActiveRecord::Base.with_advisory_lock("select_place:#{@user.id}:#{ident}", &block)
-    end
-
-    def find_by_osm_id
-      osm_id = @photon[:osm_id]
-      return nil if osm_id.blank?
-
-      @user.places
-           .where("geodata->'properties'->>'osm_id' = ?", osm_id.to_s)
-           .first
     end
 
     def find_by_name_and_proximity

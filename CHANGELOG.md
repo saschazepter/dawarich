@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visit place self-cleanup runs in a background job (`Places::DeleteIfOrphanJob`) instead of inline on `after_commit`, so visit updates no longer block the request thread.
 - `DataMigrations::BackfillPlacesUserIdJob` now correctly excludes just-assigned places from the orphan-delete pass; previously the IDs returned by the bulk UPDATE were strings, so the subtraction set was wrong and the `user_id: nil` filter was the only thing preventing over-deletion.
 - Vendored `h3-js` now retains the upstream Apache-2.0 license header and attribution.
+- Real-time track boundary detector no longer scans 6 hours of tracks on every point ingest when there are no untracked points to reabsorb — a one-shot `exists?` check now guards the per-track loop.
+- `POST /api/v1/visits/:id/select_place` no longer reads from the `geodata` JSONB column for dedup; existing places are matched by name + 50 m proximity, which behaves the same regardless of the `STORE_GEODATA` setting.
 
 ### Fixed
 

@@ -33,6 +33,8 @@ class Tracks::BoundaryDetector
   end
 
   def reabsorb_orphan_points
+    return 0 unless untracked_points_in_lookback?
+
     user.tracks
         .where('end_at >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago)
         .find_each
@@ -40,6 +42,15 @@ class Tracks::BoundaryDetector
   end
 
   private
+
+  def untracked_points_in_lookback?
+    user.points
+        .where(track_id: nil)
+        .where('anomaly IS NOT TRUE')
+        .where('timestamp >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago.to_i)
+        .where(created_at: ...ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago)
+        .exists?
+  end
 
   def absorb_orphans_into(track)
     orphan_ids = orphan_point_ids_for(track)
