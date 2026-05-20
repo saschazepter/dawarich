@@ -94,6 +94,8 @@ class ApiController < ApplicationController
   end
 
   def upgrade_url_for(user)
+    return nil if DawarichSettings.self_hosted?
+
     "#{MANAGER_URL}/auth/dawarich?token=#{user.generate_subscription_token}"
   end
 

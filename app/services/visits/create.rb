@@ -85,25 +85,6 @@ module Visits
         status: params[:status].presence || :confirmed
       )
 
-      attach_suggested_places(@visit) if @visit.suggested?
-
-      @visit
-    end
-
-    def attach_suggested_places(visit)
-      lat = visit.place.latitude
-      lon = visit.place.longitude
-      candidates = user.places
-                       .where(
-                         'ST_DWithin(lonlat::geography, ' \
-                         'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, 100)',
-                         lon, lat
-                       )
-                       .limit(8)
-      candidates.each { |p| visit.suggested_places << p unless visit.suggested_places.include?(p) }
-    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-      ExceptionReporter.call(e, "Failed to attach suggested places: #{e.message}")
-
       @visit
     end
   end

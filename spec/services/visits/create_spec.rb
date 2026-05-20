@@ -203,6 +203,24 @@ RSpec.describe Visits::Create do
       end
     end
 
+    describe 'no suggested_places attachment on manual visit creation' do
+      let(:user)  { create(:user) }
+      let(:place) { create(:place, user: user, latitude: 52.5126, longitude: 13.4012) }
+      let(:other) { create(:place, user: user, latitude: 52.5127, longitude: 13.4013) }
+
+      it 'does not create PlaceVisit rows when API creates a visit' do
+        place
+        other
+        params = {
+          latitude: 52.5126, longitude: 13.4012,
+          name: 'Test', started_at: 1.hour.ago.iso8601, ended_at: Time.current.iso8601,
+          status: 'suggested'
+        }
+
+        expect { described_class.new(user, params).call }.not_to(change { PlaceVisit.count })
+      end
+    end
+
     context 'edge cases' do
       context 'when name is not provided but defaults are used' do
         let(:params) { valid_params.merge(name: '') }

@@ -8,6 +8,9 @@ class Visit < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_places, through: :place_visits, source: :place
 
+  after_commit :cleanup_old_place_if_orphan, on: :update
+  after_destroy_commit :cleanup_place_if_orphan
+
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 
   validates :ended_at, comparison: { greater_than: :started_at }
@@ -45,6 +48,8 @@ class Visit < ApplicationRecord
     end
   end
 
+  private
+
   def center_from_points
     return [0, 0] if points.empty?
 
@@ -53,5 +58,18 @@ class Visit < ApplicationRecord
     count = points.size.to_f
 
     [lat_sum / count, lon_sum / count]
+  end
+
+  def cleanup_old_place_if_orphan
+    old_id, = previous_changes['place_id']
+    return unless old_id
+
+    Places::DeleteIfOrphan.call(old_id)
+  end
+
+  def cleanup_place_if_orphan
+    return unless place_id
+
+    Places::DeleteIfOrphan.call(place_id)
   end
 end
