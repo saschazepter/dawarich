@@ -28,4 +28,36 @@ RSpec.describe Visit, type: :model do
   describe 'factory' do
     it { expect(build(:visit)).to be_valid }
   end
+
+  describe 'self-cleanup callbacks' do
+    let(:user)      { create(:user) }
+    let(:old_place) { create(:place, user: user, source: :photon) }
+    let(:new_place) { create(:place, user: user, source: :photon) }
+    let!(:visit)    { create(:visit, user: user, place: old_place, area: nil) }
+
+    describe 'after_commit on: :update' do
+      it 'deletes the previous place when place_id changes and old place is orphan' do
+        expect { visit.update!(place: new_place) }
+          .to change { Place.exists?(old_place.id) }.from(true).to(false)
+      end
+
+      it 'does not delete the place when an unrelated attribute changes' do
+        expect { visit.update!(name: 'Renamed') }
+          .not_to(change { Place.exists?(old_place.id) })
+      end
+    end
+
+    describe 'after_destroy_commit' do
+      it 'deletes the visit place when it becomes orphan' do
+        expect { visit.destroy! }
+          .to change { Place.exists?(old_place.id) }.from(true).to(false)
+      end
+
+      it 'is a no-op when visit had no place' do
+        orphan_visit = create(:visit, user: user, place: nil, area: nil)
+
+        expect { orphan_visit.destroy! }.not_to raise_error
+      end
+    end
+  end
 end

@@ -6,9 +6,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.7.9] - Unreleased
 
+### ⚠️ Upgrade notes
+
+- **Visit detection no longer fan-outs candidate places.** Previously, every detected visit persisted up to 25 reverse-geocoded "possible place" rows. Now each visit owns exactly one Place (named synchronously from Photon at creation time). Alternative suggestions are available live via `GET /api/v1/visits/:id/possible_places` and the new `POST /api/v1/visits/:id/select_place` endpoint. Existing pre-rollout candidate rows can be cleaned up with the new `bin/rails dawarich:cleanup_suggested_places` task. The `place_visits` table is preserved for one release and will be dropped in a follow-up after operators verify the drain completed.
+- **Web timeline picker** (the radio-list under "Needs review" for suggested visits) still reads from the legacy `place_visits` association in this release. After running the cleanup rake task, that list will show only the visit's main place. A follow-up release will switch the timeline picker to use real-time Photon suggestions via the new endpoints. Mobile clients consuming the JSON API see the new behavior immediately.
+- **Two one-time operator tasks** ship in this release. Run after deploy:
+  1. `bin/rails dawarich:backfill_place_names` — names any remaining legacy `Place::DEFAULT_NAME` rows.
+  2. `bin/rails dawarich:cleanup_suggested_places` — drains orphan suggested-place rows.
+  Self-hosters can run them on their own schedule; both are safe to re-run.
+
 ### Added
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+- `POST /api/v1/visits/:id/select_place` — assigns a Photon candidate to a visit, lazy-creating the Place row in the user's catalogue. Returns the materialized Place.
+- Visit self-cleanup: when a visit's `place_id` changes or the visit is destroyed, the previous Place is deleted automatically if it has no notes, no tags, and no other referring visits.
+
+### Changed
+
+- Visit detection no longer creates 25 candidate Places per visit. Each visit now has exactly one Place, named synchronously from Photon at creation time.
+- `GET /api/v1/visits/:id/possible_places` returns real-time Photon suggestions instead of pre-persisted candidates. The currently-assigned place is prepended to the list with its `id`; suggestions below have `id: null` and round-trip via the new `select_place` endpoint.
+- `GET /api/v1/places/nearby` and `POST /api/v1/places/nearby` now include `id` (always `null` for Photon results), `source`, and `geodata` keys in each item (additive — existing consumers unaffected).
+- `Place#has_many :visits` is now `dependent: :nullify` (was `:destroy`). Deleting a Place leaves its visits intact with `place_id = nil`, preventing accidental visit loss.
+
+### Removed
+
+- `place_name_fetching_job` daily cron entry. Place naming now happens synchronously during visit detection — no nightly catch-up needed.
 
 ## [1.7.8] - 2026-05-16
 
