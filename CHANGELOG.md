@@ -37,10 +37,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `GET /api/v1/places/nearby` and `POST /api/v1/places/nearby` now include `id` (always `null` for Photon results), `source`, and `geodata` keys in each item (additive — existing consumers unaffected).
 - `Place#has_many :visits` is now `dependent: :nullify` (was `:destroy`). Deleting a Place leaves its visits intact with `place_id = nil`, preventing accidental visit loss.
 
-### Removed
-
-- `place_name_fetching_job` daily cron entry. Place naming now happens per-place asynchronously when each Place is created — no nightly catch-up needed.
-
 ### Fixed
 
 - `POST /api/v1/visits/:id/select_place` now validates latitude is within [-90, 90] and longitude within [-180, 180], rejecting out-of-range coordinates with 422.
@@ -56,10 +52,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Bulk and single point deletion now recalculate affected tracks so cached track geometry stays consistent. (#2496)
 - Anomaly-flagged GPS points are no longer included when "Recalculate tracks & stats" or "Re-evaluate past data" rebuilds tracks — anomalies now stay off the track line and out of `track_id` assignment, matching the behaviour of real-time track generation. #2630
 - Trip photos now appear on trips shorter than one day. Previously, the start and end timestamps were truncated to dates, so Immich and Photoprism received `takenAfter == takenBefore` and returned no photos. #2708
-
-
-### Fixed
-
 - Tracks no longer split into overlapping segments when location points arrive out of order (e.g. delayed or batched uploads from Colota / OwnTracks). Late-arriving points whose timestamps fall inside an existing track's window are absorbed back into that track, and any tracks that already overlap for the same device are merged automatically on the next real-time generation run. #2463
 - Same-tracker boundary merging no longer stitches together tracks more than 5 km apart, so a GPS jump or plane hop won't be silently fused into one continuous track.
 - Visit place self-cleanup runs in a background job (`Places::DeleteIfOrphanJob`) instead of inline on `after_commit`, so visit updates no longer block the request thread.
@@ -69,6 +61,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Database migrations no longer crash with `Multiple indexes found on points columns` when upgrading from 0.36.x with orphan indexes left behind by failed `REINDEX CONCURRENTLY`. The `RemoveUnusedIndexes` migration now drops any invalid indexes on `points` before removing the unused ones. The dropped indexes were intentionally removed in 0.37.0 after profiling and do not need to be recreated. #2124
+
 
 ## [1.7.8] - 2026-05-16
 
