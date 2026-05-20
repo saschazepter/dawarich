@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
 
+### Fixed
+
+- Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. #2680
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
