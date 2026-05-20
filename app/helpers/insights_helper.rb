@@ -88,19 +88,20 @@ module InsightsHelper
   end
 
   def format_location_time(minutes)
-    return '0 min' if minutes.nil? || minutes.to_i.zero?
+    total_minutes = minutes.to_i
+    return '0 min' if minutes.nil? || total_minutes.zero?
 
-    duration = ActiveSupport::Duration.build(minutes.to_i * 60)
-    parts = duration.parts
-
-    days = parts[:days] || 0
-    hours = parts[:hours] || 0
-    mins = parts[:minutes] || 0
-
+    # ActiveSupport::Duration#parts decomposes into months/weeks/days/etc., so
+    # `parts[:days]` only returns the day component within a month (max ~6) and
+    # silently truncates large totals (e.g. 133 actual days renders as "4 days").
+    # Compute the total day/hour count directly from the minutes input instead.
+    days = total_minutes / 1440
     return "#{days} #{'day'.pluralize(days)}" if days >= 1
+
+    hours = total_minutes / 60
     return "#{hours} #{'hour'.pluralize(hours)}" if hours >= 1
 
-    "#{mins} min"
+    "#{total_minutes} min"
   end
 
   def first_time_visits_from_digest(digest)
