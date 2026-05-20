@@ -2,7 +2,7 @@
 
 module Places
   class DeleteIfOrphanJob < ApplicationJob
-    queue_as :default
+    queue_as :places
 
     def perform(place_id)
       Places::DeleteIfOrphan.call(place_id)
