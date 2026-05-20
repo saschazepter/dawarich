@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Bulk visit suggestion accepts both `user_id:` and `user_ids:` to survive stale Sidekiq jobs. #2740
 - `RemoveUnusedIndexes` migration drops invalid `points` indexes left by failed `REINDEX CONCURRENTLY` before removing unused ones. #2124
 - Vendored `h3-js` retains its upstream Apache-2.0 license header.
+- Insights "Top Visited Locations" no longer underreports days for multi-month totals (e.g. 133 days rendered as "4 days"). #2743
 
 
 ## [1.7.8] - 2026-05-16
