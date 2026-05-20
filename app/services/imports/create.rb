@@ -11,7 +11,7 @@ class Imports::Create
   end
 
   def call
-    import.update!(status: :processing)
+    import.update!(status: :processing, raw_points: 0, doubles: 0)
     broadcast_status_update
 
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
@@ -37,6 +37,7 @@ class Imports::Create
     schedule_visit_suggesting(user.id, import)
     schedule_track_generation(user.id, import)
     update_import_points_count(import)
+    notify_if_all_skipped(import)
   rescue StandardError => e
     return if import.destroyed?
 
@@ -89,6 +90,21 @@ class Imports::Create
 
   def update_import_points_count(import)
     Import::UpdatePointsCountJob.perform_later(import.id)
+  end
+
+  def notify_if_all_skipped(import)
+    import.reload
+    return unless import.doubles.to_i.positive? && import.points.count.zero?
+
+    Notification.create!(
+      user_id: import.user_id,
+      title: 'Import completed with no new points',
+      content: "Your file #{import.name} contained #{import.raw_points} points, all of which " \
+               'already exist in your timeline at the same coordinates and timestamps. ' \
+               'Nothing was imported. If this was unexpected, delete the existing points ' \
+               'for that date range and re-import.',
+      kind: :info
+    )
   end
 
   def filter_anomalies(user, import)

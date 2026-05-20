@@ -293,8 +293,8 @@ export default class extends Controller {
 
     const startInput = document.querySelector('input[name="start_at"]')
     const endInput = document.querySelector('input[name="end_at"]')
-    if (startInput) startInput.value = startAtLocal
-    if (endInput) endInput.value = endAtLocal
+    if (startInput) startInput.value = `${date}T00:00`
+    if (endInput) endInput.value = `${date}T23:59`
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
