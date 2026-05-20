@@ -124,6 +124,11 @@ export class AreaSelectionManager {
         this.controller.selectionActionsTarget.classList.remove("hidden")
       }
 
+      // Update delete button text with count
+      if (this.controller.hasDeleteButtonTextTarget) {
+        this.controller.deleteButtonTextTarget.textContent = `Delete ${points.length} Point${points.length === 1 ? "" : "s"}`
+      }
+
       // Disable selection mode
       this.selectionLayer.disableSelectionMode()
 
@@ -514,5 +519,44 @@ export class AreaSelectionManager {
     }
 
     Toast.info("Selection cancelled")
+  }
+
+  /**
+   * Delete selected points
+   */
+  async deleteSelectedPoints() {
+    const pointCount = this.selectedPointsLayer.getCount()
+    const pointIds = this.selectedPointsLayer.getSelectedPointIds()
+
+    if (pointIds.length === 0) {
+      Toast.error("No points selected")
+      return
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete ${pointCount} point${pointCount === 1 ? "" : "s"}? This action cannot be undone.`,
+    )
+
+    if (!confirmed) return
+
+    try {
+      Toast.info("Deleting points...")
+      const result = await this.api.bulkDeletePoints(pointIds)
+
+      this.cancelAreaSelection()
+
+      await this.controller.loadMapData({
+        showLoading: false,
+        fitBounds: false,
+        showToast: false,
+      })
+
+      Toast.success(
+        `Deleted ${result.count} point${result.count === 1 ? "" : "s"}`,
+      )
+    } catch (error) {
+      console.error("[Maps V2] Failed to delete points:", error)
+      Toast.error("Failed to delete points. Please try again.")
+    }
   }
 }

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+- Map v2 area-selection bulk delete: draw an area on the map, then a "Delete N Points" action in the settings panel permanently removes every point inside the selection (with a confirmation prompt).
 
 ## [1.7.8] - 2026-05-16
 
