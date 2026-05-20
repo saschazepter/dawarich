@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Map v2 **Select Area** now includes anomaly points, so the "Delete points" button can bulk-delete them instead of forcing one-by-one deletion via My Data → Points (#2476)
 - Clicking a day in the Timeline panel no longer puts the Search end-time into an invalid state; the time fields now match the minute precision of the date picker (#2624)
 - Map v2 speed-color gradient editor: saving the gradient now actually recolors the routes and persists the scale (#2120)
 
