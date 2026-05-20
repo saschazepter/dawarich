@@ -35,23 +35,16 @@ class Fit::Importer
 
     points_data = []
 
-    activity.sessions.each do |session|
-      sport = session.sport&.to_s
-      activity_type = map_activity_type(sport)
+    each_record(activity) do |record, activity_type|
+      next if record.position_lat.nil? || record.position_long.nil?
 
-      session.laps.each do |lap|
-        lap.records.each do |record|
-          next if record.position_lat.nil? || record.position_long.nil?
+      points_data << build_point(record, activity_type)
 
-          points_data << build_point(record, activity_type)
+      next unless points_data.size >= BATCH_SIZE
 
-          next unless points_data.size >= BATCH_SIZE
-
-          inserted = bulk_insert_points(points_data)
-          broadcast_import_progress(import, inserted)
-          points_data = []
-        end
-      end
+      inserted = bulk_insert_points(points_data)
+      broadcast_import_progress(import, inserted)
+      points_data = []
     end
 
     if points_data.any?
@@ -64,6 +57,36 @@ class Fit::Importer
 
   private
 
+  # Iterates all trackpoint records in the activity, yielding each with its activity type.
+  #
+  # FIT files from different sources use different structures:
+  #   - Standard: sessions → laps → records
+  #   - Garmin Connect exports: sessions have no laps; activity-level laps have no records;
+  #     all records are stored flat on the activity object
+  #
+  # This method tries each structure in order so that Garmin Connect FIT files
+  # (and any other flat-record variants) import correctly.
+  def each_record(activity, &block)
+    activity_type = map_activity_type(activity.sessions.first&.sport&.to_s)
+
+    records_via_sessions = activity.sessions.flat_map { |s| s.laps.flat_map(&:records) }
+    if records_via_sessions.any?
+      activity.sessions.each do |session|
+        type = map_activity_type(session.sport&.to_s)
+        session.laps.each { |lap| lap.records.each { |r| block.call(r, type) } }
+      end
+      return
+    end
+
+    records_via_laps = activity.laps.flat_map(&:records)
+    if records_via_laps.any?
+      activity.laps.each { |lap| lap.records.each { |r| block.call(r, activity_type) } }
+      return
+    end
+
+    activity.records.each { |r| block.call(r, activity_type) }
+  end
+
   def build_point(record, activity_type)
     lat = record.position_lat
     lon = record.position_long
@@ -75,10 +98,12 @@ class Fit::Importer
     raw_data['temperature'] = record.temperature if record.respond_to?(:temperature) && record.temperature
     raw_data['activity_type'] = activity_type if activity_type
 
-    {
+    altitude_value = record.altitude&.to_f
+
+    attrs = {
       lonlat: "POINT(#{lon} #{lat})",
       timestamp: record.timestamp.to_i,
-      altitude: record.altitude&.to_f,
+      altitude: altitude_value,
       velocity: extract_speed(record),
       user_id: user_id,
       import_id: import.id,
@@ -86,6 +111,8 @@ class Fit::Importer
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs
   end
 
   def extract_speed(record)

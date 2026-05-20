@@ -53,8 +53,6 @@ RSpec.describe 'Maps Hexagons API', type: :request do
         let(:start_date) { 1.month.ago.iso8601 }
         let(:end_date) { Time.current.iso8601 }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -114,8 +112,6 @@ RSpec.describe 'Maps Hexagons API', type: :request do
                          lonlat: 'POINT(13.405 52.52)',
                          timestamp: 1.week.ago.to_i)
         end
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

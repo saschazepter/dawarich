@@ -3,6 +3,9 @@
 require 'swagger_helper'
 
 describe 'Points API', type: :request do
+  let(:user) { create(:user) }
+  let(:api_key) { user.api_key }
+
   path '/api/v1/points' do
     get 'Retrieves all points' do
       tags 'Points'
@@ -58,12 +61,8 @@ describe 'Points API', type: :request do
         header 'X-Current-Page', schema: { type: :integer }, description: 'Current page number'
         header 'X-Total-Pages', schema: { type: :integer }, description: 'Total number of pages'
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:start_at) { Time.zone.now - 1.day }
         let(:end_at) { Time.zone.now }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -199,8 +198,6 @@ describe 'Points API', type: :request do
         let(:locations) { json }
         let(:api_key) { create(:user).api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -239,21 +236,15 @@ describe 'Points API', type: :request do
       }
 
       response '200', 'point updated' do
-        let(:user) { create(:user) }
         let(:existing_point) { create(:point, user:) }
-        let(:api_key) { user.api_key }
         let(:id) { existing_point.id }
         let(:point) { { point: { latitude: 52.52, longitude: 13.405 } } }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
 
       response '422', 'invalid request' do
-        let(:user) { create(:user) }
         let(:existing_point) { create(:point, user:) }
-        let(:api_key) { user.api_key }
         let(:id) { existing_point.id }
         let(:point) { { point: { latitude: nil } } }
 
@@ -280,12 +271,8 @@ describe 'Points API', type: :request do
                  message: { type: :string, description: 'Confirmation message' }
                }
 
-        let(:user) { create(:user) }
         let(:point) { create(:point, user:) }
-        let(:api_key) { user.api_key }
         let(:id) { point.id }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -325,20 +312,14 @@ describe 'Points API', type: :request do
                  count: { type: :integer, description: 'Number of points deleted' }
                }
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:point1) { create(:point, user:) }
         let(:point2) { create(:point, user:) }
         let(:bulk_params) { { point_ids: [point1.id, point2.id] } }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
 
       response '422', 'no points selected' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:bulk_params) { { point_ids: [] } }
 
         run_test!
@@ -347,6 +328,40 @@ describe 'Points API', type: :request do
       response '401', 'unauthorized' do
         let(:api_key) { 'invalid' }
         let(:bulk_params) { { point_ids: [1] } }
+
+        run_test!
+      end
+    end
+  end
+
+  path '/api/v1/points/reapply_anomaly_filter' do
+    post 'Re-evaluates anomaly flags for all of the user\'s points' do
+      tags 'Points'
+      description 'Clears existing anomaly flags and re-runs the anomaly detection pipeline against ' \
+                  'every point belonging to the user. A per-user lock prevents concurrent runs.'
+      consumes 'application/json'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+
+      response '202', 're-evaluation queued' do
+        schema type: :object, properties: { message: { type: :string } }
+
+        before { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }
+
+        run_test!
+      end
+
+      response '409', 're-evaluation already in progress' do
+        schema type: :object, properties: { error: { type: :string } }
+
+        before { Rails.cache.write("anomaly_backfill_pending:#{user.id}", true, expires_in: 30.minutes) }
+        after { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
 
         run_test!
       end

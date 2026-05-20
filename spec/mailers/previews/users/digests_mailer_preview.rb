@@ -2,9 +2,12 @@
 
 class Users::DigestsMailerPreview < ActionMailer::Preview
   def year_end_digest
-    user = User.first
-    digest = user.digests.yearly.last || Users::Digest.last
+    digest = Users::Digest.yearly.last
+    Users::DigestsMailer.with(user: digest.user, digest: digest).year_end_digest
+  end
 
-    Users::DigestsMailer.with(user: user, digest: digest).year_end_digest
+  def monthly_digest
+    digest = Users::Digest.monthly.last
+    Users::DigestsMailer.with(user: digest.user, digest: digest).monthly_digest
   end
 end

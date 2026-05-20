@@ -152,6 +152,13 @@ export default class extends BaseController {
       14,
     )
 
+    if (typeof ResizeObserver !== "undefined") {
+      this.containerResizeObserver = new ResizeObserver(() => {
+        this.map?.invalidateSize()
+      })
+      this.containerResizeObserver.observe(this.containerTarget)
+    }
+
     // Add scale control
     this.scaleControl = L.control
       .scale({
@@ -359,6 +366,11 @@ export default class extends BaseController {
   disconnect() {
     super.disconnect()
     this.removeEventListeners()
+
+    if (this.containerResizeObserver) {
+      this.containerResizeObserver.disconnect()
+      this.containerResizeObserver = null
+    }
 
     if (this.tracksSubscription) {
       this.tracksSubscription.unsubscribe()
@@ -743,11 +755,9 @@ export default class extends BaseController {
         }
       } else if (event.name === "Tracks") {
         this.handleRouteLayerToggle("tracks")
-      } else if (event.name === "Areas") {
-        // Show draw control when Areas layer is enabled
+      } else if (event.layer === this.areasLayer) {
         if (
           this.drawControl &&
-          !this.map.hasControl &&
           !this.map._controlCorners.topleft.querySelector(".leaflet-draw")
         ) {
           this.map.addControl(this.drawControl)
@@ -813,8 +823,7 @@ export default class extends BaseController {
 
         // Manage pane visibility when layers are manually toggled
         this.updatePaneVisibilityAfterLayerChange()
-      } else if (event.name === "Areas") {
-        // Hide draw control when Areas layer is disabled
+      } else if (event.layer === this.areasLayer) {
         if (
           this.drawControl &&
           this.map._controlCorners.topleft.querySelector(".leaflet-draw")
@@ -940,7 +949,6 @@ export default class extends BaseController {
       .then((data) => {
         if (data.status === "success") {
           console.log("Enabled layers saved:", enabledLayers)
-          // Flash.show('notice', 'Map layer preferences saved');
         } else {
           console.error("Failed to save enabled layers:", data.message)
           Flash.show(
@@ -970,6 +978,12 @@ export default class extends BaseController {
         return response.json()
       })
       .then((_data) => {
+        // Suppress layer-preference saves triggered by our internal
+        // overlayremove/overlayadd events below. Without this flag the delete
+        // flow fires spurious PATCH /api/v1/settings calls and can surface
+        // a misleading "Map layer preferences saved" flash to the user.
+        this.isRestoringLayers = true
+
         // Remove the marker and update all layers
         this.removeMarker(id)
         let wasPolyLayerVisible = false
@@ -1016,6 +1030,11 @@ export default class extends BaseController {
             this.fogLineThreshold,
           )
         }
+
+        // Reset flag after a short delay so queued overlay events finish first.
+        setTimeout(() => {
+          this.isRestoringLayers = false
+        }, 100)
 
         // Show success message
         Flash.show("notice", "Point deleted successfully")

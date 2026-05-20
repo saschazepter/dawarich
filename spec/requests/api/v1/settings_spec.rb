@@ -75,6 +75,18 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           expect(response).to have_http_status(:unauthorized)
         end
       end
+
+      context 'when user is inactive but active_until is in the future' do
+        before do
+          user.update(status: :inactive, active_until: 1.day.from_now)
+        end
+
+        it 'returns http unauthorized' do
+          patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
     end
 
     context 'with invalid request' do
@@ -128,6 +140,24 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           expect(response.parsed_body['status']).to eq('locked')
         end
       end
+    end
+  end
+
+  describe 'PATCH /api/v1/settings with enabled_transportation_modes' do
+    it 'persists a valid allowlist' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { enabled_transportation_modes: %w[walking cycling] } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['enabled_transportation_modes']).to eq(%w[walking cycling])
+    end
+
+    it 'returns 422 on empty intersection' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { enabled_transportation_modes: %w[bogus] } }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['errors']).to include(/Enable at least one transportation mode/i)
     end
   end
 

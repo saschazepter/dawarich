@@ -11,30 +11,33 @@ class Imports::Create
   end
 
   def call
-    import.update!(status: :processing)
+    import.update!(status: :processing, raw_points: 0, doubles: 0)
     broadcast_status_update
 
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
+    inner_file_path = nil
 
-    source = if import.source.nil?
-               detect_source_from_file(temp_file_path)
-             else
-               import.source
-             end
+    dispatch = Archive::Unzipper.inspect_archive(temp_file_path)
 
-    if source.to_s == 'zip'
+    case dispatch.kind
+    when :multi_entry
       Imports::ZipExtractor.new(import, user.id, temp_file_path).call
       return
+    when :single_entry
+      inner_file_path = Archive::Unzipper.extract_single(temp_file_path)
+      run_importer(inner_file_path)
+    else
+      run_importer(temp_file_path)
     end
 
-    import.update!(source: source)
-    importer(source).new(import, user.id, temp_file_path).call
     User.where(id: user.id).update_all(points_count: user.points.count)
 
     filter_anomalies(user, import)
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
+    schedule_track_generation(user.id, import)
     update_import_points_count(import)
+    notify_if_all_skipped(import)
   rescue StandardError => e
     return if import.destroyed?
 
@@ -46,6 +49,7 @@ class Imports::Create
     create_import_failed_notification(import, user, e)
   ensure
     File.unlink(temp_file_path) if temp_file_path && File.exist?(temp_file_path)
+    File.unlink(inner_file_path) if inner_file_path && File.exist?(inner_file_path)
 
     if !import.destroyed? && import.processing?
       import.update!(status: :completed)
@@ -54,6 +58,12 @@ class Imports::Create
   end
 
   private
+
+  def run_importer(path)
+    source = import.source.presence || detect_source_from_file(path)
+    import.update!(source: source) if import.source.to_s != source.to_s
+    importer(source).new(import, user.id, path).call
+  end
 
   def importer(source)
     raise ArgumentError, 'Import source cannot be nil' if source.nil?
@@ -70,6 +80,9 @@ class Imports::Create
     when 'csv'                          then Csv::Importer
     when 'tcx'                          then Tcx::Importer
     when 'fit'                          then Fit::Importer
+    when 'polarsteps'                   then Polarsteps::Importer
+    when 'zip'
+      raise ArgumentError, 'Could not classify zip contents -- file may be corrupted'
     else
       raise ArgumentError, "Unsupported source: #{source}"
     end
@@ -77,6 +90,21 @@ class Imports::Create
 
   def update_import_points_count(import)
     Import::UpdatePointsCountJob.perform_later(import.id)
+  end
+
+  def notify_if_all_skipped(import)
+    import.reload
+    return unless import.doubles.to_i.positive? && import.points.count.zero?
+
+    Notification.create!(
+      user_id: import.user_id,
+      title: 'Import completed with no new points',
+      content: "Your file #{import.name} contained #{import.raw_points} points, all of which " \
+               'already exist in your timeline at the same coordinates and timestamps. ' \
+               'Nothing was imported. If this was unexpected, delete the existing points ' \
+               'for that date range and re-import.',
+      kind: :info
+    )
   end
 
   def filter_anomalies(user, import)
@@ -96,13 +124,36 @@ class Imports::Create
   def schedule_visit_suggesting(user_id, import)
     return unless user.safe_settings.visits_suggestions_enabled?
 
-    min_max = import.points.pick('MIN(timestamp), MAX(timestamp)')
-    return if min_max.compact.empty?
+    summary = import_points_summary(import)
+    return if summary.nil?
 
-    start_at = Time.zone.at(min_max[0])
-    end_at = Time.zone.at(min_max[1])
+    VisitSuggestingJob.perform_later(user_id:, start_at: summary[:start_at], end_at: summary[:end_at])
+  end
 
-    VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
+  def schedule_track_generation(user_id, import)
+    summary = import_points_summary(import)
+    return if summary.nil? || summary[:count] < 2
+
+    Tracks::ParallelGeneratorJob.perform_later(
+      user_id,
+      start_at: summary[:start_at],
+      end_at: summary[:end_at],
+      mode: :bulk,
+      untracked_only: true
+    )
+  end
+
+  def import_points_summary(import)
+    return @import_points_summary if defined?(@import_points_summary)
+
+    count, min_ts, max_ts = import.points.pick(Arel.sql('COUNT(*), MIN(timestamp), MAX(timestamp)'))
+
+    @import_points_summary =
+      if min_ts.nil? || max_ts.nil?
+        nil
+      else
+        { count: count, start_at: Time.zone.at(min_ts), end_at: Time.zone.at(max_ts) }
+      end
   end
 
   def create_import_failed_notification(import, user, error)
@@ -116,8 +167,8 @@ class Imports::Create
     ).call
   end
 
-  def detect_source_from_file(temp_file_path)
-    detector = Imports::SourceDetector.new_from_file_header(temp_file_path)
+  def detect_source_from_file(file_path)
+    detector = Imports::SourceDetector.new_from_file_header(file_path)
 
     detector.detect_source!
   end

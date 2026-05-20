@@ -27,10 +27,12 @@ class GoogleMaps::RecordsImporter
   private
 
   def prepare_location_data(location)
-    {
+    altitude_value = location['altitude']
+
+    attrs = {
       lonlat: "POINT(#{location['longitudeE7'].to_f / 10**7} #{location['latitudeE7'].to_f / 10**7})",
       timestamp: parse_timestamp(location),
-      altitude: location['altitude'],
+      altitude: altitude_value,
       velocity: location['velocity'],
       accuracy: location['accuracy'],
       vertical_accuracy: location['verticalAccuracy'],
@@ -39,12 +41,21 @@ class GoogleMaps::RecordsImporter
       motion_data: Points::MotionDataExtractor.from_google_records(location),
       raw_data: location,
       topic: 'Google Maps Timeline Export',
-      tracker_id: 'google-maps-timeline-export',
+      tracker_id: tracker_id_for(location),
       import_id: @import.id,
       user_id: @import.user_id,
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs
+  end
+
+  def tracker_id_for(location)
+    device_tag = location['deviceTag']
+    return 'google-maps-timeline-export' if device_tag.nil? || device_tag.to_s.strip.empty?
+
+    "google-records-device-#{device_tag}"
   end
 
   def parse_timestamp(location)

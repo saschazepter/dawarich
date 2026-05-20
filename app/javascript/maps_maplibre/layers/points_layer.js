@@ -1,4 +1,5 @@
 import { Toast } from "maps_maplibre/components/toast"
+import { getMarkerStrokeColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -10,6 +11,7 @@ export class PointsLayer extends BaseLayer {
     super(map, { id: "points", ...options })
     this.apiClient = options.apiClient
     this.layerManager = options.layerManager
+    this.styleName = options.styleName
     this.isDragging = false
     this.hasMoved = false
     this.justDragged = false
@@ -41,11 +43,16 @@ export class PointsLayer extends BaseLayer {
         id: this.id,
         type: "circle",
         source: this.sourceId,
+        layout: {
+          // Deterministic render order by timestamp — prevents a random point
+          // from sitting on top of a dense line (see #2388).
+          "circle-sort-key": ["to-number", ["get", "timestamp"]],
+        },
         paint: {
           "circle-color": "#3b82f6",
           "circle-radius": 6,
           "circle-stroke-width": 2,
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": getMarkerStrokeColor(this.styleName),
         },
       },
     ]

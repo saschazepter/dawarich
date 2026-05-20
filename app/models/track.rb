@@ -38,6 +38,24 @@ class Track < ApplicationRecord
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
 
+  # Convert raw distance + duration into a stored avg_speed (km/h),
+  # capped to the column's precision limit.
+  def self.avg_speed_kmh(distance_meters, duration_seconds)
+    return 0.0 if duration_seconds.to_i <= 0 || distance_meters.to_i <= 0
+
+    speed_mps = distance_meters.to_f / duration_seconds
+    speed_kmh = (speed_mps * 3.6).round(2)
+    [speed_kmh, 999_999.99].min
+  end
+
+  def recalculate_extra_metrics
+    bounds = points.pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
+    return if bounds.nil? || bounds.compact.size < 2
+
+    self.duration = bounds[1] - bounds[0]
+    self.avg_speed = self.class.avg_speed_kmh(distance, duration)
+  end
+
   def self.last_for_day(user, day)
     day_start = day.beginning_of_day
     day_end = day.end_of_day
@@ -65,16 +83,16 @@ class Track < ApplicationRecord
           id,
           timestamp,
           lonlat,
-          LAG(lonlat) OVER (ORDER BY timestamp) as prev_lonlat,
-          LAG(timestamp) OVER (ORDER BY timestamp) as prev_timestamp,
+          tracker_id,
+          LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_lonlat,
+          LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_timestamp,
           ST_Distance(
             lonlat::geography,
-            LAG(lonlat) OVER (ORDER BY timestamp)::geography
+            LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp)::geography
           ) as distance_meters,
-          (timestamp - LAG(timestamp) OVER (ORDER BY timestamp)) as time_diff_seconds
+          (timestamp - LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp)) as time_diff_seconds
         FROM points
         #{where_clause}
-        ORDER BY timestamp
       ),
       segment_breaks AS (
         SELECT *,
@@ -88,10 +106,11 @@ class Track < ApplicationRecord
       ),
       segments AS (
         SELECT *,
-          SUM(is_break) OVER (ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
+          SUM(is_break) OVER (PARTITION BY tracker_id ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
         FROM segment_breaks
       )
       SELECT
+        tracker_id,
         segment_id,
         array_agg(id ORDER BY timestamp) as point_ids,
         count(*) as point_count,
@@ -99,9 +118,9 @@ class Track < ApplicationRecord
         max(timestamp) as end_timestamp,
         sum(COALESCE(distance_meters, 0)) as total_distance_meters
       FROM segments
-      GROUP BY segment_id
+      GROUP BY tracker_id, segment_id
       HAVING count(*) >= 2
-      ORDER BY segment_id
+      ORDER BY tracker_id NULLS FIRST, segment_id
     SQL
 
     results = Point.connection.exec_query(
@@ -115,6 +134,7 @@ class Track < ApplicationRecord
     results.each do |row|
       segments_data << {
         segment_id: row['segment_id'].to_i,
+        tracker_id: row['tracker_id'],
         point_ids: parse_postgres_array(row['point_ids']),
         point_count: row['point_count'].to_i,
         start_timestamp: row['start_timestamp'].to_i,
@@ -146,7 +166,8 @@ class Track < ApplicationRecord
         points: seg_data[:point_ids].map { |id| points_by_id[id] }.compact,
         pre_calculated_distance: seg_data[:total_distance_meters],
         start_timestamp: seg_data[:start_timestamp],
-        end_timestamp: seg_data[:end_timestamp]
+        end_timestamp: seg_data[:end_timestamp],
+        tracker_id: seg_data[:tracker_id]
       }
     end
   end

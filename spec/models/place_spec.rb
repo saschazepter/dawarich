@@ -4,9 +4,22 @@ require 'rails_helper'
 
 RSpec.describe Place, type: :model do
   describe 'associations' do
-    it { is_expected.to have_many(:visits).dependent(:destroy) }
+    it { is_expected.to have_many(:visits).dependent(:nullify) }
     it { is_expected.to have_many(:place_visits).dependent(:destroy) }
     it { is_expected.to have_many(:suggested_visits).through(:place_visits) }
+  end
+
+  describe 'destroying a place' do
+    it 'nullifies place_id on associated visits, does not delete them' do
+      user = create(:user)
+      place = create(:place, user: user)
+      visit = create(:visit, user: user, place: place, area: nil)
+
+      place.destroy!
+
+      expect(Visit.exists?(visit.id)).to be(true)
+      expect(visit.reload.place_id).to be_nil
+    end
   end
 
   describe 'validations' do
@@ -37,15 +50,6 @@ RSpec.describe Place, type: :model do
       it 'returns empty when user has no places' do
         new_user = create(:user)
         expect(Place.for_user(new_user)).to be_empty
-      end
-    end
-
-    describe '.global' do
-      let(:global_place) { create(:place, user: nil) }
-
-      it 'returns places with no user' do
-        expect(Place.global).to include(global_place)
-        expect(Place.global).not_to include(place1, place2, place3)
       end
     end
 

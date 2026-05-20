@@ -27,9 +27,7 @@ class Tracks::BoundaryDetector
 
   private
 
-  # Find tracks that might span chunk boundaries
   def find_boundary_track_candidates
-    # Get recent tracks that might have boundary issues
     recent_tracks = user.tracks
                         .where('created_at > ?', 1.hour.ago)
                         .includes(:points)
@@ -37,16 +35,17 @@ class Tracks::BoundaryDetector
 
     return [] if recent_tracks.empty?
 
-    # Group tracks that might be connected
+    candidate_tracks = (recent_tracks + adjacent_existing_tracks(recent_tracks))
+                       .uniq
+                       .sort_by(&:start_at)
+
     potential_groups = []
 
-    recent_tracks.each do |track|
-      # Look for tracks that end close to where another begins
-      connected_tracks = find_connected_tracks(track, recent_tracks)
+    candidate_tracks.each do |track|
+      connected_tracks = find_connected_tracks(track, candidate_tracks)
 
       next unless connected_tracks.any?
 
-      # Create or extend a boundary group
       existing_group = potential_groups.find { |group| group.include?(track) }
 
       if existing_group
@@ -56,8 +55,39 @@ class Tracks::BoundaryDetector
       end
     end
 
-    # Filter groups to only include legitimate boundary cases
     potential_groups.select { |group| valid_boundary_group?(group) }
+  end
+
+  def adjacent_existing_tracks(recent_tracks)
+    return [] if recent_tracks.empty?
+
+    window = adjacency_window
+    recent_ids = recent_tracks.map(&:id)
+    tracker_ids = recent_tracks.map(&:tracker_id).uniq
+
+    conditions = recent_tracks.flat_map do |track|
+      [
+        ['end_at BETWEEN ? AND ?', track.start_at - window, track.start_at],
+        ['start_at BETWEEN ? AND ?', track.end_at, track.end_at + window]
+      ]
+    end
+
+    sql = conditions.map(&:first).join(' OR ')
+    bindings = conditions.flat_map { |c| c[1..] }
+
+    user.tracks
+        .where.not(id: recent_ids)
+        .where(tracker_id: tracker_ids)
+        .where(sql, *bindings)
+        .includes(:points)
+  end
+
+  # Time gap that still counts as "adjacent" for boundary merging.
+  # Floors at 30 minutes so we never tighten behavior for users who set a
+  # smaller minutes_between_routes; widens past 30 minutes when the user has
+  # explicitly opted into longer gaps as part of the same journey.
+  def adjacency_window
+    [time_threshold_minutes.minutes, 30.minutes].max
   end
 
   # Find tracks that might be connected to the given track
@@ -66,11 +96,11 @@ class Tracks::BoundaryDetector
     track_end_time = track.end_at.to_i
     track_start_time = track.start_at.to_i
 
-    # Look for tracks that start shortly after this one ends (within 30 minutes)
-    time_window = 30.minutes.to_i
+    time_window = adjacency_window.to_i
 
     all_tracks.each do |candidate|
       next if candidate.id == track.id
+      next if candidate.tracker_id != track.tracker_id
 
       candidate_start = candidate.start_at.to_i
       candidate_end = candidate.end_at.to_i
@@ -138,39 +168,55 @@ class Tracks::BoundaryDetector
     true
   end
 
-  # Merge a group of boundary tracks into a single track
   def merge_boundary_tracks(track_group)
     return false if track_group.size < 2
 
-    # Sort tracks by start time
     sorted_tracks = track_group.sort_by(&:start_at)
+    boundary_ids = sorted_tracks.map(&:id)
 
-    # Collect all points from all tracks
-    all_points = []
-    sorted_tracks.each do |track|
-      track_points = track.points.order(:timestamp).to_a
-      all_points.concat(track_points)
-    end
-
-    # Remove duplicates and sort by timestamp
+    all_points = sorted_tracks.flat_map { |track| track.points.order(:timestamp).to_a }
     unique_points = all_points.uniq(&:id).sort_by(&:timestamp)
-
     return false if unique_points.size < 2
 
-    # Calculate merged track distance
     merged_distance = Point.calculate_distance_for_array_geocoder(unique_points, :m)
 
-    # Create new merged track
-    merged_track = create_track_from_points(unique_points, merged_distance)
+    success = false
+    ActiveRecord::Base.transaction do
+      merged_track = create_track_from_points(unique_points, merged_distance)
 
-    if merged_track
-      # Delete the original boundary tracks
-      sorted_tracks.each(&:destroy)
+      unless merged_track
+        Rails.logger.warn(
+          "Boundary merge skipped for tracks #{boundary_ids.join(',')}: " \
+          'no merged track produced'
+        )
+        raise ActiveRecord::Rollback
+      end
 
-      true
-    else
-      false
+      # If the merged span collided with the unique index and reuse_existing_track
+      # returned a pre-existing track (not the freshly inserted one), absorbing
+      # older+newer into it would corrupt that track's metadata — its path,
+      # distance, segments were computed from a different point set. Bail and
+      # preserve the boundary tracks for the next pass.
+      unless merged_track.previously_new_record? || boundary_ids.include?(merged_track.id)
+        Rails.logger.warn(
+          'event=tracks.boundary_merge_skipped reason=third_party_collision ' \
+          "user_id=#{user.id} boundary_ids=#{boundary_ids.join(',')} " \
+          "existing_track_id=#{merged_track.id}"
+        )
+        raise ActiveRecord::Rollback
+      end
+
+      sorted_tracks.reject { |t| t.id == merged_track.id }.each(&:destroy)
+      success = true
     end
+
+    success
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.warn(
+      'event=tracks.boundary_merge_failed reason=race_winner_not_visible ' \
+      "user_id=#{user.id} boundary_ids=#{sorted_tracks.map(&:id).join(',')}"
+    )
+    false
   end
 
   # Required by Tracks::Segmentation module

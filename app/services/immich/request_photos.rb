@@ -95,7 +95,7 @@ class Immich::RequestPhotos
     return data unless start_time
 
     data.select do |photo|
-      photo_time = parse_time(photo['localDateTime'])
+      photo_time = parse_time(photo['fileCreatedAt'] || photo['localDateTime'])
       next false unless photo_time
 
       photo_time >= start_time && (end_time.nil? || photo_time <= end_time)

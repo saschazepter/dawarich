@@ -31,6 +31,10 @@ RSpec.describe UsersMailer, type: :mailer do
     end
   end
 
+  # Trial-reminder mailers below are kept transitionally so stale Sidekiq
+  # jobs scheduled before the billing extraction drain cleanly. New code
+  # must NOT enqueue these — Manager owns the trial-reminder lifecycle now.
+  # Earliest safe removal: 2026-05-17 (deploy + 21 days).
   describe 'trial_expires_soon' do
     let(:mail) { UsersMailer.with(user: user).trial_expires_soon }
 
@@ -64,6 +68,27 @@ RSpec.describe UsersMailer, type: :mailer do
     it 'renders the headers' do
       expect(mail.subject).to eq('📍 Your location data is waiting - Subscribe to Dawarich')
       expect(mail.to).to eq([user.email])
+    end
+  end
+
+  describe 'otp_account_locked' do
+    let(:mail) { UsersMailer.with(user: user).otp_account_locked }
+
+    it 'renders the headers' do
+      expect(mail.subject).to eq('Dawarich account temporarily locked')
+      expect(mail.to).to eq([user.email])
+    end
+
+    it 'renders the body with the user email' do
+      expect(mail.body.encoded).to match(user.email)
+    end
+
+    it 'includes password reset link in HTML part' do
+      expect(mail.html_part.body.encoded).to include('password')
+    end
+
+    it 'includes password reset link in text part' do
+      expect(mail.text_part.body.encoded).to include('password')
     end
   end
 end

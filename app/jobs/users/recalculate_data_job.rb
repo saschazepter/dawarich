@@ -6,12 +6,13 @@
 class Users::RecalculateDataJob < ApplicationJob
   include UserTimezone
 
-  queue_as :default
+  queue_as :stats
 
-  def perform(user_id, year: nil)
+  def perform(user_id, year: nil, notify: true)
     @user = find_user_or_skip(user_id) || return
 
     @year = year&.to_i
+    @notify = notify
 
     with_user_timezone(user) do
       years_to_process = determine_years
@@ -25,10 +26,10 @@ class Users::RecalculateDataJob < ApplicationJob
       recalculate_tracks(years_to_process)
       recalculate_digests(years_to_process)
 
-      create_success_notification(years_to_process)
+      create_success_notification(years_to_process) if @notify
     end
   rescue StandardError => e
-    create_failure_notification(e)
+    create_failure_notification(e) if @notify
     raise
   end
 

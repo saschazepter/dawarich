@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe '/settings/users', type: :request do
-  let(:valid_attributes) { { email: 'user@domain.com', password: '4815162342' } }
+  let(:valid_attributes) { { email: 'user@domain.com', password: '4815162342abc' } }
   let!(:admin) { create(:user, :admin) }
 
   context 'when Dawarich is in self-hosted mode' do
@@ -127,7 +127,7 @@ RSpec.describe '/settings/users', type: :request do
           before { sign_in admin }
 
           context 'with valid parameters' do
-            let(:new_attributes) { { email: FFaker::Internet.email, password: '4815162342' } }
+            let(:new_attributes) { { email: FFaker::Internet.email, password: '4815162342abc' } }
 
             it 'updates the requested user' do
               patch settings_user_url(user), params: { user: new_attributes }
@@ -154,7 +154,8 @@ RSpec.describe '/settings/users', type: :request do
             end
 
             it 'prevents removing admin from the last admin user' do
-              # admin (from let!) is the only admin
+              User.where(admin: true).where.not(id: admin.id).update_all(admin: false)
+
               patch settings_user_url(admin), params: { user: { admin: '0' } }
 
               expect(admin.reload.admin?).to be true
@@ -186,6 +187,8 @@ RSpec.describe '/settings/users', type: :request do
             end
 
             it 'prevents disabling the last admin user' do
+              User.where(admin: true).where.not(id: admin.id).update_all(admin: false)
+
               patch settings_user_url(admin), params: { user: { status: 'inactive' } }
 
               expect(admin.reload.status).to eq('active')

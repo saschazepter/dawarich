@@ -6,6 +6,7 @@ require_relative '../config/environment'
 
 abort('The Rails environment is running in production mode!') if Rails.env.production?
 require 'rspec/rails'
+require 'yabeda/rspec'
 require 'rswag/specs'
 require 'sidekiq/testing'
 require 'super_diff/rspec-rails'
@@ -37,6 +38,7 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
 
   config.include FactoryBot::Syntax::Methods
+  config.include ActiveJob::TestHelper
 
   config.rswag_dry_run = false
 

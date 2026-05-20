@@ -2,6 +2,7 @@
 
 class PointsController < ApplicationController
   include SafeTimestampParser
+  include ImportTimeWindow
 
   before_action :authenticate_user!
 
@@ -47,15 +48,17 @@ class PointsController < ApplicationController
   end
 
   def start_at
-    return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
+    return safe_timestamp(params[:start_at]) if params[:start_at].present?
+    return import_window_start if import_window_start
 
-    safe_timestamp(params[:start_at])
+    1.month.ago.beginning_of_day.to_i
   end
 
   def end_at
-    return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
+    return safe_timestamp(params[:end_at]) if params[:end_at].present?
+    return import_window_end if import_window_end
 
-    safe_timestamp(params[:end_at])
+    Time.zone.today.end_of_day.to_i
   end
 
   def points

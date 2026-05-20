@@ -80,10 +80,12 @@ class Places::Visits::Create
       visit = find_or_initialize_visit(place.id, visit_points.first.timestamp)
 
       visit.tap do |v|
-        v.name = "#{place.name}, #{time_range}"
         v.ended_at = Time.zone.at(visit_points.last.timestamp)
         v.duration = (visit_points.last.timestamp - visit_points.first.timestamp) / 60
-        v.status = :suggested
+        if v.new_record?
+          v.name = "#{place.name}, #{time_range}"
+          v.status = :suggested
+        end
       end
 
       visit.save!

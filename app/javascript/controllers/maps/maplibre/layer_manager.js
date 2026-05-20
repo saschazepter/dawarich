@@ -3,6 +3,7 @@ import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
 import { FogLayer } from "maps_maplibre/layers/fog_layer"
 import { HeatmapLayer } from "maps_maplibre/layers/heatmap_layer"
+import { HexagonLayer } from "maps_maplibre/layers/hexagon_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { PlacesLayer } from "maps_maplibre/layers/places_layer"
 import { PointsLayer } from "maps_maplibre/layers/points_layer"
@@ -18,10 +19,11 @@ import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
  * Manages all map layers lifecycle and visibility
  */
 export class LayerManager {
-  constructor(map, settings, api) {
+  constructor(map, settings, api, controller) {
     this.map = map
     this.settings = settings
     this.api = api
+    this.controller = controller
     this.layers = {}
     this.eventHandlersSetup = false
   }
@@ -46,6 +48,7 @@ export class LayerManager {
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
+    this._addHexagonLayer()
     this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(tracksGeoJSON)
     this._addRoutesLayer(routesGeoJSON)
@@ -252,6 +255,17 @@ export class LayerManager {
     }
   }
 
+  _addHexagonLayer() {
+    if (this.layers.hexagonsLayer) return this.layers.hexagonsLayer
+    this.layers.hexagonsLayer = new HexagonLayer(this.map, {
+      visible: this.settings.hexagonsEnabled || false,
+      api: this.api,
+      controller: this.controller,
+    })
+    this.layers.hexagonsLayer.add({ type: "FeatureCollection", features: [] })
+    return this.layers.hexagonsLayer
+  }
+
   _addAreasLayer(areasGeoJSON) {
     if (!this.layers.areasLayer) {
       this.layers.areasLayer = new AreasLayer(this.map, {
@@ -381,6 +395,7 @@ export class LayerManager {
         visible: this.settings.pointsVisible !== false, // Default true unless explicitly false
         apiClient: this.api,
         layerManager: this,
+        styleName: this.settings.mapStyle,
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {

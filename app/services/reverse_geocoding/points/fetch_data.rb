@@ -3,7 +3,8 @@
 class ReverseGeocoding::Points::FetchData
   attr_reader :point
 
-  def initialize(point_id)
+  def initialize(point_id, force: false)
+    @force = force
     @point = Point.find(point_id)
   rescue ActiveRecord::RecordNotFound => e
     ExceptionReporter.call(e)
@@ -13,7 +14,7 @@ class ReverseGeocoding::Points::FetchData
 
   def call
     return if point.blank?
-    return if point.reverse_geocoded?
+    return if point.reverse_geocoded? && !@force
     return unless point.timestamp.present? && point.lonlat.present?
 
     update_point_with_geocoding_data
@@ -25,7 +26,13 @@ class ReverseGeocoding::Points::FetchData
 
   def update_point_with_geocoding_data
     response = Geocoder.search([point.lat, point.lon]).first
-    return if response.blank? || response.data['error'].present?
+
+    if response.blank?
+      with_deadlock_retry { point.update!(reverse_geocoded_at: Time.current) }
+      return
+    end
+
+    return if response.data['error'].present?
 
     country_record = Country.find_by(name: response.country) if response.country
 

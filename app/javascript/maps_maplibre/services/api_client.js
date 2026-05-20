@@ -13,7 +13,7 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, page, per_page }
    * @returns {Promise<Object>} { points, currentPage, totalPages }
    */
-  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000 }) {
+  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000, signal }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
@@ -25,6 +25,7 @@ export class ApiClient {
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
+      signal,
     })
 
     if (!response.ok) {
@@ -398,6 +399,7 @@ export class ApiClient {
     end_at,
     onProgress,
     onBatch = null,
+    onTotalKnown = null,
     maxConcurrent = 3,
   } = {}) {
     // First fetch to get total pages
@@ -408,6 +410,13 @@ export class ApiClient {
       per_page: 500,
     })
     const totalPages = firstPage.totalPages
+
+    // Surface the server-reported total as soon as page 1 lands. Lets the
+    // loading badge show "N tracks" while the remaining pages and rendering
+    // catch up, so users get a count up-front instead of seeing 0 → 342.
+    if (onTotalKnown) {
+      onTotalKnown(firstPage.totalCount || firstPage.features.length)
+    }
 
     // If only one page, return immediately
     if (totalPages === 1) {
@@ -552,6 +561,7 @@ export class ApiClient {
       max_longitude: max_longitude.toString(),
       min_latitude: min_latitude.toString(),
       max_latitude: max_latitude.toString(),
+      include_anomalies: "true",
       per_page: "10000", // Get all points in area (up to 10k)
     })
 
@@ -601,19 +611,18 @@ export class ApiClient {
   }
 
   /**
-   * Bulk delete points
-   * @param {Array<number>} pointIds - Array of point IDs to delete
-   * @returns {Promise<Object>} { message, count }
+   * Delete a single point
+   * @param {number} pointId - Point ID to delete
+   * @returns {Promise<Object>} Deleted point payload
    */
-  async bulkDeletePoints(pointIds) {
-    const response = await fetch(`${this.baseURL}/points/bulk_destroy`, {
+  async deletePoint(pointId) {
+    const response = await fetch(`${this.baseURL}/points/${pointId}`, {
       method: "DELETE",
       headers: this.getHeaders(),
-      body: JSON.stringify({ point_ids: pointIds }),
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to delete points: ${response.statusText}`)
+      throw new Error(`Failed to delete point: ${response.statusText}`)
     }
 
     return response.json()

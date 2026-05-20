@@ -48,10 +48,16 @@ RSpec.describe Users::SafeSettings do
               'time_gap_threshold' => 180,
               'min_flight_distance_km' => 100
             },
+            enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
-            timezone: 'UTC'
+            gps_filtering_enabled: true,
+            gps_accuracy_threshold: 100,
+            timezone: 'UTC',
+            visit_radius_meters: 100,
+            visit_min_points: 3,
+            visit_density_fill_enabled: true
           }
         )
       end
@@ -105,7 +111,6 @@ RSpec.describe Users::SafeSettings do
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
-            'digest_emails_enabled' => true,
             'news_emails_enabled' => true,
             'globe_projection' => false,
             'supporter_email' => nil,
@@ -128,7 +133,12 @@ RSpec.describe Users::SafeSettings do
             'transportation_expert_mode' => false,
             'min_minutes_spent_in_city' => 60,
             'max_gap_minutes_in_city' => 120,
-            'timezone' => 'UTC'
+            'gps_filtering_enabled' => true,
+            'gps_accuracy_threshold' => 100,
+            'timezone' => 'UTC',
+            'visit_radius_meters' => 100,
+            'visit_min_points' => 3,
+            'visit_density_fill_enabled' => true
           }
         )
       end
@@ -173,10 +183,16 @@ RSpec.describe Users::SafeSettings do
               'time_gap_threshold' => 180,
               'min_flight_distance_km' => 100
             },
+            enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
-            timezone: 'UTC'
+            gps_filtering_enabled: true,
+            gps_accuracy_threshold: 100,
+            timezone: 'UTC',
+            visit_radius_meters: 100,
+            visit_min_points: 3,
+            visit_density_fill_enabled: true
           }
         )
       end
@@ -419,6 +435,106 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#monthly_digest_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'returns true when the setting is missing' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when explicitly set to true' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => true } }
+
+      it 'returns true when explicitly true' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => false } }
+
+      it 'returns false when explicitly false' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be false
+      end
+    end
+
+    context 'when only the legacy digest_emails_enabled key is present' do
+      context 'and legacy is true' do
+        let(:settings) { { 'digest_emails_enabled' => true } }
+
+        it 'falls back to legacy value (true)' do
+          expect(safe_settings.monthly_digest_emails_enabled?).to be true
+        end
+      end
+
+      context 'and legacy is false (preserved opt-out)' do
+        let(:settings) { { 'digest_emails_enabled' => false } }
+
+        it 'falls back to legacy value (false)' do
+          expect(safe_settings.monthly_digest_emails_enabled?).to be false
+        end
+      end
+    end
+
+    context 'when both new and legacy keys are present' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => false, 'digest_emails_enabled' => true } }
+
+      it 'prefers the new key over the legacy key' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be false
+      end
+    end
+  end
+
+  describe '#yearly_digest_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'returns true when the setting is missing' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'yearly_digest_emails_enabled' => false } }
+
+      it 'returns false when explicitly false' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be false
+      end
+    end
+
+    context 'when only the legacy digest_emails_enabled key is present' do
+      context 'and legacy is true' do
+        let(:settings) { { 'digest_emails_enabled' => true } }
+
+        it 'falls back to legacy value (true)' do
+          expect(safe_settings.yearly_digest_emails_enabled?).to be true
+        end
+      end
+
+      context 'and legacy is false (preserved opt-out)' do
+        let(:settings) { { 'digest_emails_enabled' => false } }
+
+        it 'falls back to legacy value (false)' do
+          expect(safe_settings.yearly_digest_emails_enabled?).to be false
+        end
+      end
+    end
+
+    context 'when both new and legacy keys are present' do
+      let(:settings) { { 'yearly_digest_emails_enabled' => false, 'digest_emails_enabled' => true } }
+
+      it 'prefers the new key over the legacy key' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be false
+      end
+    end
+  end
+
   describe 'transportation threshold settings' do
     let(:safe_settings) { described_class.new(settings) }
 
@@ -500,6 +616,149 @@ RSpec.describe Users::SafeSettings do
       it 'returns true for transportation expert mode' do
         expect(safe_settings.transportation_expert_mode?).to be true
       end
+    end
+  end
+
+  describe '#enabled_transportation_modes' do
+    let(:safe_settings) { described_class.new(settings) }
+    let(:canonical) { Track::TRANSPORTATION_MODES.keys.map(&:to_s) }
+
+    context 'when settings hash is empty' do
+      let(:settings) { {} }
+
+      it 'returns the canonical list of transportation modes' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
+      end
+    end
+
+    context 'when value is nil' do
+      let(:settings) { { 'enabled_transportation_modes' => nil } }
+
+      it 'returns the canonical list of transportation modes' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
+      end
+    end
+
+    context 'when value is an empty array' do
+      let(:settings) { { 'enabled_transportation_modes' => [] } }
+
+      it 'returns the canonical list of transportation modes' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
+      end
+    end
+
+    context 'when value is a valid subset' do
+      let(:settings) { { 'enabled_transportation_modes' => %w[walking cycling driving] } }
+
+      it 'returns the subset' do
+        expect(safe_settings.enabled_transportation_modes).to eq(%w[walking cycling driving])
+      end
+    end
+
+    context 'when value contains a mix of valid and bogus modes' do
+      let(:settings) { { 'enabled_transportation_modes' => %w[walking teleporting cycling jetpack] } }
+
+      it 'filters out the bogus values' do
+        expect(safe_settings.enabled_transportation_modes).to eq(%w[walking cycling])
+      end
+    end
+
+    context 'when value contains only bogus modes' do
+      let(:settings) { { 'enabled_transportation_modes' => %w[teleporting jetpack] } }
+
+      it 'falls back to the canonical list' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
+      end
+    end
+  end
+
+  describe '#gps_filtering_enabled?' do
+    it 'defaults to true when unset' do
+      expect(described_class.new({}).gps_filtering_enabled?).to be true
+    end
+
+    it 'returns false when explicitly disabled' do
+      expect(described_class.new({ 'gps_filtering_enabled' => false }).gps_filtering_enabled?).to be false
+    end
+
+    it 'casts string "false"' do
+      expect(described_class.new({ 'gps_filtering_enabled' => 'false' }).gps_filtering_enabled?).to be false
+    end
+  end
+
+  describe '#gps_accuracy_threshold' do
+    it 'defaults to 100' do
+      expect(described_class.new({}).gps_accuracy_threshold).to eq(100)
+    end
+
+    it 'returns the user-provided integer' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 250 }).gps_accuracy_threshold).to eq(250)
+    end
+
+    it 'clamps below the minimum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 10 }).gps_accuracy_threshold).to eq(50)
+    end
+
+    it 'clamps above the maximum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 99_999 }).gps_accuracy_threshold).to eq(1000)
+    end
+
+    it 'coerces string values' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
+    end
+  end
+
+  describe '#visit_radius_meters' do
+    it 'returns 50 when missing' do
+      expect(described_class.new({}).visit_radius_meters).to eq(100)
+    end
+
+    it 'clamps below the minimum to 5' do
+      expect(described_class.new({ 'visit_radius_meters' => 1 }).visit_radius_meters).to eq(5)
+    end
+
+    it 'clamps above the maximum to 500' do
+      expect(described_class.new({ 'visit_radius_meters' => 9999 }).visit_radius_meters).to eq(500)
+    end
+
+    it 'returns the user value within range' do
+      expect(described_class.new({ 'visit_radius_meters' => 75 }).visit_radius_meters).to eq(75)
+    end
+  end
+
+  describe '#visit_min_points' do
+    it 'returns 3 when missing' do
+      expect(described_class.new({}).visit_min_points).to eq(3)
+    end
+
+    it 'clamps below the minimum to 2' do
+      expect(described_class.new({ 'visit_min_points' => 1 }).visit_min_points).to eq(2)
+    end
+
+    it 'clamps above the maximum to 20' do
+      expect(described_class.new({ 'visit_min_points' => 99 }).visit_min_points).to eq(20)
+    end
+
+    it 'returns the user value within range' do
+      expect(described_class.new({ 'visit_min_points' => 4 }).visit_min_points).to eq(4)
+    end
+  end
+
+  describe '#visit_density_fill_enabled?' do
+    it 'returns true when missing' do
+      expect(described_class.new({}).visit_density_fill_enabled?).to be true
+    end
+
+    it 'returns false for "0"' do
+      expect(described_class.new({ 'visit_density_fill_enabled' => '0' }).visit_density_fill_enabled?).to be false
+    end
+
+    it 'returns true for "1"' do
+      expect(described_class.new({ 'visit_density_fill_enabled' => '1' }).visit_density_fill_enabled?).to be true
+    end
+
+    it 'returns false for false' do
+      expect(described_class.new({ 'visit_density_fill_enabled' => false }).visit_density_fill_enabled?).to be false
     end
   end
 end

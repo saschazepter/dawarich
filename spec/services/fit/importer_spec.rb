@@ -73,6 +73,35 @@ RSpec.describe Fit::Importer do
       end
     end
 
+    context 'with flat-record FIT file (sessions may have no laps, as observed with Garmin Connect exports)' do
+      let(:flat_fit_fixture_path) do
+        path = Rails.root.join('tmp', "test_flat_#{SecureRandom.hex(4)}.fit").to_s
+        generate_flat_record_fit_fixture(path)
+        path
+      end
+
+      after { File.delete(flat_fit_fixture_path) if File.exist?(flat_fit_fixture_path) }
+
+      before do
+        described_class.new(import, user.id, flat_fit_fixture_path).call
+      end
+
+      it 'imports points when sessions may have no laps and records are flat on the activity' do
+        expect(user.points.count).to eq(3)
+      end
+
+      it 'parses coordinates correctly' do
+        point = user.points.order(:timestamp).first
+        expect(point.lat).to be_within(0.0001).of(52.5200)
+        expect(point.lon).to be_within(0.0001).of(13.4050)
+      end
+
+      it 'maps activity type from session sport' do
+        point = user.points.order(:timestamp).first
+        expect(point.raw_data['activity_type']).to eq('cycling')
+      end
+    end
+
     context 'with ActiveStorage file (nil file_path)' do
       let(:temp_path) { fit_fixture_path }
       let(:downloader) { instance_double(Imports::SecureFileDownloader, download_to_temp_file: temp_path) }
@@ -104,6 +133,23 @@ RSpec.describe Fit::Importer do
       ensure
         bad_file&.close
         bad_file&.unlink
+      end
+    end
+
+    context 'fit4ruby strict-validation overrides' do
+      it 'HeartRateZones#check is a no-op on lap_index mismatch' do
+        zones = Fit4Ruby::HeartRateZones.new({})
+        zones.instance_variable_set(:@lap_index, 0)
+        expect { zones.check(1) }.not_to raise_error
+      end
+
+      it 'DeviceInfo#check is a no-op when serial_number is missing' do
+        info = Fit4Ruby::DeviceInfo.new({})
+        info.instance_variable_set(:@device_index, 0)
+        info.instance_variable_set(:@manufacturer, 'garmin')
+        info.instance_variable_set(:@garmin_product, 'fenix3')
+        info.instance_variable_set(:@serial_number, nil)
+        expect { info.check(0) }.not_to raise_error
       end
     end
   end

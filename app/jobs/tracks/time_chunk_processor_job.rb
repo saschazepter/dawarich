@@ -16,6 +16,11 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
     return unless session_exists?
 
+    # No per-user lock here: chunks for the same user are deliberately allowed
+    # to run concurrently (that's the whole point of ParallelGenerator's
+    # fan-out). Race-safety is provided by the (user_id, start_at, end_at)
+    # unique index plus the rescue paths in TrackBuilder, Merger, and
+    # BoundaryDetector — racing inserts collapse onto the winning track.
     tracks_created = process_chunk
     update_session_progress(tracks_created)
   rescue StandardError => e
@@ -55,20 +60,22 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def load_chunk_points
-    user.points
-        .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
-        .order(:timestamp)
+    relation = user.points
+                   .not_anomaly
+                   .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
+                   .order(:timestamp)
+    relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
+    relation
   end
 
   def segment_chunk_points(points)
-    # Convert relation to array for in-memory processing
     points_array = points.to_a
 
-    # Use Geocoder-based segmentation
-    segments = split_points_into_segments_geocoder(points_array)
+    segments = points_array
+               .group_by { |p| p.tracker_id.to_s }
+               .values
+               .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
 
-    # Filter segments to only include those that overlap with the actual chunk range
-    # (not just the buffer range)
     segments.select do |segment|
       segment_overlaps_chunk_range?(segment)
     end
