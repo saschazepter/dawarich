@@ -12,14 +12,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-<<<<<<< fix/photos-empty-cache-poison
+- Family members' positions now update in real time on the map as they arrive, instead of only refreshing every 60 seconds. (#2733)
 - Photos from Immich and Photoprism integrations now reappear on the map after a transient empty response from the upstream, instead of staying hidden for 30 minutes due to a cached empty result. (#1071, #784)
-=======
 - Map v2 **Select Area** now includes anomaly points, so the "Delete points" button can bulk-delete them instead of forcing one-by-one deletion via My Data → Points (#2476)
 - Clicking a day in the Timeline panel no longer puts the Search end-time into an invalid state; the time fields now match the minute precision of the date picker (#2624)
 - Map v2 speed-color gradient editor: saving the gradient now actually recolors the routes and persists the scale (#2120)
 - Trips now respect the GPS anomaly filter when building their route, total distance, and visited-countries list. Previously, anomaly-flagged points still polluted trip geometry and stats, so a trip could show a "connected" route through anomaly points that the main map drew as disconnected. Use **Recalculate trip** after enabling GPS noise filtering (or after the anomaly backfill finishes) to refresh existing trips. #2474
->>>>>>> dev
+
 
 ## [1.7.8] - 2026-05-16
 

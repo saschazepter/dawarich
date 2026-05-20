@@ -1,15 +1,5 @@
 # frozen_string_literal: true
 
-# Broadcasts newly created points to PointsChannel for live map updates.
-#
-# Since all point creation uses upsert_all (which bypasses ActiveRecord callbacks),
-# this service manually broadcasts to PointsChannel after points are created.
-#
-# Used by real-time point creation services:
-# - OwnTracks::PointCreator
-# - Overland::PointsCreator
-# - Points::Create
-#
 class Points::LiveBroadcaster
   attr_reader :user_id, :upserted_results, :payloads
 
@@ -23,26 +13,59 @@ class Points::LiveBroadcaster
     return if upserted_results.empty?
 
     user = User.find_by(id: user_id)
-    return unless user&.safe_settings&.live_map_enabled
+    return unless user
+
+    live_map = user.safe_settings&.live_map_enabled
+    family = family_sharing?(user)
+    return unless live_map || family
 
     payloads_by_timestamp = payloads.index_by { |p| p[:timestamp].to_i }
 
     upserted_results.each do |result|
       payload = payloads_by_timestamp[result['timestamp'].to_i] || {}
-
-      PointsChannel.broadcast_to(
-        user,
-        [
-          result['latitude'].to_f,
-          result['longitude'].to_f,
-          payload[:battery].to_s,
-          payload[:altitude].to_s,
-          result['timestamp'].to_s,
-          payload[:velocity].to_s,
-          result['id'].to_s,
-          '' # country_name not yet available (async geocoding)
-        ]
-      )
+      broadcast_points(user, result, payload) if live_map
+      broadcast_family(user, result) if family
     end
+  end
+
+  private
+
+  def family_sharing?(user)
+    DawarichSettings.family_feature_enabled? &&
+      user.in_family? &&
+      user.family_sharing_enabled?
+  end
+
+  def broadcast_points(user, result, payload)
+    PointsChannel.broadcast_to(
+      user,
+      [
+        result['latitude'].to_f,
+        result['longitude'].to_f,
+        payload[:battery].to_s,
+        payload[:altitude].to_s,
+        result['timestamp'].to_s,
+        payload[:velocity].to_s,
+        result['id'].to_s,
+        ''
+      ]
+    )
+  end
+
+  def broadcast_family(user, result)
+    timestamp = result['timestamp'].to_i
+
+    FamilyLocationsChannel.broadcast_to(
+      user.family,
+      {
+        user_id: user.id,
+        email: user.email,
+        email_initial: user.email.first.upcase,
+        latitude: result['latitude'].to_f,
+        longitude: result['longitude'].to_f,
+        timestamp: timestamp,
+        updated_at: Time.zone.at(timestamp).iso8601
+      }
+    )
   end
 end
