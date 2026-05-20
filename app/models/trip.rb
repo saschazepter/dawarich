@@ -25,7 +25,7 @@ class Trip < ApplicationRecord
   end
 
   def points
-    user.points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
+    user.points.not_anomaly.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end
 
   def photo_previews

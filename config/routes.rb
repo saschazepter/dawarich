@@ -279,6 +279,7 @@ Rails.application.routes.draw do
       end
       resources :visits, only: %i[index show create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
+        post 'select_place', to: 'visits/select_place#create', on: :member
         collection do
           post 'merge', to: 'visits#merge'
           post 'bulk_update', to: 'visits#bulk_update'

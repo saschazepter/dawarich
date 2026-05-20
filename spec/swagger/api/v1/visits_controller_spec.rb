@@ -252,12 +252,18 @@ describe 'Visits API', type: :request do
                items: {
                  type: :object,
                  properties: {
-                   id: { type: :integer },
+                   id: { type: [:integer, 'null'] },
                    name: { type: :string },
                    latitude: { type: :number },
                    longitude: { type: :number },
-                   city: { type: :string },
-                   country: { type: :string }
+                   osm_id: { type: [:integer, :string, 'null'] },
+                   osm_type: { type: [:string, 'null'] },
+                   osm_key: { type: [:string, 'null'] },
+                   osm_value: { type: [:string, 'null'] },
+                   city: { type: [:string, 'null'] },
+                   country: { type: [:string, 'null'] },
+                   source: { type: :string },
+                   geodata: { type: :object }
                  }
                }
 

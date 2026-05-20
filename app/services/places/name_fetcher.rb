@@ -2,22 +2,43 @@
 
 module Places
   class NameFetcher
+    def self.lookup_attrs(lat, lon)
+      return nil unless DawarichSettings.reverse_geocoding_enabled?
+
+      result = Geocoder.search([lat, lon], units: :km, limit: 1, distance_sort: true).first
+      return nil if result.blank?
+
+      properties = result.data&.dig('properties')
+      return nil if properties.blank?
+
+      name = ::Visits::Names::Builder.build_from_properties(properties)
+
+      { name: name, city: properties['city'], country: properties['country'], geodata: result.data }
+    rescue StandardError => e
+      ExceptionReporter.call(e, "NameFetcher.lookup_attrs failed for #{lat},#{lon}")
+      nil
+    end
+
     def initialize(place)
       @place = place
     end
 
     def call
-      geodata = Geocoder.search([place.lat, place.lon], units: :km, limit: 1, distance_sort: true).first
+      result = Geocoder.search([place.lat, place.lon], units: :km, limit: 1, distance_sort: true).first
+      return nil if result.blank?
 
-      return if geodata.blank?
+      properties = result.data&.dig('properties')
+      return nil if properties.blank?
 
-      properties = geodata.data&.dig('properties')
-      return if properties.blank?
+      name = ::Visits::Names::Builder.build_from_properties(properties)
 
       ActiveRecord::Base.transaction do
-        update_place_name(properties, geodata)
-        update_visits_name(properties)
-
+        place.name = name if name.present?
+        place.city = properties['city'] if properties['city'].present?
+        place.country = properties['country'] if properties['country'].present?
+        place.geodata = result.data if DawarichSettings.store_geodata?
+        place.save!
+        place.visits.where(name: Place::DEFAULT_NAME).update_all(name: name) if name.present?
         place
       end
     rescue StandardError => e
@@ -29,22 +50,5 @@ module Places
     private
 
     attr_reader :place
-
-    def update_place_name(properties, geodata)
-      built_name = ::Visits::Names::Builder.build_from_properties(properties)
-      place.name = built_name if built_name.present?
-      place.city = properties['city'] if properties['city'].present?
-      place.country = properties['country'] if properties['country'].present?
-      place.geodata = geodata.data if DawarichSettings.store_geodata?
-
-      place.save!
-    end
-
-    def update_visits_name(properties)
-      built_name = ::Visits::Names::Builder.build_from_properties(properties)
-      return if built_name.blank?
-
-      place.visits.where(name: Place::DEFAULT_NAME).update_all(name: built_name)
-    end
   end
 end
