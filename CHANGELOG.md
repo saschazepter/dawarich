@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Bulk visit suggestion no longer crashes Sidekiq when stale jobs in the queue carry the legacy singular `user_id` keyword; it now also accepts `user_id:` as a backward-compatible alias for `user_ids:` (#2740)
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
