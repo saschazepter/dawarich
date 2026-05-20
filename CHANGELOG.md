@@ -56,6 +56,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Tracks no longer split into overlapping segments when location points arrive out of order (e.g. delayed or batched uploads from Colota / OwnTracks). Late-arriving points whose timestamps fall inside an existing track's window are absorbed back into that track, and any tracks that already overlap for the same device are merged automatically on the next real-time generation run. #2463
 
+### Fixed
+
+- Database migrations no longer crash with `Multiple indexes found on points columns` when upgrading from 0.36.x with orphan indexes left behind by failed `REINDEX CONCURRENTLY`. The `RemoveUnusedIndexes` migration now drops any invalid indexes on `points` before removing the unused ones. The dropped indexes were intentionally removed in 0.37.0 after profiling and do not need to be recreated. #2124
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
