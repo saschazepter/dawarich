@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Bulk and single point deletion now recalculate affected tracks so cached track geometry stays consistent. (#2496)
+
 ## [1.6.1] - 2026-04-02
 
 ### Added
