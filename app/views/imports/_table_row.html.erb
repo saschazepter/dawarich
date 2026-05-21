@@ -21,6 +21,12 @@
   <td class="px-4 py-3 text-sm"><%= number_to_human_size(import.file&.byte_size) || 'N/A' %></td>
   <td class="px-4 py-3 text-right tabular-nums font-medium" data-points-count>
     <%= number_with_delimiter import.processed %>
+    <% if import.doubles.to_i.positive? %>
+      <div class="text-xs font-normal text-base-content/60 mt-0.5"
+           title="Points at coordinates and timestamps that already exist in your timeline were skipped to avoid duplicates.">
+        <%= number_with_delimiter(import.doubles) %> already imported
+      </div>
+    <% end %>
   </td>
   <td class="px-4 py-3" data-status-display>
     <%= status_badge(import) %>

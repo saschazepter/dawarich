@@ -124,6 +124,11 @@ export class AreaSelectionManager {
         this.controller.selectionActionsTarget.classList.remove("hidden")
       }
 
+      // Update delete button text with count
+      if (this.controller.hasDeleteButtonTextTarget) {
+        this.controller.deleteButtonTextTarget.textContent = `Delete ${points.length} Point${points.length === 1 ? "" : "s"}`
+      }
+
       // Disable selection mode
       this.selectionLayer.disableSelectionMode()
 
@@ -514,5 +519,75 @@ export class AreaSelectionManager {
     }
 
     Toast.info("Selection cancelled")
+  }
+
+  /**
+   * Delete selected points
+   */
+  async deleteSelectedPoints() {
+    if (this.deletingPoints) return
+
+    const pointCount = this.selectedPointsLayer.getCount()
+    const pointIds = this.selectedPointsLayer.getSelectedPointIds()
+
+    if (pointIds.length === 0) {
+      Toast.error("No points selected")
+      return
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete ${pointCount} point${pointCount === 1 ? "" : "s"}? This action cannot be undone.`,
+    )
+
+    if (!confirmed) return
+
+    this.deletingPoints = true
+    const deleteButton = this.controller.hasDeletePointsButtonTarget
+      ? this.controller.deletePointsButtonTarget
+      : null
+    if (deleteButton) deleteButton.disabled = true
+
+    try {
+      Toast.info("Deleting points...")
+      const result = await this.api.bulkDeletePoints(pointIds)
+
+      Toast.success(
+        `Deleted ${result.count} point${result.count === 1 ? "" : "s"}`,
+      )
+
+      this.cancelAreaSelection()
+
+      try {
+        await this.controller.loadMapData({
+          showLoading: false,
+          fitBounds: false,
+          showToast: false,
+        })
+      } catch (reloadError) {
+        console.error("[Maps V2] Map refresh failed after delete:", reloadError)
+        Toast.error(
+          "Map didn't refresh. Reload the page to see updated points.",
+        )
+      }
+    } catch (error) {
+      console.error("[Maps V2] Failed to delete points:", error)
+      const body = error?.body
+      if (error?.status === 403 && body?.upgrade_url) {
+        Toast.error(
+          `${body.error || "Write API requires Pro"} — ${body.upgrade_url}`,
+        )
+      } else if (error?.status === 422 && body?.limit) {
+        Toast.error(
+          `Too many points selected (${body.requested}). Please draw a smaller area; max ${body.limit} per delete.`,
+        )
+      } else {
+        Toast.error(
+          error?.message || "Failed to delete points. Please try again.",
+        )
+      }
+    } finally {
+      this.deletingPoints = false
+      if (deleteButton) deleteButton.disabled = false
+    }
   }
 }

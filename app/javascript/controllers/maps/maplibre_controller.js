@@ -60,6 +60,7 @@ export default class extends Controller {
     "pointsToggle",
     "routesToggle",
     "heatmapToggle",
+    "hexagonsToggle",
     "visitsToggle",
     "photosToggle",
     "areasToggle",
@@ -81,6 +82,8 @@ export default class extends Controller {
     // Area selection
     "selectAreaButton",
     "selectionActions",
+    "deletePointsButton",
+    "deleteButtonText",
     "selectedVisitsContainer",
     "selectedVisitsBulkActions",
     // Info display
@@ -199,7 +202,12 @@ export default class extends Controller {
     this.initializeAPI()
 
     // Initialize managers
-    this.layerManager = new LayerManager(this.map, this.settings, this.api)
+    this.layerManager = new LayerManager(
+      this.map,
+      this.settings,
+      this.api,
+      this,
+    )
     this.dataLoader = new DataLoader(this.api, this.apiKeyValue, this.settings)
     this.eventHandlers = new EventHandlers(this.map, this)
     this.filterManager = new FilterManager(this.dataLoader)
@@ -1188,6 +1196,9 @@ export default class extends Controller {
   cancelAreaSelection() {
     return this.areaSelectionManager.cancelAreaSelection()
   }
+  deleteSelectedPoints() {
+    return this.areaSelectionManager.deleteSelectedPoints()
+  }
 
   // Visits Manager methods
   toggleVisits(event) {
@@ -1296,6 +1307,9 @@ export default class extends Controller {
   }
   toggleHeatmap(event) {
     return this.routesManager.toggleHeatmap(event)
+  }
+  toggleHexagons(event) {
+    return this.routesManager.toggleHexagons(event)
   }
   toggleFog(event) {
     return this.routesManager.toggleFog(event)

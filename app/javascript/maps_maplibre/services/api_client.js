@@ -13,7 +13,7 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, page, per_page }
    * @returns {Promise<Object>} { points, currentPage, totalPages }
    */
-  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000 }) {
+  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000, signal }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
@@ -25,6 +25,7 @@ export class ApiClient {
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
+      signal,
     })
 
     if (!response.ok) {
@@ -560,6 +561,7 @@ export class ApiClient {
       max_longitude: max_longitude.toString(),
       min_latitude: min_latitude.toString(),
       max_latitude: max_latitude.toString(),
+      include_anomalies: "true",
       per_page: "10000", // Get all points in area (up to 10k)
     })
 
@@ -621,6 +623,37 @@ export class ApiClient {
 
     if (!response.ok) {
       throw new Error(`Failed to delete point: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Bulk delete points
+   * @param {Array<number>} pointIds - Array of point IDs to delete
+   * @returns {Promise<Object>} { message, count }
+   * @throws {Error} with `body` property holding the parsed JSON error response when available
+   */
+  async bulkDeletePoints(pointIds) {
+    const response = await fetch(`${this.baseURL}/points/bulk_destroy`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ point_ids: pointIds }),
+    })
+
+    if (!response.ok) {
+      let body = null
+      try {
+        body = await response.json()
+      } catch (_) {
+        // Non-JSON error body — leave body as null.
+      }
+      const error = new Error(
+        body?.error || `Failed to delete points: ${response.statusText}`,
+      )
+      error.status = response.status
+      error.body = body
+      throw error
     }
 
     return response.json()

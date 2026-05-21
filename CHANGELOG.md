@@ -4,6 +4,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.9] - Unreleased
+
+### ⚠️ Upgrade notes
+
+- Run **Settings → Recalculate tracks & stats** to merge pre-existing overlapping tracks. #2463
+- Visit detection now creates one Place per visit (was up to 25 candidates). Use `GET /api/v1/visits/:id/possible_places` and `POST /api/v1/visits/:id/select_place` for alternatives. The `place_visits` table will be dropped in a follow-up release.
+- Run after deploy (both safe to re-run):
+  1. `bin/rails dawarich:backfill_place_names`
+  2. `bin/rails dawarich:cleanup_suggested_places`
+
+### Added
+
+- Map v2 **Hexagons** layer (Pro) — H3 cell heatmap, zoom-adaptive resolution. #2568
+- Download a trip's points as GPX or GeoJSON from the trip page. #2400
+- OIDC PKCE support via `OIDC_PKCE_ENABLED=true` (off by default). #2282
+- `POST /api/v1/visits/:id/select_place` — assign a Photon candidate to a visit.
+- Visits auto-clean their previous Place on reassignment/destroy when it has no notes, tags, or other references.
+
+### Changed
+
+- `GET /api/v1/visits/:id/possible_places` returns live Photon suggestions; the assigned place comes first with its `id`, others have `id: null`.
+- `GET/POST /api/v1/places/nearby` now include `id`, `source`, and `geodata` per item (additive).
+- `Place#has_many :visits` is now `dependent: :nullify` — deleting a Place no longer deletes its visits.
+
+### Fixed
+
+- `select_place` validates lat/lon bounds (422 on out-of-range) and serializes concurrent calls via PG advisory lock to prevent duplicate Places.
+- `select_place` dedups by name + 50 m proximity instead of `geodata` JSONB, working regardless of `STORE_GEODATA`.
+- Self-hosted instances no longer 500 on Stats/Insights when `JWT_SECRET_KEY` is unset; `/trial/upgrade` now redirects home. #2682
+- Imports table shows duplicate-skip counts and notifies when an import is all duplicates. #2721
+- Family members' positions update in real time instead of every 60 s. #2733
+- Immich/Photoprism photos reappear after a transient empty response (no more 30-minute hidden window). #1071, #784
+- Map v2 **Select Area** includes anomaly points so bulk-delete works on them. #2476
+- Map v2 area-selection: restored the "Delete N Points" action that disappeared in 1.7.8. Pro / self-hosted, confirmation prompt, capped at 5,000 per request; recalculates affected tracks and monthly stats. #2754
+- Timeline day click no longer corrupts the Search end-time; fields match date-picker minute precision. #2624
+- Map v2 speed-color gradient editor saves and applies correctly. #2120
+- Trips respect the GPS anomaly filter for route, distance, and countries. Run **Recalculate trip** to refresh existing trips. #2474
+- Bulk and single point deletion recalculate affected tracks. #2496
+- "Recalculate tracks & stats" and "Re-evaluate past data" skip anomaly points, matching real-time generation. #2630
+- Trip photos appear on sub-day trips (timestamps no longer truncated to dates). #2708
+- Tracks no longer split into overlapping segments when points arrive late/out of order; same-device overlaps auto-merge on the next run. #2463
+- Same-tracker boundary merging skips tracks more than 5 km apart (no more GPS-jump fusion).
+- Visit place cleanup runs in `Places::DeleteIfOrphanJob` instead of inline `after_commit`.
+- `DataMigrations::BackfillPlacesUserIdJob` correctly excludes just-assigned places from the orphan-delete pass.
+- Real-time track boundary detector skips the per-track scan when no untracked points exist.
+- Bulk visit suggestion accepts both `user_id:` and `user_ids:` to survive stale Sidekiq jobs. #2740
+- `RemoveUnusedIndexes` migration drops invalid `points` indexes left by failed `REINDEX CONCURRENTLY` before removing unused ones. #2124
+- Vendored `h3-js` retains its upstream Apache-2.0 license header.
+- Insights "Top Visited Locations" no longer underreports days for multi-month totals (e.g. 133 days rendered as "4 days"). #2743
+
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
