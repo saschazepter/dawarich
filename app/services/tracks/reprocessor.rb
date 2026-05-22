@@ -129,20 +129,7 @@ module Tracks
     def create_segments(track, segment_data)
       return if segment_data.empty?
 
-      segment_data.each do |data|
-        track.track_segments.create(
-          transportation_mode: data[:mode],
-          start_index: data[:start_index],
-          end_index: data[:end_index],
-          distance: data[:distance],
-          duration: data[:duration],
-          avg_speed: data[:avg_speed],
-          max_speed: data[:max_speed],
-          avg_acceleration: data[:avg_acceleration],
-          confidence: data[:confidence],
-          source: data[:source]
-        )
-      end
+      TrackSegments::BulkInserter.call(track, segment_data)
     end
 
     def recompute_dominant_mode(track)
