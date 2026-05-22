@@ -75,23 +75,10 @@ module TransportationModes
     def create_segments(track, segment_data)
       return if segment_data.empty?
 
-      segments = segment_data.map do |data|
-        track.track_segments.create(
-          transportation_mode: data[:mode],
-          start_index: data[:start_index],
-          end_index: data[:end_index],
-          distance: data[:distance],
-          duration: data[:duration],
-          avg_speed: data[:avg_speed],
-          max_speed: data[:max_speed],
-          avg_acceleration: data[:avg_acceleration],
-          confidence: data[:confidence],
-          source: data[:source]
-        )
-      end.select(&:persisted?)
+      TrackSegments::BulkInserter.call(track, segment_data)
 
-      dominant_segment = segments.max_by { |s| s.duration || 0 }
-      track.update_column(:dominant_mode, dominant_segment&.transportation_mode || :unknown)
+      dominant = segment_data.max_by { |d| d[:duration] || 0 }
+      track.update_column(:dominant_mode, (dominant && dominant[:mode]) || :unknown)
     end
   end
 end
