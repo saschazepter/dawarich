@@ -106,16 +106,16 @@ class Points::AnomalyFilter
     before_ctx = Point.where(user_id: @user_id).not_anomaly
                       .where('timestamp < ?', start_time)
                       .order(timestamp: :desc).limit(CONTEXT_POINTS)
-                      .select(:id, :lonlat, :timestamp).to_a.reverse
+                      .select(:id, :timestamp).to_a.reverse
 
     main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
                 .not_anomaly.order(:timestamp)
-                .select(:id, :lonlat, :timestamp).to_a
+                .select(:id, :timestamp).to_a
 
     after_ctx = Point.where(user_id: @user_id).not_anomaly
                      .where('timestamp > ?', end_time)
                      .order(:timestamp).limit(CONTEXT_POINTS)
-                     .select(:id, :lonlat, :timestamp).to_a
+                     .select(:id, :timestamp).to_a
 
     [before_ctx + main + after_ctx, main]
   end
