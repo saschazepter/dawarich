@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.10] - Unreleased
+
+### Fixed
+
+- Stats page no longer 500s after deleting an import or recalculating a month with no points. #2682
+
 ## [1.7.9] - Unreleased
 
 ### ⚠️ Upgrade notes
