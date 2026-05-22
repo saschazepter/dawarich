@@ -117,7 +117,13 @@ export class DataLoader {
   async fetchMapData(
     startDate,
     endDate,
-    { onUpdate, onLayerData, onTracksLoaded, onPhotosLoaded } = {},
+    {
+      onUpdate,
+      onLayerData,
+      onTracksLoaded,
+      onPhotosLoaded,
+      viewportBounds,
+    } = {},
   ) {
     const data = {}
 
@@ -169,6 +175,7 @@ export class DataLoader {
           .fetchVisits({
             start_at: startDate,
             end_at: endDate,
+            ...(viewportBounds || {}),
           })
           .then((result) => {
             if (counter) {

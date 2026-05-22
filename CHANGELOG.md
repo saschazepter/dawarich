@@ -21,12 +21,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - OIDC PKCE support via `OIDC_PKCE_ENABLED=true` (off by default). #2282
 - `POST /api/v1/visits/:id/select_place` — assign a Photon candidate to a visit.
 - Visits auto-clean their previous Place on reassignment/destroy when it has no notes, tags, or other references.
+- Map v2 family member markers show name + last-seen datetime on hover.
+- Map v2 area info card exposes an **Edit** button that opens the area modal pre-filled — rename and resize existing areas without redrawing. Backed by a new `PATCH /areas/:id` route.
+- Map v2 selection tool: **Delete N Anomaly Points** button appears when the selection contains anomaly points, so you can clean up GPS noise without touching real points.
 
 ### Changed
 
 - `GET /api/v1/visits/:id/possible_places` returns live Photon suggestions; the assigned place comes first with its `id`, others have `id: null`.
 - `GET/POST /api/v1/places/nearby` now include `id`, `source`, and `geodata` per item (additive).
 - `Place#has_many :visits` is now `dependent: :nullify` — deleting a Place no longer deletes its visits.
+- Map v2 side panel only closes via its X button. Create Visit / Create Area / Create Place and clicking a visit marker no longer dismiss the panel — visit/track clicks switch the active tab in place.
+- Map v2 Visits layer is viewport-bounded: enabling the layer and panning/zooming refetch via `selection=true&sw_lat=…&ne_lng=…` (debounced 400 ms) so a wide date range no longer hauls every visit at once. Timeline day-selection still loads the full day regardless of zoom.
+- Submitting "Create Visit" auto-enables the Visits layer so the new visit is immediately visible.
 
 ### Fixed
 
@@ -38,6 +44,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Immich/Photoprism photos reappear after a transient empty response (no more 30-minute hidden window). #1071, #784
 - Map v2 **Select Area** includes anomaly points so bulk-delete works on them. #2476
 - Map v2 area-selection: restored the "Delete N Points" action that disappeared in 1.7.8. Pro / self-hosted, confirmation prompt, capped at 5,000 per request; recalculates affected tracks and monthly stats. #2754
+- Map v2 Place creation modal now closes on successful submit — the success path is no longer gated on a Turbo Stream side-effect, so the modal always dismisses after the place is saved.
 - Timeline day click no longer corrupts the Search end-time; fields match date-picker minute precision. #2624
 - Map v2 speed-color gradient editor saves and applies correctly. #2120
 - Trips respect the GPS anomaly filter for route, distance, and countries. Run **Recalculate trip** to refresh existing trips. #2474

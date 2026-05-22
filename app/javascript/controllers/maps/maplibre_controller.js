@@ -84,6 +84,8 @@ export default class extends Controller {
     "selectionActions",
     "deletePointsButton",
     "deleteButtonText",
+    "deleteAnomaliesButton",
+    "deleteAnomaliesButtonText",
     "selectedVisitsContainer",
     "selectedVisitsBulkActions",
     // Info display
@@ -322,6 +324,14 @@ export default class extends Controller {
     this.cleanup.addEventListener(
       document,
       "area:created",
+      this.boundHandleAreaCreated,
+    )
+
+    // Re-use the same refresh path for area edits — both create and update
+    // need the areas layer rebuilt from the API.
+    this.cleanup.addEventListener(
+      document,
+      "area:updated",
       this.boundHandleAreaCreated,
     )
 
@@ -1199,6 +1209,9 @@ export default class extends Controller {
   deleteSelectedPoints() {
     return this.areaSelectionManager.deleteSelectedPoints()
   }
+  deleteSelectedAnomalies() {
+    return this.areaSelectionManager.deleteSelectedAnomalies()
+  }
 
   // Visits Manager methods
   toggleVisits(event) {
@@ -1230,13 +1243,6 @@ export default class extends Controller {
 
   // Area creation
   startCreateArea() {
-    if (
-      this.hasSettingsPanelTarget &&
-      this.settingsPanelTarget.classList.contains("open")
-    ) {
-      this.toggleSettings()
-    }
-
     // Find area drawer controller on the same element
     const drawerController =
       this.application.getControllerForElementAndIdentifier(
@@ -1731,6 +1737,34 @@ export default class extends Controller {
       document.dispatchEvent(event)
     } catch (_error) {
       Toast.error("Failed to load visit details")
+    }
+  }
+
+  /**
+   * Fetch an area and dispatch `area:edit` so the area_creation_v2
+   * controller opens its modal in edit mode. Triggered from the area
+   * info card's Edit button.
+   */
+  async openAreaEditModal(event) {
+    const areaId = event.currentTarget?.dataset?.id
+    if (!areaId) return
+
+    try {
+      const response = await fetch(`/api/v1/areas/${areaId}`, {
+        headers: {
+          Authorization: `Bearer ${this.apiKeyValue}`,
+          "Content-Type": "application/json",
+        },
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to fetch area: ${response.status}`)
+      }
+      const area = await response.json()
+      document.dispatchEvent(
+        new CustomEvent("area:edit", { detail: { area }, bubbles: true }),
+      )
+    } catch (_error) {
+      Toast.error("Failed to load area details")
     }
   }
 

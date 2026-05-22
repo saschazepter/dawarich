@@ -1344,6 +1344,14 @@
                 <%= icon 'trash-2' %>
                 <span data-maps--maplibre-target="deleteButtonText">Delete Selected Points</span>
               </button>
+
+              <button type="button"
+                      class="hidden btn btn-sm btn-outline btn-warning btn-block"
+                      data-action="click->maps--maplibre#deleteSelectedAnomalies"
+                      data-maps--maplibre-target="deleteAnomaliesButton">
+                <%= icon 'trash-2' %>
+                <span data-maps--maplibre-target="deleteAnomaliesButtonText">Delete Anomaly Points</span>
+              </button>
             <% end %>
 
             <!-- Selected Visits Container -->
