@@ -110,16 +110,7 @@ module TransportationModes
     end
 
     def calculate_distance(point1, point2)
-      # Use PostGIS distance if available
-      if point1.respond_to?(:distance_to)
-        begin
-          point1.distance_to(point2, :m)
-        rescue StandardError
-          geocoder_distance(point1, point2)
-        end
-      else
-        geocoder_distance(point1, point2)
-      end
+      geocoder_distance(point1, point2)
     end
 
     def geocoder_distance(point1, point2)
