@@ -23,7 +23,7 @@ RSpec.describe Stats::CalculateMonth do
           stat.reload
           expect(stat.distance).to eq(0)
           expect(stat.daily_distance).to eq({})
-          expect(stat.toponyms).to be_nil
+          expect(stat.toponyms).to eq([])
           expect(stat.h3_hex_ids).to eq({})
         end
 

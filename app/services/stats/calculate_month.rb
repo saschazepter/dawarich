@@ -96,7 +96,7 @@ class Stats::CalculateMonth
     stat.update!(
       daily_distance: {},
       distance: 0,
-      toponyms: nil,
+      toponyms: [],
       h3_hex_ids: {}
     )
 
