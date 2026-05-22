@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `select_place` validates lat/lon bounds (422 on out-of-range) and serializes concurrent calls via PG advisory lock to prevent duplicate Places.
 - `select_place` dedups by name + 50 m proximity instead of `geodata` JSONB, working regardless of `STORE_GEODATA`.
 - Self-hosted instances no longer 500 on Stats/Insights when `JWT_SECRET_KEY` is unset; `/trial/upgrade` now redirects home. #2682
+- Stats page no longer 500s after deleting an import or recalculating a month with no points. #2682
 - Imports table shows duplicate-skip counts and notifies when an import is all duplicates. #2721
 - Family members' positions update in real time instead of every 60 s. #2733
 - Immich/Photoprism photos reappear after a transient empty response (no more 30-minute hidden window). #1071, #784
