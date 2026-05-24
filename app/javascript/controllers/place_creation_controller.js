@@ -142,6 +142,12 @@ export default class extends Controller {
   onSubmitEnd(event) {
     if (!event.detail.success) return
 
+    // Close the modal immediately on success. If the turbo_stream payload
+    // populated #place-creation-data, also dispatch place:created/updated
+    // so the map can refresh; if it didn't, the modal still closes (the
+    // place was saved on the server either way).
+    this.close()
+
     const dataEl = document.getElementById("place-creation-data")
     if (!dataEl?.dataset.place) return
 
@@ -151,12 +157,9 @@ export default class extends Controller {
 
     document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
 
-    // Reset data element
     delete dataEl.dataset.place
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
-
-    this.close()
   }
 
   // --- Private helpers ---

@@ -169,10 +169,10 @@ export default class extends Controller {
   /**
    * Programmatic equivalent of openTab(event). Opens the settings panel
    * (via the maps--maplibre controller) and activates the given tab on the
-   * panel's map-panel controller instance. If the panel is already open
-   * AND `tabName` is the active tab, toggle the panel closed — gives the
-   * cluster button a "press again to dismiss" affordance now that the
-   * cluster doubles as the panel's tab strip.
+   * panel's map-panel controller instance. The panel only closes via the
+   * header X button — clicking a cluster button for the already-active tab
+   * is a no-op so map-driven flows (visit/track click → switch to timeline)
+   * don't accidentally dismiss the panel.
    */
   openTabByName(tabName) {
     const panel = document.querySelector(".map-control-panel")
@@ -184,20 +184,6 @@ export default class extends Controller {
         mapContainer,
         "maps--maplibre",
       )
-
-    if (panel && panel.classList.contains("open")) {
-      const activeContent = panel.querySelector(
-        ".tab-content.active[data-tab-content]",
-      )
-      const activeTab = activeContent?.dataset?.tabContent
-      if (activeTab === tabName) {
-        if (maplibreController?.toggleSettings) {
-          maplibreController.toggleSettings()
-          this.markActiveClusterButton(null)
-        }
-        return
-      }
-    }
 
     if (panel && mapContainer && !panel.classList.contains("open")) {
       if (maplibreController?.toggleSettings) {

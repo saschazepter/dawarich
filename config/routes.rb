@@ -113,7 +113,7 @@ Rails.application.routes.draw do
       post :merge
     end
   end
-  resources :areas, only: [:create]
+  resources :areas, only: %i[create update]
   resources :places, only: %i[index show destroy create update] do
     collection do
       get 'nearby'

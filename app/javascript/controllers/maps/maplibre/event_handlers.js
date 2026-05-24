@@ -231,6 +231,13 @@ export class EventHandlers {
       ? [
           {
             type: "button",
+            handler: "openAreaEditModal",
+            id: properties.id,
+            entityType: "area",
+            label: "Edit",
+          },
+          {
+            type: "button",
             handler: "handleDelete",
             id: properties.id,
             entityType: "area",
