@@ -6,11 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.7.10] - Unreleased
 
+### Added
+
+- Map v2 family member markers show name + last-seen datetime on hover.
+- Map v2 area info card exposes an **Edit** button that opens the area modal pre-filled — rename and resize existing areas without redrawing. Backed by a new `PATCH /areas/:id` route.
+- Map v2 selection tool: **Delete N Anomaly Points** button appears when the selection contains anomaly points, so you can clean up GPS noise without touching real points.
+
+### Changed
+
+- Map v2 side panel only closes via its X button. Create Visit / Create Area / Create Place and clicking a visit marker no longer dismiss the panel — visit/track clicks switch the active tab in place.
+- Map v2 Visits layer is viewport-bounded: enabling the layer and panning/zooming refetch via `selection=true&sw_lat=…&ne_lng=…` (debounced 400 ms) so a wide date range no longer hauls every visit at once. Timeline day-selection still loads the full day regardless of zoom.
+- Submitting "Create Visit" auto-enables the Visits layer so the new visit is immediately visible.
+
 ### Fixed
 
+- Map v2 Place creation modal now closes on successful submit — the success path is no longer gated on a Turbo Stream side-effect, so the modal always dismisses after the place is saved.
 - Stats page no longer 500s after deleting an import or recalculating a month with no points. #2682
 
-## [1.7.9] - Unreleased
+
+## [1.7.9] - 2026-05-21
 
 ### ⚠️ Upgrade notes
 

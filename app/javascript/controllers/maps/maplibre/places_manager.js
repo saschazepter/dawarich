@@ -248,13 +248,6 @@ export class PlacesManager {
    * Start create place mode
    */
   startCreatePlace() {
-    if (
-      this.controller.hasSettingsPanelTarget &&
-      this.controller.settingsPanelTarget.classList.contains("open")
-    ) {
-      this.controller.toggleSettings()
-    }
-
     this.controller.map.getCanvas().style.cursor = "crosshair"
     Toast.info("Click on the map to place a place")
 
