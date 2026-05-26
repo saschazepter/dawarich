@@ -199,7 +199,13 @@ module Tracks::TrackBuilder
   end
 
   def detect_and_create_segments(track, points)
-    detector = TransportationModes::Detector.new(track, points)
+    safe_settings = Users::SafeSettings.new(track.user.settings || {})
+    detector = TransportationModes::Detector.new(
+      track, points,
+      user_thresholds:        safe_settings.transportation_thresholds,
+      user_expert_thresholds: safe_settings.transportation_expert_thresholds,
+      enabled_modes:          safe_settings.enabled_transportation_modes
+    )
     segment_data = detector.call
 
     return if segment_data.empty?
