@@ -26,20 +26,35 @@ RSpec.describe Visits::DbscanClusterer do
   end
 
   describe 'connection state' do
-    it 'sets and resets statement_timeout without opening a transaction' do
-      timeouts = []
-      original = ActiveRecord::Base.connection.method(:execute)
+    # The previous contract used a bare `SET statement_timeout` outside a transaction
+    # and a `RESET` in an ensure block. On PgBouncer transaction-pool (Cloud), a SET
+    # outside an explicit transaction binds to one backend; the next statement may
+    # land elsewhere with no timeout. Wrap in an explicit transaction with SET LOCAL
+    # so the timeout is bound to the same backend as the DBSCAN query.
+    it 'wraps the DBSCAN query in an explicit transaction using SET LOCAL statement_timeout' do
+      executed_sql = []
+      original_execute = ActiveRecord::Base.connection.method(:execute)
       allow(ActiveRecord::Base.connection).to receive(:execute) do |sql, *rest|
-        timeouts << sql if sql.to_s.match?(/statement_timeout/i)
-        original.call(sql, *rest)
+        executed_sql << sql.to_s if sql.to_s.match?(/statement_timeout/i)
+        original_execute.call(sql, *rest)
       end
 
       open_before = ActiveRecord::Base.connection.open_transactions
+
+      nesting_during_query = nil
+      original_exec_query = ActiveRecord::Base.connection.method(:exec_query)
+      allow(ActiveRecord::Base.connection).to receive(:exec_query) do |*args|
+        nesting_during_query = ActiveRecord::Base.connection.open_transactions
+        original_exec_query.call(*args)
+      end
+
       described_class.new(user, start_at: 0, end_at: 1).call
+
       open_after = ActiveRecord::Base.connection.open_transactions
 
-      expect(timeouts.first).to match(/SET statement_timeout/i)
-      expect(timeouts.last).to match(/RESET statement_timeout/i)
+      expect(executed_sql).to include(match(/\ASET\s+LOCAL\s+statement_timeout/i))
+      expect(executed_sql).not_to include(match(/RESET\s+statement_timeout/i))
+      expect(nesting_during_query).to eq(open_before + 1)
       expect(open_after).to eq(open_before)
     end
   end
@@ -115,7 +130,7 @@ RSpec.describe Visits::DbscanClusterer do
 
     it 'splits a stationary cluster into two visits when points cross the gap threshold' do
       user.update!(settings: (user.settings || {}).merge(settings_without_density_fill,
-                                                        'time_threshold_minutes' => 10))
+                                                         'time_threshold_minutes' => 10))
 
       6.times do |i|
         drift = i * 0.00001
@@ -133,7 +148,7 @@ RSpec.describe Visits::DbscanClusterer do
 
     it 'keeps the same cluster as one visit when the gap stays under the threshold' do
       user.update!(settings: (user.settings || {}).merge(settings_without_density_fill,
-                                                        'time_threshold_minutes' => 30))
+                                                         'time_threshold_minutes' => 30))
 
       6.times do |i|
         drift = i * 0.00001

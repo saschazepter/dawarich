@@ -30,14 +30,15 @@ module Visits
 
       conn = ActiveRecord::Base.connection
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      conn.execute("SET statement_timeout = #{QUERY_TIMEOUT_MS}")
-      begin
+      # SET LOCAL is scoped to the surrounding transaction, so on PgBouncer
+      # transaction-pool the SET and the DBSCAN query land on the same backend.
+      # COMMIT implicitly resets the timeout, so no explicit RESET is needed.
+      ActiveRecord::Base.transaction do
+        conn.execute("SET LOCAL statement_timeout = #{QUERY_TIMEOUT_MS}")
         result = conn.exec_query(dbscan_sql, 'DBSCAN')
         clusters = parse_results(result)
         log_success(clusters, candidate_count, started_at)
         clusters
-      ensure
-        conn.execute('RESET statement_timeout')
       end
     rescue ActiveRecord::StatementInvalid => e
       Rails.logger.error("[Visits::DbscanClusterer] user_id=#{user.id} class=#{e.class} message=#{e.message}")
