@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.7.10] - Unreleased
+## [1.7.10] - 2026-05-26
 
 ### ⚠️ Upgrade notes
 
-- Stops shorter than 5 minutes are no longer suggested as visits by default. Change the threshold under **Settings → Visit detection** if you want shorter stops included.
+- Stops shorter than 5 minutes are no longer suggested as visits by default. Change the threshold under **Map V2 ->Settings -> Visit detection** if you want shorter stops included.
 - Smart density fill now works correctly (it was broken in 1.7.8–1.7.9). You may see more visit suggestions, especially on days when your tracker recorded points unevenly.
 
 ### Added
