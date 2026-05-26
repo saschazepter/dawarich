@@ -56,6 +56,7 @@ class Users::SafeSettings
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
+    'visit_min_duration_minutes' => 5,
     'visit_density_fill_enabled' => true
   }.freeze
 
@@ -102,6 +103,7 @@ class Users::SafeSettings
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
+      visit_min_duration_minutes: visit_min_duration_minutes,
       visit_density_fill_enabled: visit_density_fill_enabled?
     }
   end
@@ -290,6 +292,11 @@ class Users::SafeSettings
 
   def visit_min_points
     settings['visit_min_points'].to_i.clamp(2, 20)
+  end
+
+  def visit_min_duration_minutes
+    raw = settings['visit_min_duration_minutes'] || DEFAULT_VALUES['visit_min_duration_minutes']
+    raw.to_i.clamp(1, 60)
   end
 
   def visit_density_fill_enabled?
