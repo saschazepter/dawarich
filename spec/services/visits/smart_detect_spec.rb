@@ -32,7 +32,7 @@ RSpec.describe Visits::SmartDetect do
 
   describe 'happy path' do
     it 'creates visits when DBSCAN finds clusters' do
-      5.times do |i|
+      6.times do |i|
         create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
                        timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
       end
