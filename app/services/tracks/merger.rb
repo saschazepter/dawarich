@@ -26,6 +26,10 @@ class Tracks::Merger
     @newer_track = newer_track
   end
 
+  def user
+    @older_track&.user
+  end
+
   def call
     return false if invalid_merge?
 
