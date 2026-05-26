@@ -165,17 +165,41 @@ export class ApiClient {
   }
 
   /**
-   * Fetch visits for date range (paginated)
-   * @param {Object} options - { start_at, end_at, page, per_page }
+   * Fetch visits for date range (paginated). Optional bounds narrow the
+   * query to visits whose place falls inside the rectangle — backed by
+   * Visits::FindWithinBoundingBox via `selection=true`.
+   * @param {Object} options - { start_at, end_at, page, per_page, sw_lat, sw_lng, ne_lat, ne_lng }
    * @returns {Promise<Object>} { visits, currentPage, totalPages }
    */
-  async fetchVisitsPage({ start_at, end_at, page = 1, per_page = 500 }) {
+  async fetchVisitsPage({
+    start_at,
+    end_at,
+    page = 1,
+    per_page = 500,
+    sw_lat,
+    sw_lng,
+    ne_lat,
+    ne_lng,
+  }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
       page: page.toString(),
       per_page: per_page.toString(),
     })
+
+    if (
+      Number.isFinite(sw_lat) &&
+      Number.isFinite(sw_lng) &&
+      Number.isFinite(ne_lat) &&
+      Number.isFinite(ne_lng)
+    ) {
+      params.set("selection", "true")
+      params.set("sw_lat", sw_lat.toString())
+      params.set("sw_lng", sw_lng.toString())
+      params.set("ne_lat", ne_lat.toString())
+      params.set("ne_lng", ne_lng.toString())
+    }
 
     const response = await fetch(`${this.baseURL}/visits?${params}`, {
       headers: this.getHeaders(),
@@ -195,11 +219,22 @@ export class ApiClient {
   }
 
   /**
-   * Fetch all visits for date range (handles pagination)
-   * @param {Object} options - { start_at, end_at, onProgress }
-   * @returns {Promise<Array>} All visits
+   * Fetch visits for date range, optionally bounded to a viewport bbox.
+   * Loops pages until the API reports no more. When bounds are provided
+   * the result is windowed to that rectangle — fewer pages, smaller
+   * payloads, and the layer no longer hauls every visit at world zoom.
+   * @param {Object} options - { start_at, end_at, sw_lat, sw_lng, ne_lat, ne_lng, onProgress }
+   * @returns {Promise<Array>} Visits in range (and viewport, if bounded)
    */
-  async fetchVisits({ start_at, end_at, onProgress = null }) {
+  async fetchVisits({
+    start_at,
+    end_at,
+    sw_lat,
+    sw_lng,
+    ne_lat,
+    ne_lng,
+    onProgress = null,
+  }) {
     const allVisits = []
     let page = 1
     let totalPages = 1
@@ -209,7 +244,16 @@ export class ApiClient {
         visits,
         currentPage,
         totalPages: total,
-      } = await this.fetchVisitsPage({ start_at, end_at, page, per_page: 500 })
+      } = await this.fetchVisitsPage({
+        start_at,
+        end_at,
+        page,
+        per_page: 500,
+        sw_lat,
+        sw_lng,
+        ne_lat,
+        ne_lng,
+      })
 
       allVisits.push(...visits)
       totalPages = total

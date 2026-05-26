@@ -9,6 +9,10 @@ class Stat < ApplicationRecord
 
   before_create :generate_sharing_uuid
 
+  def toponyms
+    super || []
+  end
+
   def distance_by_day
     monthly_points = points_for_distance_query
     calculate_daily_distances(monthly_points)
