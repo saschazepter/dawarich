@@ -30,8 +30,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Stats page no longer 500s after deleting an import or recalculating a month with no points. #2682
 - Visit detection no longer suggests stops at places you only drove past. Clusters where the device was moving faster than walking pace between real GPS points are rejected, so road centerlines on busy arterials stop showing up as "visits" to Kent Street / Leach Highway / etc. #2736 #2775
 - Visit detection requires real GPS points (not interpolated density-fill ghost points) to meet the minimum-points threshold, so a single drive between two real fixes can't be inflated into a visit. #2736
-- Smart density fill (`visit_density_fill_enabled`) actually fires now — its SQL parameters were swapped in 1.7.8 so the WHERE clauses contradicted each other and no synthetic points were ever generated.
-- Visit detection now honors your **Visit time threshold** setting (`time_threshold_minutes`) when splitting same-location points into separate visits. Previously hardcoded to 30 minutes in the DBSCAN SQL regardless of the saved value.
+- Smart density fill now works correctly — it was silently disabled in 1.7.8 and 1.7.9.
+- Visit detection now respects your **Visit time threshold** setting when deciding where one visit ends and the next begins. The setting was previously ignored and always treated as 30 minutes.
 
 
 ## [1.7.9] - 2026-05-21

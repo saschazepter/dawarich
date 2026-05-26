@@ -210,13 +210,21 @@ module Visits
           SELECT
             visit_id,
             COUNT(*) AS real_point_count,
-            AVG(
+            SUM(
               CASE
-                WHEN prev_lonlat IS NULL OR (timestamp - prev_timestamp) <= 0 THEN NULL
-                ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)::double precision
-                     / (timestamp - prev_timestamp)
+                WHEN prev_lonlat IS NULL OR (timestamp - prev_timestamp) <= 0 THEN 0
+                ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)
               END
-            ) AS avg_speed_mps
+            )::double precision
+            / NULLIF(
+                SUM(
+                  CASE
+                    WHEN prev_lonlat IS NULL OR (timestamp - prev_timestamp) <= 0 THEN 0
+                    ELSE (timestamp - prev_timestamp)
+                  END
+                ),
+                0
+              ) AS avg_speed_mps
           FROM real_point_motion
           GROUP BY visit_id
         )
