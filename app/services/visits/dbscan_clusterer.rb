@@ -120,7 +120,7 @@ module Visits
         density_threshold_seconds, density_max_gap_seconds, density_max_distance_meters,
         eps_meters, min_points,
         time_gap_seconds,
-        min_points, min_points, min_duration_seconds, STATIONARY_SPEED_MPS
+        min_points, min_duration_seconds, STATIONARY_SPEED_MPS
       ]
       ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, *params])
         WITH candidate_points AS (
@@ -229,8 +229,7 @@ module Visits
         FROM visit_groups vg
         JOIN visit_motion vm USING (visit_id)
         GROUP BY vg.visit_id, vm.real_point_count, vm.avg_speed_mps
-        HAVING COUNT(*) >= ?
-          AND vm.real_point_count >= ?
+        HAVING vm.real_point_count >= ?
           AND COALESCE(
                 MAX(vg.timestamp) FILTER (WHERE vg.id > 0)
                 - MIN(vg.timestamp) FILTER (WHERE vg.id > 0),

@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.7.10] - Unreleased
 
+### ⚠️ Upgrade notes
+
+- **Visit detection thresholds changed.** The hardcoded 3-minute minimum-visit floor used in 1.7.8/1.7.9 is replaced by a new user-configurable setting (**Settings → Visit detection → Minimum visit duration**) with a default of **5 minutes**. If you want the previous looser behavior — including 3-minute "did I really stop here?" suggestions — lower this setting after upgrade.
+- **Smart density fill now actually fires.** A parameter-binding bug in 1.7.8 disabled it silently for everyone. Users who left `visit_density_fill_enabled` on (the default) may see more visit suggestions on sparse-tracking days starting with the next nightly run; users on dense trackers will see no change. Turn the setting off in Settings → Visit detection if you don't want it.
+
 ### Added
 
 - Map v2 family member markers show name + last-seen datetime on hover.
