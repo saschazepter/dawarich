@@ -57,6 +57,7 @@ RSpec.describe Users::SafeSettings do
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
+            visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true
           }
         )
@@ -138,6 +139,7 @@ RSpec.describe Users::SafeSettings do
             'timezone' => 'UTC',
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
+            'visit_min_duration_minutes' => 5,
             'visit_density_fill_enabled' => true
           }
         )
@@ -192,6 +194,7 @@ RSpec.describe Users::SafeSettings do
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
+            visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true
           }
         )
