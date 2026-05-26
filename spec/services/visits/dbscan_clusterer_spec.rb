@@ -107,6 +107,48 @@ RSpec.describe Visits::DbscanClusterer do
     end
   end
 
+  describe 'user-tunable time-gap (same-cluster segmentation)' do
+    let(:settings_without_density_fill) do
+      { 'visit_density_fill_enabled' => false, 'visit_min_duration_minutes' => 1 }
+    end
+
+    it 'splits a stationary cluster into two visits when points cross the gap threshold' do
+      user.update!(settings: (user.settings || {}).merge(settings_without_density_fill,
+                                                        'time_threshold_minutes' => 10))
+
+      6.times do |i|
+        drift = i * 0.00001
+        make_point(at: base_ts + i * 30, lat: 52.5 + drift, lon: 13.4 + drift)
+      end
+      6.times do |i|
+        drift = i * 0.00001
+        make_point(at: base_ts + 900 + i * 30, lat: 52.5 + drift, lon: 13.4 + drift)
+      end
+
+      clusters = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 1200).call
+
+      expect(clusters.size).to eq(2)
+    end
+
+    it 'keeps the same cluster as one visit when the gap stays under the threshold' do
+      user.update!(settings: (user.settings || {}).merge(settings_without_density_fill,
+                                                        'time_threshold_minutes' => 30))
+
+      6.times do |i|
+        drift = i * 0.00001
+        make_point(at: base_ts + i * 30, lat: 52.5 + drift, lon: 13.4 + drift)
+      end
+      6.times do |i|
+        drift = i * 0.00001
+        make_point(at: base_ts + 900 + i * 30, lat: 52.5 + drift, lon: 13.4 + drift)
+      end
+
+      clusters = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 1200).call
+
+      expect(clusters.size).to eq(1)
+    end
+  end
+
   describe 'user-tunable minimum duration' do
     it 'respects visit_min_duration_minutes when raised above the default' do
       user.update!(settings: (user.settings || {}).merge('visit_min_duration_minutes' => 20))
