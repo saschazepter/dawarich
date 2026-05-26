@@ -3,6 +3,8 @@
 # PostHog Rails Initializer
 # Place this file in config/initializers/posthog.rb
 
+return if DawarichSettings.self_hosted?
+
 # ============================================================================
 # RAILS-SPECIFIC CONFIGURATION
 # ============================================================================
