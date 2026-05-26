@@ -838,9 +838,9 @@ RSpec.describe Timeline::DayAssembler do
         expect(track_ids).not_to include(phantom_stationary_track.id)
       end
 
-      it 'excludes phantom stationary tracks from time_moving_minutes' do
+      it 'excludes all stationary tracks from time_moving_minutes regardless of distance' do
         summary = subject.first[:summary]
-        expect(summary[:time_moving_minutes]).to eq(35)
+        expect(summary[:time_moving_minutes]).to eq(30)
       end
     end
   end

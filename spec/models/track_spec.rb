@@ -268,6 +268,20 @@ RSpec.describe Track, type: :model do
         expect(track.reload.dominant_mode).to eq('stationary')
       end
     end
+
+    context 'when an unknown segment outdistances a real moving segment' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :unknown,
+                               distance: 200, duration: 60)
+        create(:track_segment, track: track, transportation_mode: :driving,
+                               distance: 60,  duration: 30)
+      end
+
+      it 'prefers the real moving mode over unknown' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('driving')
+      end
+    end
   end
 
   describe 'Calculateable concern' do

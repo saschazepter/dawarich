@@ -37,6 +37,9 @@ class Track < ApplicationRecord
   scope :by_mode, ->(mode) { where(dominant_mode: mode) }
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
+  scope :without_phantom_stationary, lambda { |distance_threshold_m|
+    where.not(dominant_mode: :stationary).or(where('distance >= ?', distance_threshold_m))
+  }
 
   # Convert raw distance + duration into a stored avg_speed (km/h),
   # capped to the column's precision limit.
@@ -201,7 +204,9 @@ class Track < ApplicationRecord
       duration_by_mode[s.transportation_mode] += s.duration.to_i
     end
 
-    moving = distance_by_mode.reject { |mode, dist| mode.to_s == 'stationary' || dist < MOVING_DISTANCE_THRESHOLD_M }
+    moving = distance_by_mode.reject do |mode, dist|
+      %w[stationary unknown].include?(mode.to_s) || dist < MOVING_DISTANCE_THRESHOLD_M
+    end
 
     if moving.any?
       moving.max_by { |mode, dist| [dist, duration_by_mode[mode]] }&.first
