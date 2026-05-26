@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- Minimum visit duration default is now 5 min (was hardcoded 3 min). Lower it under **Settings → Visit detection** to keep shorter suggestions.
-- Smart density fill was a no-op in 1.7.8–1.7.9 due to a param bug; now active. Expect more visit suggestions on sparse-tracking days unless you turn it off.
+- Stops shorter than 5 minutes are no longer suggested as visits by default. Change the threshold under **Settings → Visit detection** if you want shorter stops included.
+- Smart density fill now works correctly (it was broken in 1.7.8–1.7.9). You may see more visit suggestions, especially on days when your tracker recorded points unevenly.
 
 ### Added
 
