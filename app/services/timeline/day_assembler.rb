@@ -7,6 +7,8 @@ module Timeline
     # memory just to compute bounds.
     MAX_RANGE = 31.days
 
+    PHANTOM_STATIONARY_DISTANCE_M = 100
+
     def initialize(user, start_at:, end_at:, distance_unit: 'km')
       @user = user
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
@@ -74,8 +76,11 @@ module Timeline
     end
 
     def fetch_tracks
+      stationary_value = Track.dominant_modes[:stationary]
+
       user.scoped_tracks
           .where('start_at <= ? AND end_at >= ?', end_at, start_at)
+          .where.not('dominant_mode = ? AND distance < ?', stationary_value, PHANTOM_STATIONARY_DISTANCE_M)
           .order(start_at: :asc)
     end
 
