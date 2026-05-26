@@ -22,11 +22,13 @@ class Visits::Suggest
 
     visits
   rescue StandardError => e
-    # create a notification with stacktrace and what arguments were used
+    # User-visible content stays short. Full trace + error message go to Sentry
+    # via ExceptionReporter, not into the notification.
     user.notifications.create!(
       kind: :error,
-      title: 'Error suggesting visits',
-      content: "Error suggesting visits: #{e.message}\n#{e.backtrace.join("\n")}"
+      title: 'Visit detection failed',
+      content: "We couldn't detect visits for the selected range. " \
+               'The team has been notified; please retry from Settings → Visits.'
     )
 
     ExceptionReporter.call(e)

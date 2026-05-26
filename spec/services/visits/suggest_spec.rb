@@ -113,6 +113,34 @@ RSpec.describe Visits::Suggest do
     # The Lite plan window is enforced inside `Visits::SmartDetect` (which is
     # what `Visits::Suggest#call` delegates to). The corresponding regression
     # test lives in spec/services/visits/smart_detect_spec.rb.
+
+    context 'when the underlying detector raises' do
+      before do
+        allow_any_instance_of(Visits::SmartDetect).to receive(:call).and_raise(StandardError, 'boom')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'creates an error notification whose content does not leak the backtrace' do
+        expect { described_class.new(user, start_at:, end_at:).call }
+          .to change { user.notifications.where(kind: :error).count }.by(1)
+
+        notification = user.notifications.where(kind: :error).last
+        expect(notification.title).to eq('Visit detection failed')
+        # Backtrace leakage indicators: file paths from the app or the error's own message.
+        expect(notification.content).not_to match(%r{app/services/visits}i)
+        expect(notification.content).not_to include('boom')
+        expect(notification.content).not_to match(/backtrace/i)
+      end
+
+      it 'still reports the exception to Sentry via ExceptionReporter' do
+        described_class.new(user, start_at:, end_at:).call
+
+        expect(ExceptionReporter).to have_received(:call) do |reported|
+          expect(reported).to be_a(StandardError)
+          expect(reported.message).to eq('boom')
+        end
+      end
+    end
   end
 
   private
