@@ -193,6 +193,28 @@ RSpec.describe Track, type: :model do
         expect(Track.with_detected_mode).not_to include(unknown_track)
       end
     end
+
+    describe '.without_phantom_stationary' do
+      let!(:driving_with_zero_distance)  { create(:track, user: user, dominant_mode: :driving, distance: 0) }
+      let!(:stationary_below_threshold)  { create(:track, user: user, dominant_mode: :stationary, distance: 50) }
+      let!(:stationary_at_threshold)     { create(:track, user: user, dominant_mode: :stationary, distance: 100) }
+      let!(:stationary_above_threshold)  { create(:track, user: user, dominant_mode: :stationary, distance: 250) }
+
+      subject(:scope) { Track.without_phantom_stationary(100) }
+
+      it 'keeps non-stationary tracks regardless of distance' do
+        expect(scope).to include(driving_with_zero_distance)
+      end
+
+      it 'excludes stationary tracks below the threshold' do
+        expect(scope).not_to include(stationary_below_threshold)
+      end
+
+      it 'keeps stationary tracks at or above the threshold' do
+        expect(scope).to include(stationary_at_threshold)
+        expect(scope).to include(stationary_above_threshold)
+      end
+    end
   end
 
   describe '#activity_breakdown' do
@@ -246,7 +268,7 @@ RSpec.describe Track, type: :model do
     context 'when a stationary keepalive segment outlasts a moving segment' do
       before do
         create(:track_segment, track: track, transportation_mode: :stationary,
-                               distance: 50,  duration: 3600)
+                               distance: 50, duration: 3600)
         create(:track_segment, track: track, transportation_mode: :driving,
                                distance: 3000, duration: 1800)
       end
