@@ -76,11 +76,9 @@ module Timeline
     end
 
     def fetch_tracks
-      stationary_value = Track.dominant_modes[:stationary]
-
       user.scoped_tracks
           .where('start_at <= ? AND end_at >= ?', end_at, start_at)
-          .where.not('dominant_mode = ? AND distance < ?', stationary_value, PHANTOM_STATIONARY_DISTANCE_M)
+          .without_phantom_stationary(PHANTOM_STATIONARY_DISTANCE_M)
           .order(start_at: :asc)
     end
 
@@ -228,7 +226,8 @@ module Timeline
 
     def build_summary(visits, tracks, track_shares)
       total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
-      moving_seconds = tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
+      moving_tracks = tracks.reject { |t| t.dominant_mode == 'stationary' }
+      moving_seconds = moving_tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
       stationary_minutes = visits.sum(&:duration)
       status_counts = visits.group_by(&:status).transform_values(&:size)
