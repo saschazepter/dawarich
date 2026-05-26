@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Map v2 family member markers show name + last-seen datetime on hover.
 - Map v2 area info card exposes an **Edit** button that opens the area modal pre-filled — rename and resize existing areas without redrawing. Backed by a new `PATCH /areas/:id` route.
 - Map v2 selection tool: **Delete N Anomaly Points** button appears when the selection contains anomaly points, so you can clean up GPS noise without touching real points.
+- Cloud only: PostHog exception capture is enabled to help diagnose production errors. Disabled on self-hosted instances and skipped unless `POSTHOG_API_KEY` is configured. The payload includes `user.id`, controller/action, and parameter-filtered request data — email, name, phone, credentials, and coordinates are redacted before send.
 
 ### Changed
 
