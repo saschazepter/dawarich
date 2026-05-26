@@ -8,7 +8,6 @@ module Visits
     DENSITY_GAP_THRESHOLD_SECONDS = 60
     DENSITY_MAX_GAP_SECONDS = 12 * 3600
     DENSITY_MAX_DISTANCE_METERS = 50
-    TIME_GAP_SECONDS = 30 * 60
     STATIONARY_SPEED_MPS = 1.4
 
     attr_reader :user, :start_at, :end_at
@@ -94,6 +93,10 @@ module Visits
       user.safe_settings.visit_min_duration_minutes * 60
     end
 
+    def time_gap_seconds
+      user.safe_settings.time_threshold_minutes * 60
+    end
+
     def density_enabled?
       user.safe_settings.visit_density_fill_enabled?
     end
@@ -116,7 +119,7 @@ module Visits
         MAX_SYNTHETIC_PER_GAP,
         density_threshold_seconds, density_max_gap_seconds, density_max_distance_meters,
         eps_meters, min_points,
-        TIME_GAP_SECONDS,
+        time_gap_seconds,
         min_points, min_points, min_duration_seconds, STATIONARY_SPEED_MPS
       ]
       ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, *params])
