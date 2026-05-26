@@ -2,9 +2,9 @@
 
 module Visits
   class SelectPlace
-    include AdvisoryLockable
-
     PROXIMITY_METERS = 50
+    LOCK_TTL = 30.seconds
+    LOCK_ACQUIRE_TIMEOUT = 5.seconds
 
     def initialize(user:, visit:, photon:)
       @user = user
@@ -23,10 +23,16 @@ module Visits
     private
 
     def with_dedup_lock(&block)
-      return block.call unless advisory_locks_enabled?
-
+      # Per-suggestion key so two parallel selections for DIFFERENT Photon
+      # suggestions for the same user (e.g. web + mobile both submitting
+      # different places) run in parallel; only SAME-suggestion calls serialize.
       ident = @photon[:osm_id].presence || "#{@photon[:name]}:#{@photon[:latitude]}:#{@photon[:longitude]}"
-      ActiveRecord::Base.with_advisory_lock("select_place:#{@user.id}:#{ident}", &block)
+      Tracks::PerUserLock.with_user_lock(
+        "select_place:#{@user.id}:#{ident}",
+        ttl: LOCK_TTL,
+        timeout: LOCK_ACQUIRE_TIMEOUT,
+        &block
+      )
     end
 
     def find_by_name_and_proximity

@@ -71,5 +71,32 @@ RSpec.describe Visits::SelectPlace do
 
       expect(place.geodata).to eq({})
     end
+
+    describe 'per-suggestion locking granularity' do
+      let(:other_osm_id) { 9_999_999 }
+      let(:other_lock_key) { "tracks:per_user_lock:select_place:#{user.id}:#{other_osm_id}" }
+      let(:my_lock_key)    { "tracks:per_user_lock:select_place:#{user.id}:#{photon_payload[:osm_id]}" }
+
+      before { Sidekiq.redis { |r| r.del(other_lock_key, my_lock_key) } }
+      after  { Sidekiq.redis { |r| r.del(other_lock_key, my_lock_key) } }
+
+      it 'does not serialize against a parallel call for a different osm_id' do
+        # Simulate a concurrent SelectPlace for a DIFFERENT photon suggestion
+        # holding ITS lock. Our call (different osm_id) must still acquire.
+        Sidekiq.redis { |r| r.set(other_lock_key, 'parallel-other', ex: 60) }
+
+        expect do
+          described_class.new(user: user, visit: visit, photon: photon_payload).call
+        end.not_to raise_error
+      end
+
+      it 'serializes against a parallel call for the SAME osm_id (raises AcquisitionTimeout)' do
+        Sidekiq.redis { |r| r.set(my_lock_key, 'parallel-same', ex: 60) }
+
+        expect do
+          described_class.new(user: user, visit: visit, photon: photon_payload).call
+        end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
+      end
+    end
   end
 end

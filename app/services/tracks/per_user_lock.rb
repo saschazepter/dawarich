@@ -20,14 +20,23 @@ module Tracks
 
     def self.with_user_lock(user_id, timeout: DEFAULT_ACQUIRE_TIMEOUT, ttl: DEFAULT_TTL)
       key = "#{NAMESPACE}:#{user_id}"
+      thread_key = :"per_user_lock_#{key}"
+
+      # Reentrancy: if this thread already holds the lock for this key (e.g.
+      # FullHistoryRedetectJob holds the lock and then calls SmartDetect, which
+      # post-Phase-2 also wraps in PerUserLock), yield without re-acquiring.
+      return yield if Thread.current[thread_key]
+
       token = SecureRandom.uuid
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       acquire!(key, token, ttl, timeout, user_id, started_at)
+      Thread.current[thread_key] = token
 
       begin
         yield
       ensure
+        Thread.current[thread_key] = nil
         release(key, token)
       end
     end

@@ -113,5 +113,52 @@ RSpec.describe Tracks::PerUserLock do
 
       expect(acquired_other).to be(true)
     end
+
+    # Reentrancy: needed because FullHistoryRedetectJob holds the per-user lock
+    # and then calls SmartDetect, which post-Phase-2 also wraps in PerUserLock.
+    # Without reentrancy, the second acquire would block on its own outer lock
+    # and time out.
+    describe 'reentrancy within the same thread' do
+      it 'yields immediately on a nested call for the same user without re-acquiring' do
+        inner_ran = false
+
+        described_class.with_user_lock(user_id, timeout: 5) do
+          described_class.with_user_lock(user_id, timeout: 0.1) do
+            inner_ran = true
+          end
+        end
+
+        expect(inner_ran).to be(true)
+      end
+
+      it 'preserves the outer token across nested calls (does not overwrite)' do
+        outer_token = nil
+        inner_token = nil
+        still_held_after_inner = nil
+
+        described_class.with_user_lock(user_id) do
+          outer_token = Sidekiq.redis { |r| r.get(redis_key) }
+          described_class.with_user_lock(user_id) do
+            inner_token = Sidekiq.redis { |r| r.get(redis_key) }
+          end
+          still_held_after_inner = Sidekiq.redis { |r| r.get(redis_key) }
+        end
+
+        expect(outer_token).to be_present
+        expect(inner_token).to eq(outer_token)
+        expect(still_held_after_inner).to eq(outer_token)
+        expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(0)
+      end
+
+      it 'still acquires fresh when the outer call is for a different user_id' do
+        described_class.with_user_lock(user_id) do
+          described_class.with_user_lock(user_id + 1, timeout: 0.5) do
+            other_token = Sidekiq.redis { |r| r.get("tracks:per_user_lock:#{user_id + 1}") }
+            outer_token = Sidekiq.redis { |r| r.get(redis_key) }
+            expect(other_token).not_to eq(outer_token)
+          end
+        end
+      end
+    end
   end
 end

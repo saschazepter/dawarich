@@ -2,10 +2,13 @@
 
 module Visits
   class SmartDetect
-    include Visits::AdvisoryLockable
-
     BATCH_THRESHOLD_DAYS = 31
     BATCH_OVERLAP_SECONDS = 1.hour.to_i
+    # 30-minute acquisition timeout because import fan-out (Imports::Create)
+    # enqueues ~1 VisitSuggestingJob per month — a multi-year import would
+    # exhaust a 30-second default while one chunk runs the lock.
+    LOCK_TTL = 30.minutes
+    LOCK_ACQUIRE_TIMEOUT = 30.minutes
 
     attr_reader :user, :start_at, :end_at
 
@@ -37,17 +40,11 @@ module Visits
            .exists?
     end
 
-    def with_user_lock
-      if advisory_locks_enabled?
-        ActiveRecord::Base.transaction do
-          ActiveRecord::Base.connection.execute(
-            ActiveRecord::Base.sanitize_sql_array(['SELECT pg_advisory_xact_lock(?)', user.id.to_i])
-          )
-          yield
-        end
-      else
-        yield
-      end
+    def with_user_lock(&block)
+      # Cloud disables PG advisory locks (DATABASE_ADVISORY_LOCKS=false), so we
+      # serialize via Redis instead. PerUserLock is reentrant per thread, so
+      # FullHistoryRedetectJob's outer per-user lock doesn't deadlock here.
+      Tracks::PerUserLock.with_user_lock(user.id, ttl: LOCK_TTL, timeout: LOCK_ACQUIRE_TIMEOUT, &block)
     end
 
     def run
