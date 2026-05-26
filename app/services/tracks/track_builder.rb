@@ -199,7 +199,13 @@ module Tracks::TrackBuilder
   end
 
   def detect_and_create_segments(track, points)
-    detector = TransportationModes::Detector.new(track, points)
+    safe_settings = Users::SafeSettings.new(user.settings || {})
+    detector = TransportationModes::Detector.new(
+      track, points,
+      user_thresholds:        safe_settings.transportation_thresholds,
+      user_expert_thresholds: safe_settings.transportation_expert_thresholds,
+      enabled_modes:          safe_settings.enabled_transportation_modes
+    )
     segment_data = detector.call
 
     return if segment_data.empty?
@@ -227,10 +233,8 @@ module Tracks::TrackBuilder
   def update_dominant_mode(track, segments)
     return if segments.empty?
 
-    dominant_segment = segments.max_by { |s| s.duration || 0 }
-    return unless dominant_segment
-
-    track.update_column(:dominant_mode, dominant_segment.transportation_mode)
+    mode = Track.pick_dominant_mode(segments)
+    track.update_column(:dominant_mode, mode) if mode
   end
 
   private
