@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map v2 Place creation modal now closes on successful submit — the success path is no longer gated on a Turbo Stream side-effect, so the modal always dismisses after the place is saved.
 - Stats page no longer 500s after deleting an import or recalculating a month with no points. #2682
+- Timeline no longer fills with `traveled · 0m` rows from stationary keepalive clusters; commutes that absorb adjacent stationary points are correctly labeled by their moving mode (e.g. `drove`) rather than `stationary`. Hit **Settings → Recalculate** to apply to existing data.
+- New tracks now honor the user's enabled transportation modes during initial detection. Previously only the Recalculate path respected disabled modes, so a user who turned off (e.g.) cycling still saw cycling assigned to freshly built tracks. #2787
 - Visit detection no longer suggests stops at places you only drove past. Clusters where the device was moving faster than walking pace between real GPS points are rejected, so road centerlines on busy arterials stop showing up as "visits" to Kent Street / Leach Highway / etc. #2736 #2775
 - Visit detection requires real GPS points (not interpolated density-fill ghost points) to meet the minimum-points threshold, so a single drive between two real fixes can't be inflated into a visit. #2736
 - Smart density fill now works correctly — it was silently disabled in 1.7.8 and 1.7.9.

@@ -193,6 +193,28 @@ RSpec.describe Track, type: :model do
         expect(Track.with_detected_mode).not_to include(unknown_track)
       end
     end
+
+    describe '.without_phantom_stationary' do
+      let!(:driving_with_zero_distance)  { create(:track, user: user, dominant_mode: :driving, distance: 0) }
+      let!(:stationary_below_threshold)  { create(:track, user: user, dominant_mode: :stationary, distance: 50) }
+      let!(:stationary_at_threshold)     { create(:track, user: user, dominant_mode: :stationary, distance: 100) }
+      let!(:stationary_above_threshold)  { create(:track, user: user, dominant_mode: :stationary, distance: 250) }
+
+      subject(:scope) { Track.without_phantom_stationary(100) }
+
+      it 'keeps non-stationary tracks regardless of distance' do
+        expect(scope).to include(driving_with_zero_distance)
+      end
+
+      it 'excludes stationary tracks below the threshold' do
+        expect(scope).not_to include(stationary_below_threshold)
+      end
+
+      it 'keeps stationary tracks at or above the threshold' do
+        expect(scope).to include(stationary_at_threshold)
+        expect(scope).to include(stationary_above_threshold)
+      end
+    end
   end
 
   describe '#activity_breakdown' do
@@ -238,6 +260,46 @@ RSpec.describe Track, type: :model do
       end
 
       it 'sets dominant_mode to the mode with longest duration' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('driving')
+      end
+    end
+
+    context 'when a stationary keepalive segment outlasts a moving segment' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :stationary,
+                               distance: 50, duration: 3600)
+        create(:track_segment, track: track, transportation_mode: :driving,
+                               distance: 3000, duration: 1800)
+      end
+
+      it 'picks the moving mode even though stationary lasts longer' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('driving')
+      end
+    end
+
+    context 'when only a stationary segment exists' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :stationary,
+                               distance: 5, duration: 1800)
+      end
+
+      it 'sets dominant_mode to stationary' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('stationary')
+      end
+    end
+
+    context 'when an unknown segment outdistances a real moving segment' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :unknown,
+                               distance: 200, duration: 60)
+        create(:track_segment, track: track, transportation_mode: :driving,
+                               distance: 60,  duration: 30)
+      end
+
+      it 'prefers the real moving mode over unknown' do
         track.update_dominant_mode!
         expect(track.reload.dominant_mode).to eq('driving')
       end
