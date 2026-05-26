@@ -184,12 +184,30 @@ class Track < ApplicationRecord
     track_segments.group(:transportation_mode).sum(:duration)
   end
 
-  def update_dominant_mode!
-    breakdown = activity_breakdown
-    return update_column(:dominant_mode, :unknown) if breakdown.empty?
+  MOVING_DISTANCE_THRESHOLD_M = 50
 
-    dominant = breakdown.max_by { |_mode, duration| duration || 0 }&.first
-    update_column(:dominant_mode, dominant || :unknown)
+  def update_dominant_mode!
+    segments = track_segments.reload
+    return update_column(:dominant_mode, :unknown) if segments.empty?
+
+    update_column(:dominant_mode, self.class.pick_dominant_mode(segments) || :unknown)
+  end
+
+  def self.pick_dominant_mode(segments)
+    distance_by_mode = Hash.new(0)
+    duration_by_mode = Hash.new(0)
+    segments.each do |s|
+      distance_by_mode[s.transportation_mode] += s.distance.to_i
+      duration_by_mode[s.transportation_mode] += s.duration.to_i
+    end
+
+    moving = distance_by_mode.reject { |mode, dist| mode.to_s == 'stationary' || dist < MOVING_DISTANCE_THRESHOLD_M }
+
+    if moving.any?
+      moving.max_by { |mode, dist| [dist, duration_by_mode[mode]] }&.first
+    else
+      duration_by_mode.max_by { |_, dur| dur }&.first
+    end
   end
 
   def broadcast_geojson_updated

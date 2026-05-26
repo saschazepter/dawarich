@@ -227,10 +227,8 @@ module Tracks::TrackBuilder
   def update_dominant_mode(track, segments)
     return if segments.empty?
 
-    dominant_segment = segments.max_by { |s| s.duration || 0 }
-    return unless dominant_segment
-
-    track.update_column(:dominant_mode, dominant_segment.transportation_mode)
+    mode = Track.pick_dominant_mode(segments)
+    track.update_column(:dominant_mode, mode) if mode
   end
 
   private

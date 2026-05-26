@@ -242,6 +242,32 @@ RSpec.describe Track, type: :model do
         expect(track.reload.dominant_mode).to eq('driving')
       end
     end
+
+    context 'when a stationary keepalive segment outlasts a moving segment' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :stationary,
+                               distance: 50,  duration: 3600)
+        create(:track_segment, track: track, transportation_mode: :driving,
+                               distance: 3000, duration: 1800)
+      end
+
+      it 'picks the moving mode even though stationary lasts longer' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('driving')
+      end
+    end
+
+    context 'when only a stationary segment exists' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :stationary,
+                               distance: 5, duration: 1800)
+      end
+
+      it 'sets dominant_mode to stationary' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('stationary')
+      end
+    end
   end
 
   describe 'Calculateable concern' do
