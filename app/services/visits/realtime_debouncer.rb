@@ -22,7 +22,8 @@ class Visits::RealtimeDebouncer
             .perform_later(
               user_id: @user_id,
               start_at: LOOKBACK_WINDOW.ago.iso8601,
-              end_at: Time.current.iso8601
+              end_at: Time.current.iso8601,
+              realtime: true
             )
         rescue StandardError
           redis.del(key)
