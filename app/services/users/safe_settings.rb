@@ -133,7 +133,7 @@ class Users::SafeSettings
   end
 
   def time_threshold_minutes
-    settings['time_threshold_minutes'].to_i
+    settings['time_threshold_minutes'].to_i.clamp(1, 1440)
   end
 
   def merge_threshold_minutes

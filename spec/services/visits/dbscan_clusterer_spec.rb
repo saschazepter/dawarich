@@ -20,9 +20,7 @@ RSpec.describe Visits::DbscanClusterer do
 
       clusters = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 1900).call
 
-      expect(clusters.size).to be <= 1
-      next if clusters.empty?
-
+      expect(clusters.size).to eq(1)
       expect(clusters.first[:point_count]).to be <= described_class::MAX_SYNTHETIC_PER_GAP + 3
     end
   end
@@ -86,9 +84,12 @@ RSpec.describe Visits::DbscanClusterer do
     end
 
     it 'rejects a cluster whose real points are dominated by sustained movement' do
-      make_point(at: base_ts,       lat: 52.5,    lon: 13.4)
-      make_point(at: base_ts + 60,  lat: 52.5003, lon: 13.4)
-      make_point(at: base_ts + 120, lat: 52.5006, lon: 13.4)
+      user.update!(settings: (user.settings || {}).merge('visit_min_duration_minutes' => 1))
+
+      6.times do |i|
+        lat_offset = i * 0.0005
+        make_point(at: base_ts + i * 30, lat: 52.5 + lat_offset, lon: 13.4)
+      end
 
       clusters = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 200).call
 
