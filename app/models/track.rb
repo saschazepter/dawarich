@@ -38,7 +38,8 @@ class Track < ApplicationRecord
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
   scope :without_phantom_stationary, lambda { |distance_threshold_m|
-    where.not(dominant_mode: :stationary).or(where('distance >= ?', distance_threshold_m))
+    where('NOT (dominant_mode = ? AND distance < ?)',
+          dominant_modes[:stationary], distance_threshold_m)
   }
 
   # Convert raw distance + duration into a stored avg_speed (km/h),
