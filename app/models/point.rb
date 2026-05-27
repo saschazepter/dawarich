@@ -72,8 +72,15 @@ class Point < ApplicationRecord
     @recorded_at ||= Time.zone.at(timestamp)
   end
 
+  GEOCODE_DEDUP_TTL = 1.day.to_i
+
   def async_reverse_geocode(force: false)
     return unless DawarichSettings.reverse_geocoding_enabled?
+
+    unless force
+      claimed = Sidekiq.redis { |r| r.set("geocode:enq:#{id}", 1, nx: true, ex: GEOCODE_DEDUP_TTL) }
+      return unless claimed
+    end
 
     ReverseGeocodingJob.perform_later(self.class.to_s, id, force: force)
   end

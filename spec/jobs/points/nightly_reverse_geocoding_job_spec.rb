@@ -9,6 +9,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
     before do
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
       Point.delete_all
+      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
     end
 
     context 'when reverse geocoding is disabled' do
@@ -73,6 +74,10 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         end
         let!(:geocoded_point) do
           create(:point, user: user, reverse_geocoded_at: 1.day.ago)
+        end
+
+        before do
+          Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
         end
 
         it 'processes all points that need reverse geocoding' do
