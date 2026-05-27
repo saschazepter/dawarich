@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- GPX waypoints (`<wpt>`) and timeless GeoJSON `Point` features are now imported as Places. OsmAnd+ favourites files import directly; mixed GPX files (tracks and waypoints together) populate both the timeline and the Places list in a single import. (#1261)
+
+### Fixed
+
+- GeoJSON imports containing only timeless track features (e.g. a `LineString` with no per-point timestamps) now surface a clear error message instead of failing silently or with a confusing validation error. (#1261)
+
 ## [1.7.10] - 2026-05-26
 
 ### ⚠️ Upgrade notes

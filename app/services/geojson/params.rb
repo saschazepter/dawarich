@@ -10,35 +10,59 @@ class Geojson::Params
   end
 
   def call
-    result = case json['type']
-             when 'Feature' then process_feature(json)
-             when 'FeatureCollection' then process_feature_collection(json)
-             end
-
-    Array(result).flatten
+    classified = classify_root(json)
+    {
+      points: classified.select { |row| row[:kind] == :point }.map { |row| row[:attrs] },
+      place_features: classified.select { |row| row[:kind] == :place_feature }.map { |row| row[:feature] },
+      has_timeless_track: classified.any? { |row| row[:kind] == :timeless_track }
+    }
   end
 
   private
 
-  def process_feature(json)
-    return [] if json[:geometry].blank?
-
-    case json[:geometry][:type]
-    when 'Point'
-      build_point(json)
-    when 'LineString'
-      build_line(json)
-    when 'MultiLineString'
-      build_multi_line(json)
-    else
-      []
+  def classify_root(json)
+    case json[:type]
+    when 'Feature' then classify_feature(json)
+    when 'FeatureCollection' then Array(json[:features]).flat_map { |feature| classify_feature(feature) }
+    else []
     end
   end
 
-  def process_feature_collection(json)
-    return [] if json['features'].blank?
+  def classify_feature(feature)
+    return [] if feature[:geometry].blank?
 
-    json['features'].map { |feature| process_feature(feature) }
+    case feature[:geometry][:type]
+    when 'Point'           then classify_point(feature)
+    when 'LineString'      then classify_line(feature)
+    when 'MultiLineString' then classify_multi_line(feature)
+    else []
+    end
+  end
+
+  def classify_point(feature)
+    attrs = build_point(feature)
+    return [{ kind: :place_feature, feature: feature }] if attrs[:timestamp].nil?
+
+    [{ kind: :point, attrs: attrs }]
+  end
+
+  def classify_line(feature)
+    points = feature[:geometry][:coordinates].map { |point| build_line_point(point) }
+    materialise_line_points(points)
+  end
+
+  def classify_multi_line(feature)
+    points = feature[:geometry][:coordinates].flat_map do |line|
+      line.map { |point| build_line_point(point) }
+    end
+    materialise_line_points(points)
+  end
+
+  def materialise_line_points(points)
+    valid = points.select { |attrs| attrs[:timestamp].present? }
+    return [{ kind: :timeless_track }] if valid.empty? && points.any?
+
+    valid.map { |attrs| { kind: :point, attrs: attrs } }
   end
 
   def build_point(feature)
@@ -62,20 +86,6 @@ class Geojson::Params
     }
     attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
     attrs
-  end
-
-  def build_line(feature)
-    feature[:geometry][:coordinates].map do |point|
-      build_line_point(point)
-    end
-  end
-
-  def build_multi_line(feature)
-    feature[:geometry][:coordinates].map do |line|
-      line.map do |point|
-        build_line_point(point)
-      end
-    end
   end
 
   def build_line_point(point)

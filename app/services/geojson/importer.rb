@@ -17,9 +17,23 @@ class Geojson::Importer
 
   def call
     json = load_json_data
-    data = Geojson::Params.new(json).call
+    parsed = Geojson::Params.new(json).call
 
-    points_data = data.map do |point|
+    points_count = import_points(parsed[:points])
+    places_count = Places::GeojsonPointImporter.new(import, user_id, parsed[:place_features]).call
+
+    return unless parsed[:has_timeless_track] && points_count.zero? && places_count.zero?
+
+    raise Imports::NoTimestampsError
+  end
+
+  private
+
+  def import_points(points)
+    return 0 if points.blank?
+
+    total_inserted = 0
+    points_data = points.map do |point|
       next if point[:lonlat].nil?
 
       point.merge(
@@ -28,15 +42,15 @@ class Geojson::Importer
         created_at: Time.current,
         updated_at: Time.current
       )
-    end
+    end.compact
 
-    points_data.compact.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
-      bulk_insert_points(batch)
+    points_data.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
+      total_inserted += bulk_insert_points(batch)
       broadcast_import_progress(import, (batch_index + 1) * BATCH_SIZE)
     end
-  end
 
-  private
+    total_inserted
+  end
 
   def importer_name
     'GeoJSON'

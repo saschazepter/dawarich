@@ -6,7 +6,7 @@ RSpec.describe Geojson::Params do
   describe 'field alias detection' do
     let(:fixture_path) { Rails.root.join('spec/fixtures/files/geojson/various_fields.geojson') }
     let(:json) { JSON.parse(File.read(fixture_path)) }
-    let(:result) { described_class.new(json).call }
+    let(:result) { described_class.new(json).call[:points] }
 
     it 'extracts points from all features' do
       expect(result.size).to eq(3)
@@ -54,7 +54,7 @@ RSpec.describe Geojson::Params do
   end
 
   describe '#call' do
-    subject { described_class.new(json).call }
+    subject { described_class.new(json).call[:points] }
 
     context 'when the json is an Overland export' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/geojson/export.json') }

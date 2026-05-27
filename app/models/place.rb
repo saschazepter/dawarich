@@ -17,7 +17,7 @@ class Place < ApplicationRecord
   validates :name, presence: true
   validates :lonlat, presence: true
 
-  enum :source, { manual: 0, photon: 1 }
+  enum :source, { manual: 0, photon: 1, gpx_waypoint: 2, geojson_point: 3 }
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }

@@ -19,11 +19,13 @@ class Gpx::TrackImporter
   end
 
   def call
+    trkpt_count = 0
     batch = []
     each_trkpt do |point_hash, tracker_id|
       data = prepare_point(point_hash, tracker_id)
       next unless data
 
+      trkpt_count += 1
       batch << data
       next if batch.size < BATCH_SIZE
 
@@ -31,6 +33,10 @@ class Gpx::TrackImporter
       batch = []
     end
     flush(batch) unless batch.empty?
+
+    wpt_count = Places::GpxWaypointImporter.new(import, user_id, resolve_file_path).call
+
+    raise Imports::NoTimestampsError if trkpt_count.zero? && wpt_count.zero?
   ensure
     cleanup_temp_file
   end
