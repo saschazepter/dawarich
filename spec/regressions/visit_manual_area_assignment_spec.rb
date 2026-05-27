@@ -141,6 +141,16 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
       expect(visit.name).to eq('Home')
     end
 
+    it 'clears area_id when an empty value is sent' do
+      visit.update!(area: area)
+      expect(visit.reload.area_id).to eq(area.id)
+
+      patch "/visits/#{visit.id}",
+            params: { visit: { area_id: '' } }
+
+      expect(visit.reload.area_id).to be_nil
+    end
+
     it 'busts the timeline month cache for an area-only update' do
       month_start = visit.started_at.in_time_zone('Etc/UTC').to_date.beginning_of_month
       cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)

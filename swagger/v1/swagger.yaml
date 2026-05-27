@@ -4761,6 +4761,9 @@ paths:
                       type: string
                     place_id:
                       type: integer
+                    area_id:
+                      type: integer
+                      nullable: true
                     status:
                       type: string
                       enum:
