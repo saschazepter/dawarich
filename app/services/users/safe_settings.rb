@@ -137,7 +137,10 @@ class Users::SafeSettings
   end
 
   def merge_threshold_minutes
-    settings['merge_threshold_minutes'].to_i
+    # Default 15 min if unset/zero. Cap at 240 to keep Merger sensible —
+    # arbitrarily large gaps would merge unrelated stays.
+    raw = settings['merge_threshold_minutes'].to_i
+    (raw.positive? ? raw : DEFAULT_VALUES['merge_threshold_minutes']).clamp(1, 240)
   end
 
   def live_map_enabled

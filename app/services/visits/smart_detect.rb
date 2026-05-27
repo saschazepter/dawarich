@@ -62,11 +62,12 @@ module Visits
         total_clusters  += clusters.size
 
         potential_visits = build_visit_hashes(clusters)
-        merged_visits    = Visits::Merger.new(scoped_batch_points(batch_start,
-                                                                  batch_end)).merge_visits(potential_visits)
-        grouped_visits   = group_nearby_visits(merged_visits).flatten
+        merged_visits    = Visits::Merger.new(
+          scoped_batch_points(batch_start, batch_end),
+          max_gap: user.safe_settings.merge_threshold_minutes.minutes
+        ).merge_visits(potential_visits)
 
-        created.concat(Visits::Creator.new(user).create_visits(grouped_visits))
+        created.concat(Visits::Creator.new(user).create_visits(merged_visits))
       end
 
       log_summary(ranges.size, total_points_in, total_clusters, created.size, started_at)
@@ -104,8 +105,10 @@ module Visits
 
     def build_visit_hashes(clusters)
       all_point_ids = clusters.flat_map { |c| c[:point_ids] }.select(&:positive?)
+      # Lightweight: no `geodata` JSONB. ClusterHelper fetches the k=20 nearest
+      # geodata-laden points lazily after centroid is computed.
       points_by_id = Point.where(id: all_point_ids)
-                          .select(:id, :lonlat, :timestamp, :accuracy, :geodata)
+                          .select(:id, :lonlat, :timestamp, :accuracy)
                           .index_by(&:id)
 
       clusters.filter_map do |cluster|
@@ -114,15 +117,6 @@ module Visits
 
         ClusterHelper.new(cluster_points, cluster).to_visit_hash
       end
-    end
-
-    def group_nearby_visits(visits)
-      visits.group_by do |visit|
-        [
-          (visit[:center_lat] * 1000).round / 1000.0,
-          (visit[:center_lon] * 1000).round / 1000.0
-        ]
-      end.values
     end
 
     def log_summary(batch_count, points_in, clusters, visits_created, started_at)
@@ -137,6 +131,8 @@ module Visits
 
   class ClusterHelper
     include Visits::DetectionHelpers
+
+    NAME_SUGGESTION_K = 20
 
     def initialize(points, cluster)
       @points = points
@@ -153,8 +149,27 @@ module Visits
         center_lon: center[1],
         radius: calculate_visit_radius(@points, center),
         points: @points,
-        suggested_name: suggest_place_name(@points) || fetch_place_name(center)
+        suggested_name: suggest_place_name(nearest_geodata_points(center)) || fetch_place_name(center)
       }
+    end
+
+    private
+
+    # Fetch geodata only for the k=20 points nearest the centroid, using the
+    # PostGIS KNN operator (`<->` on lonlat::geography hits the GiST index).
+    # Saves loading JSONB geodata for every clustered point on dense batches.
+    def nearest_geodata_points(center)
+      point_ids = @points.map(&:id)
+      return [] if point_ids.empty?
+
+      lat, lon = center
+      Point.where(id: point_ids)
+           .select(:id, :lonlat, :geodata)
+           .order(Arel.sql(ActiveRecord::Base.sanitize_sql_array(
+             ['lonlat <-> ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography', lon, lat]
+           )))
+           .limit(NAME_SUGGESTION_K)
+           .to_a
     end
   end
 end

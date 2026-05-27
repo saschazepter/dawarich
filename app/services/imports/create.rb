@@ -121,13 +121,33 @@ class Imports::Create
     end
   end
 
+  # Fan multi-month imports out into one VisitSuggestingJob per calendar month so
+  # Sidekiq can parallelize. A single sequential job per multi-year import would
+  # otherwise hold one worker for hours (1825 DBSCAN runs for a 5-year archive).
+  VISIT_FANOUT_THRESHOLD = 32.days
+
   def schedule_visit_suggesting(user_id, import)
     return unless user.safe_settings.visits_suggestions_enabled?
 
     summary = import_points_summary(import)
     return if summary.nil?
 
-    VisitSuggestingJob.perform_later(user_id:, start_at: summary[:start_at], end_at: summary[:end_at])
+    self.class.monthly_visit_ranges(summary[:start_at], summary[:end_at]).each do |range_start, range_end|
+      VisitSuggestingJob.perform_later(user_id:, start_at: range_start, end_at: range_end)
+    end
+  end
+
+  def self.monthly_visit_ranges(start_at, end_at)
+    return [[start_at, end_at]] if (end_at - start_at) <= VISIT_FANOUT_THRESHOLD
+
+    ranges = []
+    cursor = start_at
+    while cursor < end_at
+      chunk_end = [cursor.end_of_month, end_at].min
+      ranges << [cursor, chunk_end]
+      cursor = chunk_end + 1.second
+    end
+    ranges
   end
 
   def schedule_track_generation(user_id, import)

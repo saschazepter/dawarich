@@ -281,6 +281,16 @@ RSpec.describe Users::SafeSettings do
         }
       end
 
+      it 'clamps merge_threshold_minutes within 1..240' do
+        below = described_class.new({ 'merge_threshold_minutes' => 0 }, plan: :pro)
+        above = described_class.new({ 'merge_threshold_minutes' => 9999 }, plan: :pro)
+        in_range = described_class.new({ 'merge_threshold_minutes' => 60 }, plan: :pro)
+
+        expect(below.merge_threshold_minutes).to eq(15) # falls back to default when zero
+        expect(above.merge_threshold_minutes).to eq(240)
+        expect(in_range.merge_threshold_minutes).to eq(60)
+      end
+
       it 'returns custom values for each setting' do
         expect(safe_settings.fog_of_war_meters).to eq(100)
         expect(safe_settings.meters_between_routes).to eq(1000)

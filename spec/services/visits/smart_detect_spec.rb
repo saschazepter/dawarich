@@ -71,6 +71,41 @@ RSpec.describe Visits::SmartDetect do
     end
   end
 
+  # Regression for retiring Areas::Visits::Create and Places::Visits::Create.
+  # Area + place attachment must continue to work on the DBSCAN output path via
+  # Creator#find_matching_area and PlaceFinder.
+  describe 'area and place attachment post-retire (Creator + PlaceFinder)' do
+    it 'attaches area_id when a cluster centroid falls inside a user-defined area' do
+      area = create(:area, user: user, latitude: 52.5, longitude: 13.4, radius: 500)
+
+      6.times do |i|
+        create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
+                       timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
+      end
+
+      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+
+      expect(visits.size).to be >= 1
+      visit = visits.first
+      expect(visit.area_id).to eq(area.id)
+      expect(visit.place_id).to be_nil
+    end
+
+    it 'attaches place_id when no area matches the cluster centroid (via PlaceFinder)' do
+      6.times do |i|
+        create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
+                       timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
+      end
+
+      expect { described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call }
+        .to change { user.places.count }.by_at_least(1)
+
+      visit = user.visits.last
+      expect(visit.place_id).not_to be_nil
+      expect(visit.area_id).to be_nil
+    end
+  end
+
   describe 'plan window clamping' do
     let(:lite_user) { create(:user, plan: :lite) }
 

@@ -17,10 +17,11 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
       create(:point, user: user_with_points)
     end
 
-    it 'does nothing if reverse geocoding is disabled' do
+    it 'still runs detection when reverse geocoding is disabled (self-hosted without Photon)' do
       allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
 
-      expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+      expect { described_class.perform_now }.to have_enqueued_job(VisitSuggestingJob)
+        .with(hash_including(user_id: user_with_points.id))
     end
 
     it 'schedules jobs only for active users with tracked points' do

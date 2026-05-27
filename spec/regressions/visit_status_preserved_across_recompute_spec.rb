@@ -2,100 +2,67 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Visit status is preserved across visit-recompute services' do
+# Originally covered Areas::Visits::Create and Places::Visits::Create
+# (retired 2026-05-27). The contract — "user-modified visit status / name
+# survives a re-run of visit detection" — is now provided by SmartDetect's
+# upstream Point.where(visit_id: nil) scope (points already in a visit are
+# never re-clustered) AND Creator#find_existing_visit's ±1h / 100m dedup.
+RSpec.describe 'Visit status is preserved across SmartDetect re-runs' do
   let!(:user) { create(:user) }
-  let(:visit_date) { DateTime.new(2026, 1, 1, 10, 0, 0, Time.zone.formatted_offset) }
+  let(:base_ts) { 1_700_000_000 }
+  let(:lock_key) { "tracks:per_user_lock:#{user.id}" }
 
-  describe Areas::Visits::Create do
-    let(:area) { create(:area, user:, latitude: 0, longitude: 0, radius: 100) }
-
-    before do
-      create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date)
-      create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date + 10.minutes)
-      create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date + 20.minutes)
-    end
-
-    it 'keeps a confirmed visit confirmed when the service runs again' do
-      described_class.new(user, [area]).call
-      visit = Visit.find_by!(area_id: area.id)
-      visit.update!(status: :confirmed)
-
-      described_class.new(user, [area]).call
-
-      expect(visit.reload.status).to eq('confirmed')
-    end
-
-    it 'keeps a declined visit declined when the service runs again' do
-      described_class.new(user, [area]).call
-      visit = Visit.find_by!(area_id: area.id)
-      visit.update!(status: :declined)
-
-      described_class.new(user, [area]).call
-
-      expect(visit.reload.status).to eq('declined')
-    end
-
-    it 'still creates new visits with status suggested' do
-      described_class.new(user, [area]).call
-      expect(Visit.find_by!(area_id: area.id).status).to eq('suggested')
-    end
-
-    it 'keeps a user-chosen visit name when the service runs again' do
-      described_class.new(user, [area]).call
-      visit = Visit.find_by!(area_id: area.id)
-      visit.update!(status: :confirmed, name: 'Home sweet home')
-
-      described_class.new(user, [area]).call
-
-      expect(visit.reload.name).to eq('Home sweet home')
-    end
-
-    it 'still extends ended_at on existing visits when new points arrive' do
-      described_class.new(user, [area]).call
-      visit = Visit.find_by!(area_id: area.id)
-      visit.update!(status: :confirmed)
-      original_ended_at = visit.ended_at
-
-      create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date + 25.minutes)
-
-      described_class.new(user, [area]).call
-
-      expect(visit.reload.ended_at).to be > original_ended_at
+  before do
+    Sidekiq.redis { |r| r.del(lock_key) }
+    # 6 stationary points: enough to clear visit_min_points (default 3) and
+    # visit_min_duration_minutes (default 5 min). Spaced 60 s apart so DBSCAN
+    # density-fill stays out of it.
+    6.times do |i|
+      create(:point, user: user,
+                     latitude: 0, longitude: 0, lonlat: 'POINT(0 0)',
+                     timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
     end
   end
 
-  describe Places::Visits::Create do
-    let(:place) { create(:place, user:, latitude: 5, longitude: 5) }
+  after { Sidekiq.redis { |r| r.del(lock_key) } }
 
-    before do
-      create(:point, user:, lonlat: 'POINT(5 5)', timestamp: visit_date)
-      create(:point, user:, lonlat: 'POINT(5 5)', timestamp: visit_date + 10.minutes)
-      create(:point, user:, lonlat: 'POINT(5 5)', timestamp: visit_date + 20.minutes)
-    end
+  def run_smart_detect
+    Visits::SmartDetect.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+  end
 
-    it 'keeps a confirmed visit confirmed when the service runs again' do
-      described_class.new(user, [place]).call
-      visit = Visit.find_by!(place_id: place.id)
-      visit.update!(status: :confirmed)
+  it 'keeps a confirmed visit confirmed and does not create a duplicate when re-run' do
+    visits = run_smart_detect
+    expect(visits.size).to eq(1)
+    visit = visits.first
+    visit.update!(status: :confirmed)
 
-      described_class.new(user, [place]).call
+    expect { run_smart_detect }.not_to change { user.visits.count }
+    expect(visit.reload.status).to eq('confirmed')
+  end
 
-      expect(visit.reload.status).to eq('confirmed')
-    end
+  it 'keeps a declined visit declined when re-run' do
+    visits = run_smart_detect
+    visit = visits.first
+    visit.update!(status: :declined)
 
-    it 'keeps a declined visit declined when the service runs again' do
-      described_class.new(user, [place]).call
-      visit = Visit.find_by!(place_id: place.id)
-      visit.update!(status: :declined)
+    run_smart_detect
 
-      described_class.new(user, [place]).call
+    expect(visit.reload.status).to eq('declined')
+  end
 
-      expect(visit.reload.status).to eq('declined')
-    end
+  it 'keeps a user-chosen visit name when re-run' do
+    visits = run_smart_detect
+    visit = visits.first
+    visit.update!(status: :confirmed, name: 'Home sweet home')
 
-    it 'still creates new visits with status suggested' do
-      described_class.new(user, [place]).call
-      expect(Visit.find_by!(place_id: place.id).status).to eq('suggested')
-    end
+    run_smart_detect
+
+    expect(visit.reload.name).to eq('Home sweet home')
+  end
+
+  it 'still creates new visits with status suggested on first detection' do
+    visits = run_smart_detect
+
+    expect(visits.first.status).to eq('suggested')
   end
 end

@@ -6,10 +6,11 @@ module Visits
     MAXIMUM_VISIT_GAP = 30.minutes
     SIGNIFICANT_MOVEMENT_THRESHOLD = 50 # meters
 
-    attr_reader :points
+    attr_reader :points, :max_gap
 
-    def initialize(points)
+    def initialize(points, max_gap: MAXIMUM_VISIT_GAP)
       @points = points
+      @max_gap = max_gap
     end
 
     def merge_visits(visits)
@@ -56,7 +57,7 @@ module Visits
 
     def gap_too_large?(first_visit, second_visit)
       gap = second_visit[:start_time] - first_visit[:end_time]
-      gap > MAXIMUM_VISIT_GAP
+      gap > max_gap
     end
 
     def significant_movement_between?(first_visit, second_visit)

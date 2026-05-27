@@ -34,6 +34,11 @@ class Point < ApplicationRecord
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
 
+  # SQL fragment for use in raw CTEs / interpolated SQL (DbscanClusterer).
+  # Keeps the predicate in one place — change here and ActiveRecord scope
+  # together if the column ever flips to NOT NULL default false.
+  NOT_ANOMALY_SQL = '(anomaly IS NULL OR anomaly = FALSE)'
+
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates

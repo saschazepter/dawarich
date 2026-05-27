@@ -70,53 +70,28 @@ RSpec.describe Visits::Suggest do
       expect { subject }.to change(Visit, :count).by(2)
     end
 
-    it 'creates visits notification' do
-      expect { subject }.to change(Notification, :count).by(1)
-    end
+    # Notification + ReverseGeocodingJob fan-out moved out of Visits::Suggest
+    # into VisitSuggestingJob (Task 13) — Suggest now just returns
+    # { visits:, place_ids: } and the calling job coalesces across day-chunks.
+    it 'returns the created visits and their place_ids in a hash' do
+      result = subject
 
-    context 'when reverse geocoding is enabled' do
-      let(:reverse_geocoding_start_at) { Time.zone.local(2020, 6, 1, 0, 0, 0) }
-      let(:reverse_geocoding_end_at) { Time.zone.local(2020, 6, 1, 5, 0, 0) }
-
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-
-        create_visit_points(user, reverse_geocoding_start_at)
-        clear_enqueued_jobs
-      end
-
-      it 'enqueues reverse geocoding jobs for created visits' do
-        described_class.new(user, start_at: reverse_geocoding_start_at, end_at: reverse_geocoding_end_at).call
-
-        # Since both visits are at the same location, they share the same place.
-        # So only 1 ReverseGeocodingJob should be enqueued. (Places::NameFetchingJob
-        # is also enqueued by PlaceFinder when reverse geocoding is enabled, but
-        # that's a separate concern and not what this test is asserting.)
-        reverse_geocoding_jobs = enqueued_jobs.select { |job| job['job_class'] == 'ReverseGeocodingJob' }
-        expect(reverse_geocoding_jobs.count).to eq(1)
-        expect(reverse_geocoding_jobs).to all(have_arguments_starting_with('place'))
-      end
-    end
-
-    context 'when reverse geocoding is disabled' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-        clear_enqueued_jobs
-      end
-
-      it 'does not reverse geocode visits' do
-        subject
-        expect(enqueued_jobs).to be_empty
-      end
+      expect(result).to be_a(Hash)
+      expect(result[:visits]).to all(be_a(Visit))
+      expect(result[:place_ids]).to all(be_a(Integer))
     end
 
     # The Lite plan window is enforced inside `Visits::SmartDetect` (which is
     # what `Visits::Suggest#call` delegates to). The corresponding regression
     # test lives in spec/services/visits/smart_detect_spec.rb.
 
-    context 'when the underlying detector raises' do
+    context 'when the underlying detector raises a rescued infrastructure error' do
+      # Suggest narrowly rescues Tracks::PerUserLock::AcquisitionTimeout,
+      # ActiveRecord::QueryCanceled, ActiveRecord::ConnectionTimeoutError.
+      # Other StandardError types propagate so Sidekiq can retry them.
       before do
-        allow_any_instance_of(Visits::SmartDetect).to receive(:call).and_raise(StandardError, 'boom')
+        allow_any_instance_of(Visits::SmartDetect).to receive(:call)
+          .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')
         allow(ExceptionReporter).to receive(:call)
       end
 
@@ -128,17 +103,32 @@ RSpec.describe Visits::Suggest do
         expect(notification.title).to eq('Visit detection failed')
         # Backtrace leakage indicators: file paths from the app or the error's own message.
         expect(notification.content).not_to match(%r{app/services/visits}i)
-        expect(notification.content).not_to include('boom')
+        expect(notification.content).not_to include('busy')
         expect(notification.content).not_to match(/backtrace/i)
+      end
+
+      it 'returns an empty hash so the calling job can keep accumulating' do
+        result = described_class.new(user, start_at:, end_at:).call
+        expect(result).to eq(visits: [], place_ids: [])
       end
 
       it 'still reports the exception to Sentry via ExceptionReporter' do
         described_class.new(user, start_at:, end_at:).call
 
         expect(ExceptionReporter).to have_received(:call) do |reported|
-          expect(reported).to be_a(StandardError)
-          expect(reported.message).to eq('boom')
+          expect(reported).to be_a(Tracks::PerUserLock::AcquisitionTimeout)
+          expect(reported.message).to eq('busy')
         end
+      end
+    end
+
+    context 'when the underlying detector raises a non-rescued StandardError' do
+      it 'propagates so Sidekiq retry handles it' do
+        allow_any_instance_of(Visits::SmartDetect).to receive(:call)
+          .and_raise(StandardError, 'unexpected')
+
+        expect { described_class.new(user, start_at:, end_at:).call }
+          .to raise_error(StandardError, 'unexpected')
       end
     end
   end

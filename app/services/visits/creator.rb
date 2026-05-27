@@ -51,15 +51,13 @@ module Visits
             visit_lat, visit_lon = visit.center
             next unless visit_lat && visit_lon
 
-            # Calculate distance between centers
-            distance = Geocoder::Calculations.distance_between(
+            distance_meters = Geocoder::Calculations.distance_between(
               [visit_data[:center_lat], visit_data[:center_lon]],
               [visit_lat, visit_lon],
               units: :km
-            )
+            ) * 1000
 
-            # If this visit is within 100 meters of the new suggestion
-            return visit if distance <= 0.1
+            return visit if distance_meters <= Visit::SAME_PLACE_METERS
       end
 
       nil

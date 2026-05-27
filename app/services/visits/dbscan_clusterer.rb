@@ -78,7 +78,7 @@ module Visits
       Point.where(user_id: user.id, visit_id: nil)
            .where(timestamp: start_at..end_at)
            .where('lonlat IS NOT NULL')
-           .where('anomaly IS NULL OR anomaly = FALSE')
+           .where(Point::NOT_ANOMALY_SQL)
            .count
     end
 
@@ -131,7 +131,7 @@ module Visits
             AND timestamp BETWEEN ? AND ?
             AND visit_id IS NULL
             AND lonlat IS NOT NULL
-            AND (anomaly IS NULL OR anomaly = FALSE)
+            AND #{Point::NOT_ANOMALY_SQL}
         ),
         point_gaps AS (
           SELECT

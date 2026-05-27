@@ -8,26 +8,54 @@ RSpec.describe Visits::RealtimeDebouncer do
   let(:redis_key) { "visit_realtime:user:#{user.id}" }
 
   before do
-    Sidekiq.redis { |r| r.del(redis_key) }
+    Sidekiq.redis { |r| r.del(redis_key, "visit_optin:user:#{user.id}") }
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
     allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
   end
 
+  after { Sidekiq.redis { |r| r.del("visit_optin:user:#{user.id}") } }
+
+  describe 'opt-in cache' do
+    it 'caches the opt-in lookup so subsequent triggers do not re-query the user' do
+      expect(User).to receive(:find_by).with(id: user.id).once.and_call_original
+
+      3.times { debouncer.trigger }
+    end
+
+    it 'busts the cache when the user updates their settings' do
+      debouncer.trigger
+      expect(Sidekiq.redis { |r| r.exists("visit_optin:user:#{user.id}") }).to eq(1)
+
+      user.update!(settings: user.settings.merge('time_threshold_minutes' => 99))
+
+      expect(Sidekiq.redis { |r| r.exists("visit_optin:user:#{user.id}") }).to eq(0)
+    end
+
+    it 'sets a TTL on the cache key' do
+      debouncer.trigger
+
+      ttl = Sidekiq.redis { |r| r.ttl("visit_optin:user:#{user.id}") }
+      expect(ttl).to be > 0
+      expect(ttl).to be <= Visits::RealtimeDebouncer::OPTIN_CACHE_TTL.to_i
+    end
+  end
+
   describe '#trigger' do
-    context 'when reverse geocoding is disabled' do
+    context 'when reverse geocoding is disabled (self-hosted without Photon)' do
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
       end
 
-      it 'does not enqueue VisitSuggestingJob' do
-        expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)
+      it 'still enqueues VisitSuggestingJob — detection degrades to Place::DEFAULT_NAME' do
+        expect { debouncer.trigger }.to have_enqueued_job(VisitSuggestingJob)
+          .with(hash_including(user_id: user.id, realtime: true))
       end
 
-      it 'does not set a Redis key' do
+      it 'still sets the debounce Redis key' do
         debouncer.trigger
 
         Sidekiq.redis do |redis|
-          expect(redis.exists(redis_key)).to eq(0)
+          expect(redis.exists(redis_key)).to eq(1)
         end
       end
     end
@@ -199,7 +227,7 @@ RSpec.describe Visits::RealtimeDebouncer do
 
       # Simulate the job firing with realtime: true — must clear the debounce key
       # (clearing happens at the START of perform, see VisitSuggestingJob).
-      allow_any_instance_of(Visits::Suggest).to receive(:call).and_return([])
+      allow_any_instance_of(Visits::Suggest).to receive(:call).and_return({ visits: [], place_ids: [] })
       VisitSuggestingJob.new.perform(
         user_id: user.id,
         start_at: 1.hour.ago.iso8601,
@@ -221,7 +249,7 @@ RSpec.describe Visits::RealtimeDebouncer do
       expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(1)
 
       # Bulk / import path — no realtime kwarg.
-      allow_any_instance_of(Visits::Suggest).to receive(:call).and_return([])
+      allow_any_instance_of(Visits::Suggest).to receive(:call).and_return({ visits: [], place_ids: [] })
       VisitSuggestingJob.new.perform(
         user_id: user.id,
         start_at: 1.hour.ago.iso8601,

@@ -17,25 +17,36 @@ class Visit < ApplicationRecord
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
 
+  # "Same place" threshold used by Visits::Creator#find_existing_visit to dedup
+  # newly-clustered visits against existing ones at the same centroid. Distinct
+  # from PlaceFinder::SIMILARITY_RADIUS (50m, place-level) and
+  # Merger::SIGNIFICANT_MOVEMENT_THRESHOLD (50m, between-visits movement).
+  SAME_PLACE_METERS = 100
+
   def coordinates
-    points.pluck(:latitude, :longitude).map { [_1[0].to_f, _1[1].to_f] }
+    # Read lat/lon from the lonlat geography column (source of truth). The
+    # decimal latitude/longitude columns are nil in production data, so the
+    # old `points.pluck(:latitude, :longitude)` returned nil pairs.
+    points.map { |p| [p.lat, p.lon] }
   end
 
   def default_name
     name || area&.name || place&.name
   end
 
-  # in meters
+  MIN_DEFAULT_RADIUS_METERS = 15
+
+  # Always in metres. View layer converts to user's preferred unit when needed.
   def default_radius
     return area&.radius if area.present?
 
-    radius = points.map do |point|
+    distances_in_meters = points.map do |point|
       Geocoder::Calculations.distance_between(
-        center, [point.lat, point.lon], units: user.safe_settings.distance_unit.to_sym
-      )
-    end.max
-
-    radius && radius >= 15 ? radius : 15
+        center, [point.lat, point.lon], units: :km
+      ) * 1000
+    end
+    max_meters = distances_in_meters.max
+    max_meters && max_meters >= MIN_DEFAULT_RADIUS_METERS ? max_meters : MIN_DEFAULT_RADIUS_METERS
   end
 
   def center

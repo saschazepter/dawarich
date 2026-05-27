@@ -10,8 +10,9 @@ class BulkVisitsSuggestingJob < ApplicationJob
   TIME_CHUNKS_THRESHOLD_DAYS = 32
 
   def perform(start_at: 1.day.ago.beginning_of_day, end_at: 1.day.ago.end_of_day, user_ids: [], user_id: nil)
-    return unless DawarichSettings.reverse_geocoding_enabled?
-
+    # Detection runs regardless of reverse_geocoding_enabled?. The Names::Suggester
+    # returns nil when geodata is missing, and Place::DEFAULT_NAME covers the
+    # fallback. Self-hosters without Photon still get clustered visits.
     user_ids = (Array(user_ids) | Array(user_id)).compact
     users = user_ids.any? ? User.active.where(id: user_ids) : User.active
     start_at = start_at.to_datetime
