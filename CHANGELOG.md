@@ -24,6 +24,11 @@ Upgrade notes:
 - CI now runs the full RSpec suite on every pull request; the previous workflow had been disabled
 - Globe view is enabled by default for Pro and self-hosted users.
 
+### Changed
+
+- Track segment writes are batched into a single INSERT, and transportation-mode distance calculations run in Ruby instead of round-tripping through PostgreSQL — faster track building and lighter load on the DB during background jobs.
+- Two unused indexes on the `points` table are dropped on upgrade; on large self-hosted instances this frees several GB of disk (~7.4 GB on a production-scale dataset). Migration is non-blocking (`DROP INDEX CONCURRENTLY`).
+
 ### Fixed
 
 - Deleting an import no longer gets stuck on an endless spinner: failed deletions revert to a retriable state, and imports stalled in "Deleting" for over an hour show a retry button (#2835)
