@@ -75,7 +75,7 @@ class Point < ApplicationRecord
   GEOCODE_DEDUP_TTL = 1.day.to_i
 
   def self.geocode_dedup_key(id)
-    "geocode:enq:#{id}"
+    "geocode:enq:Point:#{id}"
   end
 
   def async_reverse_geocode(force: false)

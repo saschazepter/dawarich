@@ -97,7 +97,7 @@ RSpec.describe Point, type: :model do
       let(:point) { build(:point) }
 
       def clear_dedup_key(point_id)
-        Sidekiq.redis { |r| r.del("geocode:enq:#{point_id}") }
+        Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(point_id)) }
       end
 
       before do
@@ -142,7 +142,7 @@ RSpec.describe Point, type: :model do
         it 'sets a 24h-TTL Redis key for the point id' do
           point.save
 
-          ttl = Sidekiq.redis { |r| r.ttl("geocode:enq:#{point.id}") }
+          ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
           expect(ttl).to be > 0
           expect(ttl).to be <= 86_400
         end

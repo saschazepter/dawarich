@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly rescue sweep bypasses the dedup so points whose initial job failed (or whose dedup key lingers) still get processed. Bulk re-runs via Settings → Geocoding respect the same dedup, and exhausted jobs clear their key so the rescue sweep can pick them up.
+- Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly sweep bypasses (and clears) the dedup so points whose retries were exhausted — or whose key still lingers — are picked up on the next run. Bulk re-runs via Settings → Geocoding respect the same dedup.
 
 ## [1.7.10] - 2026-05-26
 
