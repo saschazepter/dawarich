@@ -149,8 +149,8 @@ module Tracks
       all_segments = track.track_segments.reload.to_a
       return if all_segments.empty?
 
-      dominant = all_segments.max_by { |s| s.duration || 0 }
-      track.update!(dominant_mode: dominant.transportation_mode)
+      mode = Track.pick_dominant_mode(all_segments)
+      track.update!(dominant_mode: mode) if mode
     end
   end
 end

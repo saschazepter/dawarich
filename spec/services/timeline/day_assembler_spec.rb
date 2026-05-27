@@ -792,6 +792,57 @@ RSpec.describe Timeline::DayAssembler do
         expect(result).to eq([])
       end
     end
+
+    context 'with stationary phantom tracks (keepalive clusters)' do
+      let(:day) { Time.zone.parse('2026-05-12 00:00:00') }
+
+      let!(:drive_track) do
+        create(:track,
+               user: user,
+               start_at: day + 7.hours,
+               end_at:   day + 7.hours + 30.minutes,
+               distance: 3700,
+               duration: 1800,
+               dominant_mode: :driving)
+      end
+
+      let!(:phantom_stationary_track) do
+        create(:track,
+               user: user,
+               start_at: day + 10.hours,
+               end_at:   day + 10.hours + 30.minutes,
+               distance: 8,
+               duration: 1800,
+               dominant_mode: :stationary)
+      end
+
+      let!(:real_stationary_movement_track) do
+        create(:track,
+               user: user,
+               start_at: day + 12.hours,
+               end_at:   day + 12.hours + 5.minutes,
+               distance: 200,
+               duration: 300,
+               dominant_mode: :stationary)
+      end
+
+      subject do
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      end
+
+      it 'omits low-distance stationary tracks from the journey entries' do
+        entries = subject.first[:entries]
+        track_ids = entries.select { |e| e[:type] == 'journey' }.map { |e| e[:track_id] }
+        expect(track_ids).to include(drive_track.id)
+        expect(track_ids).to include(real_stationary_movement_track.id)
+        expect(track_ids).not_to include(phantom_stationary_track.id)
+      end
+
+      it 'excludes all stationary tracks from time_moving_minutes regardless of distance' do
+        summary = subject.first[:summary]
+        expect(summary[:time_moving_minutes]).to eq(30)
+      end
+    end
   end
 
   describe '#build_visit_entry suggested_places injection' do

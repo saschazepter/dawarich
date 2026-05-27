@@ -18,8 +18,7 @@ module TransportationModes
     def perform(user_id, batch_size: DEFAULT_BATCH_SIZE)
       @user = find_user_or_skip(user_id) || return
 
-      # Extract user thresholds once for all tracks
-      @user_thresholds, @expert_thresholds = extract_user_thresholds
+      @user_thresholds, @expert_thresholds, @enabled_modes = extract_user_settings
 
       tracks_to_process.find_in_batches(batch_size: batch_size) do |tracks|
         tracks.each do |track|
@@ -32,9 +31,13 @@ module TransportationModes
 
     private
 
-    def extract_user_thresholds
+    def extract_user_settings
       safe_settings = Users::SafeSettings.new(@user.settings || {})
-      [safe_settings.transportation_thresholds, safe_settings.transportation_expert_thresholds]
+      [
+        safe_settings.transportation_thresholds,
+        safe_settings.transportation_expert_thresholds,
+        safe_settings.enabled_transportation_modes
+      ]
     end
 
     def tracks_to_process
@@ -60,7 +63,8 @@ module TransportationModes
         detector = TransportationModes::Detector.new(
           track, points,
           user_thresholds: @user_thresholds,
-          user_expert_thresholds: @expert_thresholds
+          user_expert_thresholds: @expert_thresholds,
+          enabled_modes: @enabled_modes
         )
         segment_data = detector.call
 
