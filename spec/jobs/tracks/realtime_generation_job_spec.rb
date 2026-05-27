@@ -112,5 +112,48 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
         expect { described_class.perform_now(user.id) }.not_to raise_error
       end
     end
+
+    describe 'reverse geocoding enqueueing' do
+      def reset_dedup_keys
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+        allow(Tracks::IncrementalGenerator).to receive(:new).and_return(
+          instance_double(Tracks::IncrementalGenerator, call: true)
+        )
+        reset_dedup_keys
+      end
+
+      it 'enqueues only points created in the last 5 minutes' do
+        old_point = create(:point, user: user, reverse_geocoded_at: nil)
+        old_point.update_columns(created_at: 10.minutes.ago)
+        recent_point = create(:point, user: user, reverse_geocoded_at: nil)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .to have_enqueued_job(ReverseGeocodingJob).exactly(1).times
+          .and have_enqueued_job(ReverseGeocodingJob).with('Point', recent_point.id, force: false)
+      end
+
+      it 'does not enqueue already-geocoded points' do
+        create(:point, user: user, reverse_geocoded_at: 1.minute.ago)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+
+      it 'does not enqueue when reverse geocoding is disabled' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        create(:point, user: user, reverse_geocoded_at: nil)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+    end
   end
 end
