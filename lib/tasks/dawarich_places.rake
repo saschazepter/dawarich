@@ -9,6 +9,11 @@ namespace :dawarich do
       end
     end
     Rails.logger.info('[dawarich:cleanup_suggested_places] enqueued')
+    Rails.logger.info(<<~MSG)
+      [dawarich:cleanup_suggested_places] To verify the drain is complete, run:
+        bin/rails runner 'puts Place.where(source: :photon, note: [nil, ""]).where.missing(:visits, :taggings).count'
+      A return value of 0 means all orphan suggested places have been deleted and it is safe to schedule the place_visits drop.
+    MSG
   end
 
   desc 'One-time backfill of legacy Place::DEFAULT_NAME rows'
