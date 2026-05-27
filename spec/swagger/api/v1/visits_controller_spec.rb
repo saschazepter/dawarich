@@ -338,6 +338,116 @@ describe 'Visits API', type: :request do
     end
   end
 
+  path '/api/v1/visits/{id}/select_place' do
+    post 'Select place for visit' do
+      tags 'Visits'
+      consumes 'application/json'
+      produces 'application/json'
+      parameter name: :id, in: :path, type: :integer, required: true, description: 'Visit ID'
+      parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
+      parameter name: :photon, in: :body, schema: {
+        type: :object,
+        properties: {
+          photon: {
+            type: :object,
+            properties: {
+              name: { type: :string },
+              latitude: { type: :number, minimum: -90, maximum: 90 },
+              longitude: { type: :number, minimum: -180, maximum: 180 },
+              osm_id: { type: [:integer, :string, 'null'] },
+              osm_type: { type: [:string, 'null'] },
+              osm_key: { type: [:string, 'null'] },
+              osm_value: { type: [:string, 'null'] },
+              city: { type: [:string, 'null'] },
+              country: { type: [:string, 'null'] },
+              street: { type: [:string, 'null'] },
+              housenumber: { type: [:string, 'null'] },
+              postcode: { type: [:string, 'null'] },
+              geodata: { type: :object }
+            },
+            required: %w[name latitude longitude]
+          }
+        },
+        required: %w[photon]
+      }
+
+      response '201', 'place selected' do
+        let(:id) { test_visit.id }
+        let(:photon) do
+          {
+            photon: {
+              name: 'Café Bravo',
+              latitude: 52.5126,
+              longitude: 13.4012,
+              osm_id: 1_234_567,
+              city: 'Berlin',
+              country: 'Germany',
+              geodata: { 'properties' => { 'osm_id' => 1_234_567 } }
+            }
+          }
+        end
+
+        schema type: :object,
+               properties: {
+                 id: { type: :integer },
+                 name: { type: :string },
+                 latitude: { type: :number },
+                 longitude: { type: :number },
+                 source: { type: :string },
+                 note: { type: [:string, 'null'] },
+                 icon: { type: [:string, 'null'] },
+                 color: { type: [:string, 'null'] },
+                 visits_count: { type: :integer },
+                 created_at: { type: :string, format: :datetime },
+                 tags: {
+                   type: :array,
+                   items: { type: :object }
+                 }
+               }
+
+        run_test!
+      end
+
+      response '422', 'invalid coordinates' do
+        let(:id) { test_visit.id }
+        let(:photon) do
+          {
+            photon: {
+              name: 'Out of range',
+              latitude: 99.0,
+              longitude: 13.4012
+            }
+          }
+        end
+
+        run_test!
+      end
+
+      response '404', 'visit not found' do
+        let(:id) { 999_999 }
+        let(:photon) do
+          {
+            photon: { name: 'X', latitude: 52.5, longitude: 13.4 }
+          }
+        end
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:Authorization) { 'Bearer invalid-token' }
+        let(:id) { test_visit.id }
+        let(:photon) do
+          {
+            photon: { name: 'X', latitude: 52.5, longitude: 13.4 }
+          }
+        end
+
+        run_test!
+      end
+    end
+  end
+
   path '/api/v1/visits/bulk_update' do
     post 'Bulk update visits' do
       tags 'Visits'

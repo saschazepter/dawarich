@@ -2,8 +2,6 @@
 
 module Visits
   class SelectPlace
-    include AdvisoryLockable
-
     PROXIMITY_METERS = 50
 
     def initialize(user:, visit:, photon:)
@@ -13,7 +11,7 @@ module Visits
     end
 
     def call
-      with_dedup_lock do
+      @visit.with_lock do
         place = find_by_osm_id || find_by_name_and_proximity || create_place
         @visit.update!(place_id: place.id, name: place.name)
         place
@@ -22,18 +20,12 @@ module Visits
 
     private
 
-    def with_dedup_lock(&block)
-      return block.call unless advisory_locks_enabled?
-
-      ident = @photon[:osm_id].presence || "#{@photon[:name]}:#{@photon[:latitude]}:#{@photon[:longitude]}"
-      ActiveRecord::Base.with_advisory_lock("select_place:#{@user.id}:#{ident}", &block)
-    end
-
     def find_by_osm_id
       osm_id = @photon[:osm_id]
       return nil if osm_id.blank?
 
       @user.places
+           .includes(:tags)
            .where("geodata->'properties'->>'osm_id' = ?", osm_id.to_s)
            .first
     end
@@ -45,6 +37,7 @@ module Visits
       return nil if name.blank?
 
       @user.places
+           .includes(:tags)
            .where(name: name)
            .where(
              'ST_DWithin(lonlat::geography, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',
@@ -57,7 +50,7 @@ module Visits
       lat = @photon[:latitude].to_f
       lon = @photon[:longitude].to_f
 
-      @user.places.create!(
+      place = @user.places.create!(
         name: @photon[:name],
         latitude: lat,
         longitude: lon,
@@ -67,6 +60,10 @@ module Visits
         geodata: DawarichSettings.store_geodata? ? (@photon[:geodata] || {}) : {},
         source: :photon
       )
+
+      place.association(:tags).target = []
+      place.association(:tags).loaded!
+      place
     end
   end
 end

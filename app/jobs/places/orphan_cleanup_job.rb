@@ -44,6 +44,7 @@ class Places::OrphanCleanupJob < ApplicationJob
       LEFT JOIN taggings t ON t.taggable_id = p.id AND t.taggable_type = 'Place'
       WHERE p.user_id = $1
         AND p.source = #{Place.sources[:photon]}
+        AND p.name = '#{Place::DEFAULT_NAME}'
         AND (p.note IS NULL OR p.note = '')
         AND v.id IS NULL
         AND t.id IS NULL

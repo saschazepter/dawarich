@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
 class Api::V1::Visits::SelectPlaceController < ApiController
+  class InvalidCoordinate < StandardError; end
+
   def create
     visit = current_api_user.visits.find(params[:id])
     place = Visits::SelectPlace.new(user: current_api_user, visit: visit, photon: photon_params).call
     render json: serialize_place(place), status: :created
   rescue ActiveRecord::RecordNotFound
     render json: { error: 'Visit not found' }, status: :not_found
-  rescue ActiveRecord::RecordInvalid, ActionController::ParameterMissing => e
+  rescue ActiveRecord::RecordInvalid, ActionController::ParameterMissing, InvalidCoordinate => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
@@ -26,8 +28,8 @@ class Api::V1::Visits::SelectPlaceController < ApiController
 
       lat = p[:latitude].to_f
       lon = p[:longitude].to_f
-      raise ActionController::ParameterMissing, :latitude  unless lat.between?(-90, 90)
-      raise ActionController::ParameterMissing, :longitude unless lon.between?(-180, 180)
+      raise InvalidCoordinate, 'latitude out of range [-90, 90]'    unless lat.between?(-90, 90)
+      raise InvalidCoordinate, 'longitude out of range [-180, 180]' unless lon.between?(-180, 180)
     end
   end
 

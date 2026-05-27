@@ -21,4 +21,18 @@ namespace :dawarich do
     Places::BulkNameFetchingJob.perform_later
     Rails.logger.info('[dawarich:backfill_place_names] enqueued')
   end
+
+  desc 'Re-enqueue Places::NameFetchingJob for places stuck at DEFAULT_NAME (failed/retried out)'
+  task resweep_default_named_places: :environment do
+    cutoff = ENV.fetch('STUCK_AFTER_HOURS', '24').to_i.hours.ago
+    scope = Place.where(name: Place::DEFAULT_NAME, source: :photon).where('created_at < ?', cutoff)
+    count = 0
+    scope.in_batches(of: 500) do |batch|
+      batch.pluck(:id).each_with_index do |pid, i|
+        Places::NameFetchingJob.set(wait: (i * 0.1).seconds).perform_later(pid)
+        count += 1
+      end
+    end
+    Rails.logger.info("[dawarich:resweep_default_named_places] re-enqueued=#{count} cutoff=#{cutoff.iso8601}")
+  end
 end

@@ -30,8 +30,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- `POST /api/v1/visits/:id/select_place` now validates latitude is within [-90, 90] and longitude within [-180, 180], rejecting out-of-range coordinates with 422.
-- Concurrent `POST /api/v1/visits/:id/select_place` calls for the same Photon result are now serialized via a PG advisory lock keyed on `(user_id, osm_id|name+coords)`, preventing duplicate Place rows (skipped automatically when advisory locks are disabled, e.g. behind PgBouncer transaction-pool).
+- `POST /api/v1/visits/:id/select_place` now validates latitude is within [-90, 90] and longitude within [-180, 180], rejecting out-of-range coordinates with 422 and a coordinate-specific error message.
+- Concurrent `POST /api/v1/visits/:id/select_place` calls on the same visit are now serialized via a row-level lock on the visit (works behind PgBouncer transaction-pool), preventing duplicate Place rows from rapid double-clicks.
+- `Places::OrphanCleanupJob` now only deletes Photon-source places still bearing `Place::DEFAULT_NAME`, so user-created Photon places without visits or tags are preserved.
+- Response serialization in `POST /api/v1/visits/:id/select_place` no longer fires an extra `tags` query for freshly-created places.
+
+### Added
+
+- `bin/rails dawarich:resweep_default_named_places` — re-enqueues `Places::NameFetchingJob` for places stuck at `Place::DEFAULT_NAME` past `STUCK_AFTER_HOURS` (default 24).
 
 ### Removed
 

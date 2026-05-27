@@ -4916,6 +4916,133 @@ paths:
                   description: Array of visit IDs to merge (minimum 2)
               required:
               - visit_ids
+  "/api/v1/visits/{id}/select_place":
+    post:
+      summary: Select place for visit
+      tags:
+      - Visits
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Visit ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '201':
+          description: place selected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  latitude:
+                    type: number
+                  longitude:
+                    type: number
+                  source:
+                    type: string
+                  note:
+                    type:
+                    - string
+                    - 'null'
+                  icon:
+                    type:
+                    - string
+                    - 'null'
+                  color:
+                    type:
+                    - string
+                    - 'null'
+                  visits_count:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: datetime
+                  tags:
+                    type: array
+                    items:
+                      type: object
+        '422':
+          description: invalid coordinates
+        '404':
+          description: visit not found
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                photon:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    latitude:
+                      type: number
+                      minimum: -90
+                      maximum: 90
+                    longitude:
+                      type: number
+                      minimum: -180
+                      maximum: 180
+                    osm_id:
+                      type:
+                      - integer
+                      - string
+                      - 'null'
+                    osm_type:
+                      type:
+                      - string
+                      - 'null'
+                    osm_key:
+                      type:
+                      - string
+                      - 'null'
+                    osm_value:
+                      type:
+                      - string
+                      - 'null'
+                    city:
+                      type:
+                      - string
+                      - 'null'
+                    country:
+                      type:
+                      - string
+                      - 'null'
+                    street:
+                      type:
+                      - string
+                      - 'null'
+                    housenumber:
+                      type:
+                      - string
+                      - 'null'
+                    postcode:
+                      type:
+                      - string
+                      - 'null'
+                    geodata:
+                      type: object
+                  required:
+                  - name
+                  - latitude
+                  - longitude
+              required:
+              - photon
   "/api/v1/visits/bulk_update":
     post:
       summary: Bulk update visits

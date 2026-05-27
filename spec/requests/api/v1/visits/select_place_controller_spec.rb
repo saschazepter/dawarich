@@ -47,4 +47,31 @@ RSpec.describe 'POST /api/v1/visits/:id/select_place' do
 
     expect(response).to have_http_status(:unprocessable_entity)
   end
+
+  it 'returns 422 with a coordinate-specific message when latitude is out of range' do
+    payload = photon_payload.deep_dup
+    payload[:photon][:latitude] = 99.0
+    post "/api/v1/visits/#{visit.id}/select_place", params: payload, headers: headers, as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body).fetch('error')).to match(/latitude out of range/)
+  end
+
+  it 'returns 422 with a coordinate-specific message when longitude is out of range' do
+    payload = photon_payload.deep_dup
+    payload[:photon][:longitude] = -181.0
+    post "/api/v1/visits/#{visit.id}/select_place", params: payload, headers: headers, as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body).fetch('error')).to match(/longitude out of range/)
+  end
+
+  it 'does not issue an extra tags lookup when serializing a freshly-created place' do
+    expect do
+      post "/api/v1/visits/#{visit.id}/select_place", params: photon_payload, headers: headers, as: :json
+    end.not_to raise_error
+    expect(response).to have_http_status(:created)
+    body = JSON.parse(response.body)
+    expect(body['tags']).to eq([])
+  end
 end
