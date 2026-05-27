@@ -2,13 +2,17 @@
 
 class Users::RegistrationsController < Devise::RegistrationsController
   include UtmTrackable
+  include PendingImportClaimable
 
+  prepend_before_action :handle_logged_in_with_ticket, only: :new
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
   before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
   before_action :store_gads_linker, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
+    session[:pending_import_ticket] = params[:import_ticket] if params[:import_ticket].present?
+
     build_resource({})
 
     resource.email = @invitation.email if @invitation
@@ -102,6 +106,8 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def after_sign_up_path_for(resource)
+    claim_pending_import_for(resource)
+
     return family_path if @invitation&.family
 
     super(resource)
@@ -114,6 +120,20 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   private
+
+  def handle_logged_in_with_ticket
+    return unless user_signed_in? && params[:import_ticket].present?
+
+    pending = PendingImport.claimable.find_by(claim_ticket: params[:import_ticket])
+    if pending
+      PendingImports::Claim.new(pending, current_user).call
+      flash[:notice] = "Importing #{pending.original_filename}... You'll see it in your dashboard shortly."
+    else
+      flash[:alert] = 'Your import link has expired or already been used.'
+    end
+
+    redirect_to imports_path
+  end
 
   def post_signup_setup(resource)
     assign_utm_params(resource)

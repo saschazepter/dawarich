@@ -261,6 +261,9 @@ Rails.application.routes.draw do
 
       resources :areas,     only: %i[index show create update destroy]
       resources :imports,   only: %i[index show create]
+      namespace :imports do
+        post :pending, to: 'pending#create'
+      end
       resources :places,    only: %i[index show create update destroy] do
         collection do
           get 'nearby'

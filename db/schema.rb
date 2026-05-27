@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_21_121527) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pgcrypto"
   enable_extension "postgis"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
@@ -221,6 +222,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "pending_imports", force: :cascade do |t|
+    t.uuid "claim_ticket", default: -> { "gen_random_uuid()" }, null: false
+    t.string "original_filename", null: false
+    t.string "source_hint"
+    t.string "origin", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "claimed_at"
+    t.bigint "claimed_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["claim_ticket"], name: "index_pending_imports_on_claim_ticket", unique: true
+    t.index ["claimed_by_user_id"], name: "index_pending_imports_on_claimed_by_user_id"
+    t.index ["expires_at"], name: "index_pending_imports_on_expires_at"
+  end
+
   create_table "place_visits", force: :cascade do |t|
     t.bigint "place_id", null: false
     t.bigint "visit_id", null: false
@@ -325,6 +341,25 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.index ["user_id", "year", "month", "chunk_number"], name: "index_raw_data_archives_uniqueness", unique: true
     t.index ["user_id", "year", "month"], name: "index_points_raw_data_archives_on_user_id_and_year_and_month"
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
+  end
+
+  create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "resource_type", null: false
+    t.bigint "resource_id"
+    t.string "name", limit: 255, null: false
+    t.string "magic_phrase", limit: 255
+    t.datetime "expires_at"
+    t.datetime "revoked_at"
+    t.jsonb "settings", default: {}, null: false
+    t.integer "view_count", default: 0, null: false
+    t.datetime "last_accessed_at"
+    t.integer "og_image_state", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["resource_type", "resource_id"], name: "index_shared_links_on_resource_type_and_resource_id", where: "(resource_id IS NOT NULL)"
+    t.index ["user_id"], name: "index_shared_links_active_by_user", where: "(revoked_at IS NULL)"
+    t.index ["user_id"], name: "index_shared_links_on_user_id"
   end
 
   create_table "stats", force: :cascade do |t|
@@ -515,12 +550,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
   add_foreign_key "notifications", "users"
+  add_foreign_key "pending_imports", "users", column: "claimed_by_user_id", on_delete: :nullify
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
+  add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"
