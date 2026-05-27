@@ -121,8 +121,13 @@ module VideoExports
       token = VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce)
       callback_path = "/api/v1/video_exports/#{video_export.id}/callback?token=#{token}"
       protocol = ENV.fetch('APPLICATION_PROTOCOL', 'http')
+
+      domain = ENV['DOMAIN']
+      if domain.present?
+        return ["#{protocol}://#{domain}#{callback_path}"]
+      end
+
       hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip).reject(&:blank?)
-      hosts.reject! { |h| h.match?(/\Alocalhost(:\d+)?\z/) || h.match?(/\A127\.0\.0\.1(:\d+)?\z/) }
 
       # Build a URL for each configured host
       urls = hosts.map { |host| "#{protocol}://#{host}#{callback_path}" }
