@@ -175,6 +175,17 @@ RSpec.describe Point, type: :model do
             .to have_enqueued_job(ReverseGeocodingJob).with('Point', kind_of(Integer), force: false)
         end
       end
+
+      context 'when perform_later raises after the SETNX claim' do
+        it 'releases the dedup key so a retry can re-claim' do
+          point.save
+          clear_dedup_key(point.id)
+          allow(ReverseGeocodingJob).to receive(:perform_later).and_raise(StandardError, 'queue down')
+
+          expect { point.async_reverse_geocode }.to raise_error(StandardError, 'queue down')
+          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+        end
+      end
     end
 
     describe '#lon' do
