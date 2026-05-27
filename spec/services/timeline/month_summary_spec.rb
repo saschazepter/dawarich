@@ -114,6 +114,35 @@ RSpec.describe Timeline::MonthSummary do
         expect(summary[:days]['2026-04-22']).to be_nil
       end
     end
+
+    context 'with points only (no track or visit) on a day' do
+      let(:active_day_local) { Time.zone.parse('2026-04-15 14:00:00 +0200') }
+      let(:empty_day_local)  { Time.zone.parse('2026-04-16 14:00:00 +0200') }
+
+      before do
+        3.times do |i|
+          create(:point, user: user, timestamp: (active_day_local + (i * 10).minutes).to_i)
+        end
+      end
+
+      it 'still marks the day as active (heat_bucket >= 1)' do
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-04-15' }
+        expect(cell[:heat_bucket]).to be >= 1
+      end
+
+      it 'leaves an empty day with no activity (heat_bucket == 0)' do
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-04-16' }
+        expect(cell[:heat_bucket]).to eq(0)
+      end
+
+      it 'groups points by the user timezone when computing the active day' do
+        # 22:30 UTC on April 14 = 00:30 April 15 in Europe/Berlin (CEST +02:00).
+        # Point's UTC date is 14th, but locally it falls on the 15th.
+        create(:point, user: user, timestamp: Time.zone.parse('2026-04-14 22:30:00 UTC').to_i)
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-04-15' }
+        expect(cell[:heat_bucket]).to be >= 1
+      end
+    end
   end
 
   describe 'Lite plan restrictions' do

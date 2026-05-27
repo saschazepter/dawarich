@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. (#2579)
+
+
 ## [1.7.10] - 2026-05-26
 
 ### ⚠️ Upgrade notes
