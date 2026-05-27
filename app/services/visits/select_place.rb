@@ -25,7 +25,7 @@ module Visits
       return nil if osm_id.blank?
 
       @user.places
-           .includes(:tags)
+           .includes(:tags, :visits)
            .where("geodata->'properties'->>'osm_id' = ?", osm_id.to_s)
            .first
     end
@@ -37,7 +37,7 @@ module Visits
       return nil if name.blank?
 
       @user.places
-           .includes(:tags)
+           .includes(:tags, :visits)
            .where(name: name)
            .where(
              'ST_DWithin(lonlat::geography, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',
@@ -61,8 +61,10 @@ module Visits
         source: :photon
       )
 
-      place.association(:tags).target = []
-      place.association(:tags).loaded!
+      %i[tags visits].each do |assoc|
+        place.association(assoc).target = []
+        place.association(assoc).loaded!
+      end
       place
     end
   end

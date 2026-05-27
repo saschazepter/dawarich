@@ -66,12 +66,13 @@ RSpec.describe 'POST /api/v1/visits/:id/select_place' do
     expect(JSON.parse(response.body).fetch('error')).to match(/longitude out of range/)
   end
 
-  it 'does not issue an extra tags lookup when serializing a freshly-created place' do
+  it 'returns empty tags and zero visits_count for a freshly-created place without extra association lookups' do
     expect do
       post "/api/v1/visits/#{visit.id}/select_place", params: photon_payload, headers: headers, as: :json
     end.not_to raise_error
     expect(response).to have_http_status(:created)
     body = JSON.parse(response.body)
     expect(body['tags']).to eq([])
+    expect(body['visits_count']).to eq(0)
   end
 end

@@ -11,7 +11,7 @@ namespace :dawarich do
     Rails.logger.info('[dawarich:cleanup_suggested_places] enqueued')
     Rails.logger.info(<<~MSG)
       [dawarich:cleanup_suggested_places] To verify the drain is complete, run:
-        bin/rails runner 'puts Place.where(source: :photon, note: [nil, ""]).where.missing(:visits, :taggings).count'
+        bin/rails runner 'puts Place.where(source: :photon, name: Place::DEFAULT_NAME, note: [nil, ""]).where.missing(:visits, :taggings).count'
       A return value of 0 means all orphan suggested places have been deleted and it is safe to schedule the place_visits drop.
     MSG
   end
@@ -28,8 +28,8 @@ namespace :dawarich do
     scope = Place.where(name: Place::DEFAULT_NAME, source: :photon).where('created_at < ?', cutoff)
     count = 0
     scope.in_batches(of: 500) do |batch|
-      batch.pluck(:id).each_with_index do |pid, i|
-        Places::NameFetchingJob.set(wait: (i * 0.1).seconds).perform_later(pid)
+      batch.pluck(:id).each do |pid|
+        Places::NameFetchingJob.set(wait: (count * 0.1).seconds).perform_later(pid)
         count += 1
       end
     end
