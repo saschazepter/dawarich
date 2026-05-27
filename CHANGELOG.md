@@ -100,7 +100,6 @@ Upgrade notes:
 - Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 - The app no longer trips firewall blocks by repeatedly checking family status when you're not part of a family.
 
-
 ## [1.7.10] - 2026-05-26
 
 ### ⚠️ Upgrade notes
