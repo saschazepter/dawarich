@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
+- **(WIP, web UI)** `POST /visits/:id/select_place` web endpoint that hands a Photon candidate to `Visits::SelectPlace`, plus a Stimulus controller skeleton at `realtime_place_picker_controller.js`. Foundation for switching the web timeline picker from the legacy `place_visits` association to live Photon suggestions; the partial swap and Stimulus wiring are not done yet.
 
 ### Fixed
 

@@ -107,6 +107,9 @@ Rails.application.routes.draw do
     status ? "#{base}&status=#{status}" : "#{base}&status=confirmed"
   }
   resources :visits, only: %i[update destroy] do
+    member do
+      post :select_place, to: 'visits/select_places#create'
+    end
     collection do
       patch :bulk_update
       delete :bulk_destroy
