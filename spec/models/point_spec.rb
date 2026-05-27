@@ -96,13 +96,19 @@ RSpec.describe Point, type: :model do
     describe '#async_reverse_geocode' do
       let(:point) { build(:point) }
 
+      def clear_dedup_key(point_id)
+        Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(point_id)) }
+      end
+
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
         allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
       end
 
       it 'enqueues ReverseGeocodeJob with correct arguments' do
         point.save
+        clear_dedup_key(point.id)
 
         expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
           .with('Point', point.id, force: false)
@@ -123,6 +129,61 @@ RSpec.describe Point, type: :model do
 
         it 'does not enqueue ReverseGeocodeJob' do
           expect { point.save }.not_to have_enqueued_job(ReverseGeocodingJob)
+        end
+      end
+
+      context 'when called twice for the same point' do
+        it 'only enqueues a single job (dedup)' do
+          point.save
+
+          expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
+        end
+
+        it 'sets a 24h-TTL Redis key for the point id' do
+          point.save
+
+          ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
+          expect(ttl).to be > 0
+          expect(ttl).to be <= 86_400
+        end
+      end
+
+      context 'with force: true' do
+        it 'enqueues even when dedup key is set' do
+          point.save
+
+          expect { point.async_reverse_geocode(force: true) }
+            .to have_enqueued_job(ReverseGeocodingJob)
+            .with('Point', point.id, force: true)
+        end
+
+        it 'clears the dedup key so subsequent non-force calls can re-claim' do
+          point.save
+
+          point.async_reverse_geocode(force: true)
+
+          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+        end
+      end
+
+      context 'with different points' do
+        it 'enqueues a separate job per point' do
+          point.save
+          other_point = build(:point)
+
+          expect { other_point.save }
+            .to have_enqueued_job(ReverseGeocodingJob).with('Point', kind_of(Integer), force: false)
+        end
+      end
+
+      context 'when perform_later raises after the SETNX claim' do
+        it 'releases the dedup key so a retry can re-claim' do
+          point.save
+          clear_dedup_key(point.id)
+          allow(ReverseGeocodingJob).to receive(:perform_later).and_raise(StandardError, 'queue down')
+
+          expect { point.async_reverse_geocode }.to raise_error(StandardError, 'queue down')
+          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
         end
       end
     end
