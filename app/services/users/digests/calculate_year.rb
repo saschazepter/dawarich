@@ -143,6 +143,7 @@ module Users
             AND timestamp <= #{end_of_year.to_i}
             AND country_name IS NOT NULL
             AND country_name != ''
+            AND #{Points::Flyover.exclude_sql}
           GROUP BY point_date, country_name
           ORDER BY point_date, min_timestamp
         SQL

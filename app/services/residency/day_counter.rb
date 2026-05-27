@@ -129,6 +129,7 @@ module Residency
             AND country_name IS NOT NULL
             AND country_name != ''
             AND (anomaly IS NOT TRUE)
+            AND #{Points::Flyover.exclude_sql}
           GROUP BY point_date, country_name
           ORDER BY point_date
         SQL

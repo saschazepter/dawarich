@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Trips, Year-End Digests, and the Days-per-Country residency view no longer count countries you only flew over. The flyover filter (already applied to monthly Stats since 1.6.0) is now consolidated in a single `Points::Flyover` source of truth and applied uniformly across all country-counting surfaces (#2711).
+
 ## [1.7.10] - 2026-05-26
 
 ### ⚠️ Upgrade notes

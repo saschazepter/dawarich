@@ -37,7 +37,11 @@ class Trip < ApplicationRecord
   end
 
   def calculate_countries
-    self.visited_countries = points.pluck(:country_name).uniq.compact
+    self.visited_countries = points
+                             .pluck(:country_name, :velocity)
+                             .reject { |country_name, velocity| country_name.nil? || Points::Flyover.flyover?(velocity: velocity) }
+                             .map(&:first)
+                             .uniq
   end
 
   private
