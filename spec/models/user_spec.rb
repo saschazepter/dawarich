@@ -28,7 +28,18 @@ RSpec.describe User, type: :model do
         .with_values(none: 0, paddle: 1, apple_iap: 2, google_play: 3)
         .with_prefix(:sub_source)
     }
-    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
+    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1, family: 2) }
+  end
+
+  describe 'plan enum' do
+    it 'supports the family plan' do
+      user = create(:user, plan: :family, skip_auto_trial: true)
+      expect(user.family?).to be true
+    end
+
+    it 'has integer value 2 for family' do
+      expect(User.plans['family']).to eq(2)
+    end
   end
 
   describe 'callbacks' do

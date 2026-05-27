@@ -55,7 +55,7 @@ class User < ApplicationRecord
   # `User#none?` predicate that collides with NilClass semantics in
   # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
-  enum :plan, { lite: 0, pro: 1 }, default: :pro
+  enum :plan, { lite: 0, pro: 1, family: 2 }, default: :pro
 
   MAX_FAILED_OTP_ATTEMPTS = 10
   OTP_LOCK_DURATION = 30.minutes
