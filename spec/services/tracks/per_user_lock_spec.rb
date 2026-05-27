@@ -118,6 +118,56 @@ RSpec.describe Tracks::PerUserLock do
     # and then calls SmartDetect, which post-Phase-2 also wraps in PerUserLock.
     # Without reentrancy, the second acquire would block on its own outer lock
     # and time out.
+    describe 'heartbeat variant (.with_user_lock_heartbeat)' do
+      it 'yields and releases the lock cleanly on success' do
+        result = described_class.with_user_lock_heartbeat(user_id, ttl: 1.second, heartbeat: 0.1, max_wall: 5) { :ok }
+
+        expect(result).to eq(:ok)
+        expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(0)
+      end
+
+      it 'extends the lock TTL while the block is running' do
+        # ttl: 1s, heartbeat: 0.1s — the heartbeat refreshes the TTL before it expires.
+        # Block runs for 1.5s which is past the original 1s TTL.
+        described_class.with_user_lock_heartbeat(user_id, ttl: 1, heartbeat: 0.1, max_wall: 30) do
+          sleep 1.5
+          # Mid-block: lock should still be alive because heartbeat refreshed it.
+          expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(1)
+        end
+      end
+
+      it 'token-verifies EXPIRE so a leaked heartbeat cannot extend a NEW owner\'s lock' do
+        # Acquire then forcibly overwrite the lock value (simulating a different owner).
+        described_class.with_user_lock_heartbeat(user_id, ttl: 1, heartbeat: 0.1, max_wall: 30) do
+          Sidekiq.redis { |r| r.set(redis_key, 'someone-else', ex: 1) }
+          sleep 0.5
+          # Heartbeat tried to EXPIRE — but the Lua guard saw the token mismatch
+          # and refused. The lock value remains 'someone-else'.
+          expect(Sidekiq.redis { |r| r.get(redis_key) }).to eq('someone-else')
+        end
+      end
+
+      it 'stops extending past max_wall, allowing the short TTL to expire the lock' do
+        # max_wall: 0.4s. ttl: 1s. After max_wall, heartbeat stops refreshing and
+        # the lock expires on its short TTL during the block.
+        described_class.with_user_lock_heartbeat(user_id, ttl: 1, heartbeat: 0.1, max_wall: 0.4) do
+          sleep 0.2
+          expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(1)
+          sleep 1.4
+          # Past max_wall — heartbeat stopped — lock expired.
+          expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(0)
+        end
+      end
+
+      it 'releases the lock when the block raises' do
+        expect do
+          described_class.with_user_lock_heartbeat(user_id, ttl: 1, heartbeat: 0.1, max_wall: 5) { raise 'boom' }
+        end.to raise_error('boom')
+
+        expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(0)
+      end
+    end
+
     describe 'reentrancy within the same thread' do
       it 'yields immediately on a nested call for the same user without re-acquiring' do
         inner_ran = false

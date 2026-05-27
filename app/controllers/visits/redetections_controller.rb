@@ -23,6 +23,20 @@ class Visits::RedetectionsController < ApplicationController
                 notice: "Re-detection queued. We'll notify you when it finishes."
   end
 
+  # DELETE /visits/redetections/lock
+  # Clears the current user's PerUserLock so a stuck/zombie lock can be reset
+  # without waiting for the TTL. Self-only (no admin path in v1).
+  def destroy_lock
+    Tracks::PerUserLock.force_clear(current_user.id)
+    respond_to do |format|
+      format.html do
+        redirect_to settings_visits_path,
+                    notice: 'Re-detection lock cleared. You can retry now.'
+      end
+      format.json { head :no_content }
+    end
+  end
+
   private
 
   def cooldown_active?

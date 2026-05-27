@@ -79,6 +79,7 @@ Rails.application.routes.draw do
 
   namespace :visits do
     resource :redetections, only: :create
+    delete 'redetections/lock', to: 'redetections#destroy_lock', as: :redetections_lock
   end
 
   get 'settings/theme', to: 'settings#theme'
