@@ -4,44 +4,110 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.7.9] - Unreleased
 
-### ⚠️ Upgrade notes
-
-- **Visit detection no longer fan-outs candidate places.** Previously, every detected visit persisted up to 25 reverse-geocoded "possible place" rows. Now each visit owns exactly one Place, created with a default name and enriched by an enqueued `Places::NameFetchingJob` (so visit detection itself never blocks on Photon). Alternative suggestions are available live via `GET /api/v1/visits/:id/possible_places` and the new `POST /api/v1/visits/:id/select_place` endpoint. Existing pre-rollout candidate rows can be cleaned up with the new `bin/rails dawarich:cleanup_suggested_places` task. The `place_visits` table is preserved for one release and will be dropped in a follow-up after operators verify the drain completed.
-- **Web timeline picker** (the radio-list under "Needs review" for suggested visits) still reads from the legacy `place_visits` association in this release. After running the cleanup rake task, that list will show only the visit's main place. A follow-up release will switch the timeline picker to use real-time Photon suggestions via the new endpoints. Mobile clients consuming the JSON API see the new behavior immediately.
-- **Two one-time operator tasks** ship in this release. Run after deploy:
-  1. `bin/rails dawarich:backfill_place_names` — names any remaining legacy `Place::DEFAULT_NAME` rows.
-  2. `bin/rails dawarich:cleanup_suggested_places` — drains orphan suggested-place rows.
-  Self-hosters can run them on their own schedule; both are safe to re-run.
+## [1.7.11] - Unreleased
 
 ### Added
 
-- Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
-- `POST /api/v1/visits/:id/select_place` — assigns a Photon candidate to a visit, lazy-creating the Place row in the user's catalogue. Returns the materialized Place.
-- Visit self-cleanup: when a visit's `place_id` changes or the visit is destroyed, the previous Place is deleted automatically if it has no notes, no tags, and no other referring visits.
-
-### Changed
-
-- Visit detection no longer creates 25 candidate Places per visit. Each visit now has exactly one Place, named asynchronously via `Places::NameFetchingJob` so the detection pipeline never waits on Photon.
-- `GET /api/v1/visits/:id/possible_places` returns real-time Photon suggestions instead of pre-persisted candidates. The currently-assigned place is prepended to the list with its `id`; suggestions below have `id: null` and round-trip via the new `select_place` endpoint.
-- `GET /api/v1/places/nearby` and `POST /api/v1/places/nearby` now include `id` (always `null` for Photon results), `source`, and `geodata` keys in each item (additive — existing consumers unaffected).
-- `Place#has_many :visits` is now `dependent: :nullify` (was `:destroy`). Deleting a Place leaves its visits intact with `place_id = nil`, preventing accidental visit loss.
+- Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
+- `bin/rails dawarich:resweep_default_named_places` — re-enqueues `Places::NameFetchingJob` for places stuck at `Place::DEFAULT_NAME` past `STUCK_AFTER_HOURS` (default 24).
 
 ### Fixed
 
-- `POST /api/v1/visits/:id/select_place` now validates latitude is within [-90, 90] and longitude within [-180, 180], rejecting out-of-range coordinates with 422 and a coordinate-specific error message.
-- Concurrent `POST /api/v1/visits/:id/select_place` calls on the same visit are now serialized via a row-level lock on the visit (works behind PgBouncer transaction-pool), preventing duplicate Place rows from rapid double-clicks.
-- `Places::OrphanCleanupJob` now only deletes Photon-source places still bearing `Place::DEFAULT_NAME`, so user-created Photon places without visits or tags are preserved.
-- Response serialization in `POST /api/v1/visits/:id/select_place` no longer fires an extra `tags` query for freshly-created places.
+- Cloud only: PostHog exception capture is enabled to help diagnose production errors. Disabled on self-hosted instances and skipped unless `POSTHOG_API_KEY` is configured. The payload includes `user.id`, controller/action, and parameter-filtered request data — email, name, phone, credentials, and coordinates are redacted before send.
+- Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. (#2579)
+- `POST /api/v1/visits/:id/select_place` returns a coordinate-specific message ("latitude out of range [-90, 90]") instead of a generic "param is missing" for out-of-bounds coordinates.
+- Concurrent `POST /api/v1/visits/:id/select_place` calls on the same visit are serialized via a row-level lock on the visit (PgBouncer transaction-pool compatible), preventing duplicate Place rows from rapid double-clicks.
+- `Places::OrphanCleanupJob` only deletes Photon-source places still bearing `Place::DEFAULT_NAME`, so user-named Photon places without visits or tags are preserved.
+- `POST /api/v1/visits/:id/select_place` no longer fires extra `tags`/`visits` queries when serializing a freshly-created place.
+
+
+## [1.7.10] - 2026-05-26
+
+### ⚠️ Upgrade notes
+
+- Stops shorter than 5 minutes are no longer suggested as visits by default. Change the threshold under **Map V2 ->Settings -> Visit detection** if you want shorter stops included.
+- Smart density fill now works correctly (it was broken in 1.7.8–1.7.9). You may see more visit suggestions, especially on days when your tracker recorded points unevenly.
 
 ### Added
 
-- `bin/rails dawarich:resweep_default_named_places` — re-enqueues `Places::NameFetchingJob` for places stuck at `Place::DEFAULT_NAME` past `STUCK_AFTER_HOURS` (default 24).
+- Map v2 family member markers show name + last-seen datetime on hover.
+- Map v2 area info card exposes an **Edit** button that opens the area modal pre-filled — rename and resize existing areas without redrawing. Backed by a new `PATCH /areas/:id` route.
+- Map v2 selection tool: **Delete N Anomaly Points** button appears when the selection contains anomaly points, so you can clean up GPS noise without touching real points.
+- New **Minimum visit duration** setting under Settings → Visit detection (1–60 minutes, default 5). Raise it to ignore short drive-bys; lower it to catch brief errands. Replaces the hardcoded 3-minute floor that was the same for everyone in 1.7.8–1.7.9.
 
-### Removed
+### Changed
 
-- `place_name_fetching_job` daily cron entry. Place naming now happens per-place asynchronously when each Place is created — no nightly catch-up needed.
+- Map v2 side panel only closes via its X button. Create Visit / Create Area / Create Place and clicking a visit marker no longer dismiss the panel — visit/track clicks switch the active tab in place.
+- Map v2 Visits layer is viewport-bounded: enabling the layer and panning/zooming refetch via `selection=true&sw_lat=…&ne_lng=…` (debounced 400 ms) so a wide date range no longer hauls every visit at once. Timeline day-selection still loads the full day regardless of zoom.
+- Submitting "Create Visit" auto-enables the Visits layer so the new visit is immediately visible.
+
+### Fixed
+
+- Map v2 Place creation modal now closes on successful submit — the success path is no longer gated on a Turbo Stream side-effect, so the modal always dismisses after the place is saved.
+- Stats page no longer 500s after deleting an import or recalculating a month with no points. #2682
+- Timeline no longer fills with `traveled · 0m` rows from stationary keepalive clusters; commutes that absorb adjacent stationary points are correctly labeled by their moving mode (e.g. `drove`) rather than `stationary`. Hit **Settings → Recalculate** to apply to existing data.
+- New tracks now honor the user's enabled transportation modes during initial detection. Previously only the Recalculate path respected disabled modes, so a user who turned off (e.g.) cycling still saw cycling assigned to freshly built tracks. #2787
+- Visit detection no longer suggests stops at places you only drove past. Clusters where the device was moving faster than walking pace between real GPS points are rejected, so road centerlines on busy arterials stop showing up as "visits" to Kent Street / Leach Highway / etc. #2736 #2775
+- Visit detection requires real GPS points (not interpolated density-fill ghost points) to meet the minimum-points threshold, so a single drive between two real fixes can't be inflated into a visit. #2736
+- Smart density fill now works correctly — it was silently disabled in 1.7.8 and 1.7.9.
+- Visit detection now respects your **Visit time threshold** setting when deciding where one visit ends and the next begins. The setting was previously ignored and always treated as 30 minutes.
+
+
+## [1.7.9] - 2026-05-21
+
+### ⚠️ Upgrade notes
+
+- Run **Settings → Recalculate tracks & stats** to merge pre-existing overlapping tracks. #2463
+- Visit detection now creates one Place per visit (was up to 25 candidates). Use `GET /api/v1/visits/:id/possible_places` and `POST /api/v1/visits/:id/select_place` for alternatives. The `place_visits` table will be dropped in a follow-up release.
+- Run after deploy (both safe to re-run):
+  1. `bin/rails dawarich:backfill_place_names`
+  2. `bin/rails dawarich:cleanup_suggested_places`
+
+### Added
+
+- Map v2 **Hexagons** layer (Pro) — H3 cell heatmap, zoom-adaptive resolution. #2568
+- Download a trip's points as GPX or GeoJSON from the trip page. #2400
+- OIDC PKCE support via `OIDC_PKCE_ENABLED=true` (off by default). #2282
+- `POST /api/v1/visits/:id/select_place` — assign a Photon candidate to a visit.
+- Visits auto-clean their previous Place on reassignment/destroy when it has no notes, tags, or other references.
+
+### Changed
+
+- `GET /api/v1/visits/:id/possible_places` returns live Photon suggestions; the assigned place comes first with its `id`, others have `id: null`.
+- `GET/POST /api/v1/places/nearby` now include `id`, `source`, and `geodata` per item (additive).
+- `Place#has_many :visits` is now `dependent: :nullify` — deleting a Place no longer deletes its visits.
+
+### Fixed
+
+- `select_place` validates lat/lon bounds (422 on out-of-range) and serializes concurrent calls via PG advisory lock to prevent duplicate Places.
+- `select_place` dedups by name + 50 m proximity instead of `geodata` JSONB, working regardless of `STORE_GEODATA`.
+- Self-hosted instances no longer 500 on Stats/Insights when `JWT_SECRET_KEY` is unset; `/trial/upgrade` now redirects home. #2682
+- Imports table shows duplicate-skip counts and notifies when an import is all duplicates. #2721
+- Family members' positions update in real time instead of every 60 s. #2733
+- Immich/Photoprism photos reappear after a transient empty response (no more 30-minute hidden window). #1071, #784
+- Map v2 **Select Area** includes anomaly points so bulk-delete works on them. #2476
+- Map v2 area-selection: restored the "Delete N Points" action that disappeared in 1.7.8. Pro / self-hosted, confirmation prompt, capped at 5,000 per request; recalculates affected tracks and monthly stats. #2754
+- Timeline day click no longer corrupts the Search end-time; fields match date-picker minute precision. #2624
+- Map v2 speed-color gradient editor saves and applies correctly. #2120
+- Trips respect the GPS anomaly filter for route, distance, and countries. Run **Recalculate trip** to refresh existing trips. #2474
+- Bulk and single point deletion recalculate affected tracks. #2496
+- "Recalculate tracks & stats" and "Re-evaluate past data" skip anomaly points, matching real-time generation. #2630
+- Trip photos appear on sub-day trips (timestamps no longer truncated to dates). #2708
+- Tracks no longer split into overlapping segments when points arrive late/out of order; same-device overlaps auto-merge on the next run. #2463
+- Same-tracker boundary merging skips tracks more than 5 km apart (no more GPS-jump fusion).
+- Visit place cleanup runs in `Places::DeleteIfOrphanJob` instead of inline `after_commit`.
+- `DataMigrations::BackfillPlacesUserIdJob` correctly excludes just-assigned places from the orphan-delete pass.
+- Real-time track boundary detector skips the per-track scan when no untracked points exist.
+- Bulk visit suggestion accepts both `user_id:` and `user_ids:` to survive stale Sidekiq jobs. #2740
+- `RemoveUnusedIndexes` migration drops invalid `points` indexes left by failed `REINDEX CONCURRENTLY` before removing unused ones. #2124
+- Vendored `h3-js` retains its upstream Apache-2.0 license header.
+- Insights "Top Visited Locations" no longer underreports days for multi-month totals (e.g. 133 days rendered as "4 days"). #2743
+
+
+### Fixed
+
+- Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 
 ## [1.7.8] - 2026-05-16
 

@@ -17,6 +17,7 @@ export class AreaSelectionManager {
     this.selectedPointsLayer = null
     this.selectedVisits = []
     this.selectedVisitIds = new Set()
+    this.selectedAnomalyIds = []
   }
 
   /**
@@ -122,6 +123,29 @@ export class AreaSelectionManager {
       // Update UI - show action buttons
       if (this.controller.hasSelectionActionsTarget) {
         this.controller.selectionActionsTarget.classList.remove("hidden")
+      }
+
+      // Update delete button text with count
+      if (this.controller.hasDeleteButtonTextTarget) {
+        this.controller.deleteButtonTextTarget.textContent = `Delete ${points.length} Point${points.length === 1 ? "" : "s"}`
+      }
+
+      // Track anomaly point IDs separately so the user can opt to delete
+      // only the noisy points (returned by fetchPointsInArea?include_anomalies=true).
+      this.selectedAnomalyIds = points
+        .filter((p) => p.anomaly === true)
+        .map((p) => p.id)
+      if (this.controller.hasDeleteAnomaliesButtonTarget) {
+        const btn = this.controller.deleteAnomaliesButtonTarget
+        const anomalyCount = this.selectedAnomalyIds.length
+        if (anomalyCount > 0) {
+          btn.classList.remove("hidden")
+          if (this.controller.hasDeleteAnomaliesButtonTextTarget) {
+            this.controller.deleteAnomaliesButtonTextTarget.textContent = `Delete ${anomalyCount} Anomaly Point${anomalyCount === 1 ? "" : "s"}`
+          }
+        } else {
+          btn.classList.add("hidden")
+        }
       }
 
       // Disable selection mode
@@ -491,6 +515,10 @@ export class AreaSelectionManager {
 
     this.selectedVisits = []
     this.selectedVisitIds = new Set()
+    this.selectedAnomalyIds = []
+    if (this.controller.hasDeleteAnomaliesButtonTarget) {
+      this.controller.deleteAnomaliesButtonTarget.classList.add("hidden")
+    }
 
     if (this.controller.hasSelectAreaButtonTarget) {
       this.controller.selectAreaButtonTarget.innerHTML = `
@@ -514,5 +542,147 @@ export class AreaSelectionManager {
     }
 
     Toast.info("Selection cancelled")
+  }
+
+  /**
+   * Delete only anomaly points within the current selection. Backed by the
+   * same bulkDeletePoints API as deleteSelectedPoints — the filter just
+   * narrows the id list to those flagged anomaly=true server-side.
+   */
+  async deleteSelectedAnomalies() {
+    if (this.deletingPoints) return
+
+    const ids = this.selectedAnomalyIds
+    if (!ids.length) {
+      Toast.error("No anomaly points in selection")
+      return
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete ${ids.length} anomaly point${ids.length === 1 ? "" : "s"}? This action cannot be undone.`,
+    )
+    if (!confirmed) return
+
+    this.deletingPoints = true
+    const btn = this.controller.hasDeleteAnomaliesButtonTarget
+      ? this.controller.deleteAnomaliesButtonTarget
+      : null
+    if (btn) btn.disabled = true
+
+    try {
+      Toast.info("Deleting anomaly points...")
+      const result = await this.api.bulkDeletePoints(ids)
+
+      Toast.success(
+        `Deleted ${result.count} anomaly point${result.count === 1 ? "" : "s"}`,
+      )
+
+      this.cancelAreaSelection()
+
+      try {
+        await this.controller.loadMapData({
+          showLoading: false,
+          fitBounds: false,
+          showToast: false,
+        })
+      } catch (reloadError) {
+        console.error(
+          "[Maps V2] Map refresh failed after anomaly delete:",
+          reloadError,
+        )
+        Toast.error(
+          "Map didn't refresh. Reload the page to see updated points.",
+        )
+      }
+    } catch (error) {
+      console.error("[Maps V2] Failed to delete anomaly points:", error)
+      const body = error?.body
+      if (error?.status === 403 && body?.upgrade_url) {
+        Toast.error(
+          `${body.error || "Write API requires Pro"} — ${body.upgrade_url}`,
+        )
+      } else if (error?.status === 422 && body?.limit) {
+        Toast.error(
+          `Too many points (${body.requested}). Please draw a smaller area; max ${body.limit} per delete.`,
+        )
+      } else {
+        Toast.error(
+          error?.message || "Failed to delete points. Please try again.",
+        )
+      }
+    } finally {
+      this.deletingPoints = false
+      if (btn) btn.disabled = false
+    }
+  }
+
+  /**
+   * Delete selected points
+   */
+  async deleteSelectedPoints() {
+    if (this.deletingPoints) return
+
+    const pointCount = this.selectedPointsLayer.getCount()
+    const pointIds = this.selectedPointsLayer.getSelectedPointIds()
+
+    if (pointIds.length === 0) {
+      Toast.error("No points selected")
+      return
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete ${pointCount} point${pointCount === 1 ? "" : "s"}? This action cannot be undone.`,
+    )
+
+    if (!confirmed) return
+
+    this.deletingPoints = true
+    const deleteButton = this.controller.hasDeletePointsButtonTarget
+      ? this.controller.deletePointsButtonTarget
+      : null
+    if (deleteButton) deleteButton.disabled = true
+
+    try {
+      Toast.info("Deleting points...")
+      const result = await this.api.bulkDeletePoints(pointIds)
+
+      Toast.success(
+        `Deleted ${result.count} point${result.count === 1 ? "" : "s"}`,
+      )
+
+      this.cancelAreaSelection()
+
+      try {
+        await this.controller.loadMapData({
+          showLoading: false,
+          fitBounds: false,
+          showToast: false,
+        })
+      } catch (reloadError) {
+        console.error("[Maps V2] Map refresh failed after delete:", reloadError)
+        Toast.error(
+          "Map didn't refresh. Reload the page to see updated points.",
+        )
+      }
+    } catch (error) {
+      console.error("[Maps V2] Failed to delete points:", error)
+      const body = error?.body
+      if (error?.status === 403 && body?.upgrade_url) {
+        Toast.error(
+          `${body.error || "Write API requires Pro"} — ${body.upgrade_url}`,
+        )
+      } else if (error?.status === 422 && body?.limit) {
+        Toast.error(
+          `Too many points selected (${body.requested}). Please draw a smaller area; max ${body.limit} per delete.`,
+        )
+      } else {
+        Toast.error(
+          error?.message || "Failed to delete points. Please try again.",
+        )
+      }
+    } finally {
+      this.deletingPoints = false
+      if (deleteButton) deleteButton.disabled = false
+    }
   }
 }

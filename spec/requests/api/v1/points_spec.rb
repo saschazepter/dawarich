@@ -244,6 +244,29 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(response).to have_http_status(:success)
     end
 
+    context 'when the point belongs to a track' do
+      let(:track) { create(:track, user: user) }
+      let!(:tracked_point) { create(:point, user: user, track: track) }
+
+      it 'enqueues a recalculation job for the track' do
+        expect do
+          delete "/api/v1/points/#{tracked_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+
+        expect(response).to have_http_status(:success)
+      end
+    end
+
+    context 'when the point has no track' do
+      let!(:trackless_point) { create(:point, user: user, track: nil) }
+
+      it 'does not enqueue a recalculation job' do
+        expect do
+          delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
+        end.not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
@@ -292,6 +315,36 @@ RSpec.describe 'Api::V1::Points', type: :request do
              params: { point_ids: }
 
       expect(response).to have_http_status(:ok)
+    end
+
+    context 'when deleted points belong to one or more tracks' do
+      let(:track1) { create(:track, user: user) }
+      let(:track2) { create(:track, user: user) }
+      let!(:p1) { create(:point, user: user, track: track1) }
+      let!(:p2) { create(:point, user: user, track: track1) }
+      let!(:p3) { create(:point, user: user, track: track2) }
+      let!(:p4) { create(:point, user: user, track: nil) }
+
+      it 'enqueues a recalculation job for each distinct affected track' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: [p1.id, p2.id, p3.id, p4.id] }
+        end.to have_enqueued_job(Tracks::RecalculateJob).with(track1.id)
+                                                        .and have_enqueued_job(Tracks::RecalculateJob).with(track2.id)
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when no deleted points belong to a track' do
+      let!(:trackless) { create_list(:point, 2, user: user, track: nil) }
+
+      it 'does not enqueue any recalculation jobs' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: trackless.map(&:id) }
+        end.not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
     end
 
     it 'deletes multiple points' do
@@ -432,6 +485,36 @@ RSpec.describe 'Api::V1::Points', type: :request do
           delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
                  params: { point_ids: }
         end.not_to(change { user.points.count })
+      end
+    end
+
+    context 'when more than BULK_DESTROY_MAX point_ids are submitted' do
+      let(:oversized_ids) { (1..(Api::V1::PointsController::BULK_DESTROY_MAX + 1)).to_a }
+
+      it 'returns 422 with the limit and requested counts' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: oversized_ids }, as: :json
+        end.not_to(change { user.points.count })
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        body = JSON.parse(response.body)
+        expect(body['limit']).to eq(Api::V1::PointsController::BULK_DESTROY_MAX)
+        expect(body['requested']).to eq(oversized_ids.size)
+      end
+    end
+
+    context 'when at least one point is deleted' do
+      it 'enqueues Stats::CalculatingJob once per affected (year, month)' do
+        # Two points in Jan 2025, one in Feb 2025 — expect 2 jobs (one per month).
+        jan_a = create(:point, user:, timestamp: Time.zone.local(2025, 1, 10).to_i)
+        jan_b = create(:point, user:, timestamp: Time.zone.local(2025, 1, 20).to_i)
+        feb   = create(:point, user:, timestamp: Time.zone.local(2025, 2, 5).to_i)
+        ids = [jan_a.id, jan_b.id, feb.id]
+
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}", params: { point_ids: ids }
+        end.to have_enqueued_job(Stats::CalculatingJob).exactly(2).times
       end
     end
   end

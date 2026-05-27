@@ -2,14 +2,13 @@
 
 module Visits
   class DbscanClusterer
-    MIN_DURATION_SECONDS = 180
     QUERY_TIMEOUT_MS = 30_000
     MAX_SYNTHETIC_PER_GAP = 200
     MAX_CANDIDATE_POINTS = 100_000
     DENSITY_GAP_THRESHOLD_SECONDS = 60
     DENSITY_MAX_GAP_SECONDS = 12 * 3600
     DENSITY_MAX_DISTANCE_METERS = 50
-    TIME_GAP_SECONDS = 30 * 60
+    STATIONARY_SPEED_MPS = 1.4
 
     attr_reader :user, :start_at, :end_at
 
@@ -90,6 +89,14 @@ module Visits
       user.safe_settings.visit_min_points
     end
 
+    def min_duration_seconds
+      user.safe_settings.visit_min_duration_minutes * 60
+    end
+
+    def time_gap_seconds
+      user.safe_settings.time_threshold_minutes * 60
+    end
+
     def density_enabled?
       user.safe_settings.visit_density_fill_enabled?
     end
@@ -109,10 +116,11 @@ module Visits
     def dbscan_sql
       params = [
         user.id, start_at, end_at,
-        density_threshold_seconds, density_max_gap_seconds, density_max_distance_meters,
         MAX_SYNTHETIC_PER_GAP,
+        density_threshold_seconds, density_max_gap_seconds, density_max_distance_meters,
         eps_meters, min_points,
-        TIME_GAP_SECONDS, min_points, MIN_DURATION_SECONDS
+        time_gap_seconds,
+        min_points, min_duration_seconds, STATIONARY_SPEED_MPS
       ]
       ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, *params])
         WITH candidate_points AS (
@@ -186,18 +194,57 @@ module Visits
           SELECT *,
             CONCAT(spatial_cluster, '-', SUM(new_segment) OVER (PARTITION BY spatial_cluster ORDER BY timestamp)) AS visit_id
           FROM gap_detection
+        ),
+        real_point_motion AS (
+          SELECT
+            visit_id,
+            id,
+            lonlat,
+            timestamp,
+            LAG(lonlat) OVER (PARTITION BY visit_id ORDER BY timestamp) AS prev_lonlat,
+            LAG(timestamp) OVER (PARTITION BY visit_id ORDER BY timestamp) AS prev_timestamp
+          FROM visit_groups
+          WHERE id > 0
+        ),
+        visit_motion AS (
+          SELECT
+            visit_id,
+            COUNT(*) AS real_point_count,
+            SUM(
+              CASE
+                WHEN prev_lonlat IS NULL OR (timestamp - prev_timestamp) <= 0 THEN 0
+                ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)
+              END
+            )::double precision
+            / NULLIF(
+                SUM(
+                  CASE
+                    WHEN prev_lonlat IS NULL OR (timestamp - prev_timestamp) <= 0 THEN 0
+                    ELSE (timestamp - prev_timestamp)
+                  END
+                ),
+                0
+              ) AS avg_speed_mps
+          FROM real_point_motion
+          GROUP BY visit_id
         )
         SELECT
-          visit_id,
-          array_agg(id ORDER BY timestamp) AS point_ids,
-          MIN(timestamp) AS start_time,
-          MAX(timestamp) AS end_time,
-          COUNT(*) AS point_count
-        FROM visit_groups
-        GROUP BY visit_id
-        HAVING COUNT(*) >= ?
-          AND MAX(timestamp) - MIN(timestamp) >= ?
-        ORDER BY MIN(timestamp)
+          vg.visit_id,
+          array_agg(vg.id ORDER BY vg.timestamp) FILTER (WHERE vg.id > 0) AS point_ids,
+          MIN(vg.timestamp) FILTER (WHERE vg.id > 0) AS start_time,
+          MAX(vg.timestamp) FILTER (WHERE vg.id > 0) AS end_time,
+          COUNT(*) FILTER (WHERE vg.id > 0) AS point_count
+        FROM visit_groups vg
+        JOIN visit_motion vm USING (visit_id)
+        GROUP BY vg.visit_id, vm.real_point_count, vm.avg_speed_mps
+        HAVING vm.real_point_count >= ?
+          AND COALESCE(
+                MAX(vg.timestamp) FILTER (WHERE vg.id > 0)
+                - MIN(vg.timestamp) FILTER (WHERE vg.id > 0),
+                0
+              ) >= ?
+          AND (vm.avg_speed_mps IS NULL OR vm.avg_speed_mps <= ?::double precision)
+        ORDER BY MIN(vg.timestamp) FILTER (WHERE vg.id > 0)
       SQL
     end
   end

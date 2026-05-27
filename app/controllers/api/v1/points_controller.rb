@@ -3,6 +3,8 @@
 class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
+  BULK_DESTROY_MAX = 5_000
+
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
   before_action :validate_points_limit, only: %i[create]
@@ -14,6 +16,8 @@ class Api::V1::PointsController < ApiController
 
     points = if ActiveModel::Type::Boolean.new.cast(params[:anomalies_only])
                scoped_points.anomaly
+             elsif ActiveModel::Type::Boolean.new.cast(params[:include_anomalies])
+               scoped_points
              else
                scoped_points.not_anomaly
              end
@@ -82,8 +86,17 @@ class Api::V1::PointsController < ApiController
 
   def destroy
     point = current_api_user.points.find(params[:id])
+    affected_track_id = point.track_id
     point.destroy
     User.update_counters(current_api_user.id, points_count: -1)
+
+    if affected_track_id.present?
+      Rails.logger.info(
+        "[PointsController] Point #{point.id} destroyed, " \
+        "enqueuing Tracks::RecalculateJob for track #{affected_track_id}"
+      )
+      Tracks::RecalculateJob.perform_later(affected_track_id)
+    end
 
     render json: { message: 'Point deleted successfully' }
   end
@@ -93,8 +106,46 @@ class Api::V1::PointsController < ApiController
 
     render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
 
-    deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
-    User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
+    if point_ids.size > BULK_DESTROY_MAX
+      render json: {
+        error: "Too many points selected. Maximum is #{BULK_DESTROY_MAX} per request.",
+        limit: BULK_DESTROY_MAX,
+        requested: point_ids.size
+      }, status: :unprocessable_entity and return
+    end
+
+    affected_track_ids = nil
+    destroyed = nil
+
+    ActiveRecord::Base.transaction do
+      affected_track_ids = current_api_user.points
+                                           .where(id: point_ids)
+                                           .where.not(track_id: nil)
+                                           .distinct
+                                           .pluck(:track_id)
+      destroyed = current_api_user.points.where(id: point_ids).destroy_all
+    end
+
+    deleted_count = destroyed.count
+
+    if deleted_count.positive?
+      User.update_counters(current_api_user.id, points_count: -deleted_count)
+
+      destroyed
+        .map { |p| Time.zone.at(p.timestamp) }
+        .map { |ts| [ts.year, ts.month] }
+        .uniq
+        .each { |year, month| Stats::CalculatingJob.perform_later(current_api_user.id, year, month) }
+    end
+
+    if affected_track_ids.any?
+      Rails.logger.info(
+        "[PointsController] bulk_destroy deleted #{deleted_count} points, " \
+        "enqueuing Tracks::RecalculateJob for #{affected_track_ids.size} tracks: " \
+        "#{affected_track_ids.inspect}"
+      )
+      affected_track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
+    end
 
     render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
   end

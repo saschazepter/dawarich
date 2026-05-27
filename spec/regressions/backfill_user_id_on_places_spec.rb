@@ -4,8 +4,14 @@ require 'rails_helper'
 require Rails.root.join('db/migrate/20260508093702_backfill_user_id_on_places')
 
 RSpec.describe BackfillUserIdOnPlaces do
+  include ActiveJob::TestHelper
+
   let(:owner) { create(:user) }
   let(:other_user) { create(:user) }
+
+  def run_migration
+    perform_enqueued_jobs { described_class.new.up }
+  end
 
   def userless_place(name)
     place = create(:place, user: owner, name: name)
@@ -24,7 +30,7 @@ RSpec.describe BackfillUserIdOnPlaces do
     place = userless_place('via-place-visits')
     visit_for(owner, place, suggested: true)
 
-    described_class.new.up
+    run_migration
 
     expect(place.reload.user_id).to eq(owner.id)
   end
@@ -33,7 +39,7 @@ RSpec.describe BackfillUserIdOnPlaces do
     place = userless_place('via-visit-place-id')
     visit_for(owner, place, suggested: false)
 
-    described_class.new.up
+    run_migration
 
     expect(place.reload.user_id).to eq(owner.id)
   end
@@ -43,7 +49,7 @@ RSpec.describe BackfillUserIdOnPlaces do
     3.times { |i| visit_for(owner, place, started_at: (i + 1).days.ago, suggested: true) }
     visit_for(other_user, place, started_at: 10.days.ago, suggested: true)
 
-    described_class.new.up
+    run_migration
 
     expect(place.reload.user_id).to eq(owner.id)
   end
@@ -51,19 +57,19 @@ RSpec.describe BackfillUserIdOnPlaces do
   it 'deletes a truly orphan place (no place_visits and no visits.place_id)' do
     place = userless_place('orphan')
 
-    expect { described_class.new.up }.to change { Place.where(id: place.id).count }.from(1).to(0)
+    expect { run_migration }.to change { Place.where(id: place.id).count }.from(1).to(0)
   end
 
   it 'leaves places that already have a user_id untouched' do
     untouched = create(:place, user: owner, name: 'already-owned')
 
-    described_class.new.up
+    run_migration
 
     expect(untouched.reload.user_id).to eq(owner.id)
   end
 
   it 'is re-runnable: early returns when no userless places remain' do
-    described_class.new.up
+    run_migration
 
     expect { described_class.new.up }.not_to raise_error
   end

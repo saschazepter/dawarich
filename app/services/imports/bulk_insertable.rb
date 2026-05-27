@@ -18,11 +18,21 @@ module Imports
         on_duplicate: :skip
       )
 
-      result.length
+      inserted = result.length
+      skipped  = unique_batch.length - inserted
+      record_batch_counters(unique_batch.length, skipped)
+
+      inserted
     rescue StandardError => e
       on_bulk_insert_error(e)
       create_import_error_notification("Failed to process #{importer_name} data: #{e.message}")
       0
+    end
+
+    def record_batch_counters(attempted, skipped)
+      counters = { raw_points: attempted }
+      counters[:doubles] = skipped if skipped.positive?
+      Import.update_counters(import.id, counters)
     end
 
     def create_import_error_notification(message)

@@ -320,6 +320,36 @@ RSpec.describe Tracks::TrackBuilder do
     end
   end
 
+  describe 'honors user-disabled transportation modes during initial detection' do
+    let(:user) do
+      create(:user, settings: {
+               'enabled_transportation_modes' => %w[stationary walking driving],
+               'time_threshold_minutes' => '30'
+             })
+    end
+
+    let!(:points) do
+      base = 1.hour.ago.to_i
+      coords = 8.times.map do |i|
+        [-74.0060 + (i * 0.0010), 40.7128 + (i * 0.0005)]
+      end
+      coords.each_with_index.map do |(lon, lat), i|
+        create(:point, user: user,
+                       lonlat: "POINT(#{lon} #{lat})",
+                       timestamp: base + (i * 30),
+                       altitude: 100,
+                       velocity: 4.5)
+      end
+    end
+
+    it 'does not assign cycling segments when cycling is disabled by the user' do
+      builder.create_track_from_points(points, 1200)
+
+      modes = TrackSegment.all.pluck(:transportation_mode)
+      expect(modes).not_to include('cycling')
+    end
+  end
+
   describe 'integration test' do
     let!(:points) do
       [

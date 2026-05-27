@@ -30,34 +30,49 @@ RSpec.describe Visit, type: :model do
   end
 
   describe 'self-cleanup callbacks' do
+    include ActiveJob::TestHelper
+
     let(:user)      { create(:user) }
     let(:old_place) { create(:place, user: user, source: :photon) }
     let(:new_place) { create(:place, user: user, source: :photon) }
     let!(:visit)    { create(:visit, user: user, place: old_place, area: nil) }
 
     describe 'after_commit on: :update' do
-      it 'deletes the previous place when place_id changes and old place is orphan' do
+      it 'enqueues orphan-check for the previous place when place_id changes' do
         expect { visit.update!(place: new_place) }
-          .to change { Place.exists?(old_place.id) }.from(true).to(false)
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
       end
 
-      it 'does not delete the place when an unrelated attribute changes' do
+      it 'deletes the previous place after the job runs when it is orphan' do
+        perform_enqueued_jobs { visit.update!(place: new_place) }
+
+        expect(Place.exists?(old_place.id)).to be false
+      end
+
+      it 'does not enqueue when an unrelated attribute changes' do
         expect { visit.update!(name: 'Renamed') }
-          .not_to(change { Place.exists?(old_place.id) })
+          .not_to have_enqueued_job(Places::DeleteIfOrphanJob)
       end
 
       it 'keeps the old place when it is still referenced by another visit' do
         create(:visit, user: user, place: old_place, area: nil)
 
-        expect { visit.update!(place: new_place) }
-          .not_to(change { Place.exists?(old_place.id) })
+        perform_enqueued_jobs { visit.update!(place: new_place) }
+
+        expect(Place.exists?(old_place.id)).to be true
       end
     end
 
     describe 'after_destroy_commit' do
-      it 'deletes the visit place when it becomes orphan' do
+      it 'enqueues orphan-check for the destroyed visit place' do
         expect { visit.destroy! }
-          .to change { Place.exists?(old_place.id) }.from(true).to(false)
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
+
+      it 'deletes the place after the job runs when it is orphan' do
+        perform_enqueued_jobs { visit.destroy! }
+
+        expect(Place.exists?(old_place.id)).to be false
       end
 
       it 'is a no-op when visit had no place' do

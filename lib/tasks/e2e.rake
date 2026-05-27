@@ -28,6 +28,50 @@ namespace :e2e do
   # keep this aligned.
   E2E_BASE_TIME_STR = '2025-10-15 23:59:00'
 
+  # Deterministic anomaly fixtures for regression specs around
+  # #2474 (Trip anomaly filter), #2476 (Select Area includes anomalies),
+  # #2630 (bulk track recalc excludes anomalies). Keep in sync with
+  # e2e-dawarich-playwright/v2/helpers/anomaly.js.
+  E2E_ANOMALY_FIXTURE = [
+    { lat: 52.5200, lon: 13.4050, hour: 12.0, country: 'Germany' },
+    { lat: 52.5210, lon: 13.4060, hour: 12.5, country: 'Germany' },
+    { lat: 52.5190, lon: 13.4070, hour: 13.0, country: 'Germany' },
+    { lat: 48.8500, lon: 2.3500,  hour: 14.0, country: 'France' },
+    { lat: 52.6000, lon: 13.5000, hour: 15.0, country: 'Germany' }
+  ].freeze
+
+  E2E_ANOMALY_TRIP_NAME = 'E2E Anomaly Day'.freeze
+  E2E_ANOMALY_TRIP_START = '2025-10-15 11:00:00'.freeze
+  E2E_ANOMALY_TRIP_END   = '2025-10-15 18:00:00'.freeze
+
+  # Tag fixtures for timeline-filters spec "Tag chips" describe. Three tags
+  # plus one "tag-holder" place that carries all three — so the e2e suite
+  # can look up tag IDs via /api/v1/places (which exposes place.tags),
+  # avoiding the need for a separate tags-index API endpoint.
+  E2E_TAG_NAMES = %w[e2e-Home e2e-Work e2e-Travel].freeze
+  E2E_TAG_HOLDER_PLACE_NAME = 'E2E Tag Holder'.freeze
+
+  # Fixed Track windows used by the timeline-replay and timeline-journey-leg
+  # specs. These live deep in the past so they don't collide with other
+  # fixtures or the demo data (which clusters around 2025-10-15).
+  E2E_REPLAY_TRACK_DAY     = '2020-10-03'.freeze
+  E2E_REPLAY_TRACK_START   = '2020-10-03 09:30:00 UTC'.freeze
+  E2E_REPLAY_TRACK_END     = '2020-10-03 10:30:00 UTC'.freeze
+  E2E_JOURNEY_TRACK_DAY    = '2020-06-06'.freeze
+  E2E_JOURNEY_TRACK_START  = '2020-06-06 09:00:00 UTC'.freeze
+  E2E_JOURNEY_TRACK_END    = '2020-06-06 10:00:00 UTC'.freeze
+
+  # Normal (non-anomaly) Berlin points that sit inside the anomaly trip
+  # window. Demo data has many points but most carry country_name=nil, so
+  # without these the trip's calculate_countries returns []. These are the
+  # Germany baseline that the trip spec asserts against.
+  E2E_TRIP_BACKBONE_FIXTURE = [
+    { lat: 52.5170, lon: 13.3880, hour: 11.5, country: 'Germany' },
+    { lat: 52.5180, lon: 13.3900, hour: 12.25, country: 'Germany' },
+    { lat: 52.5160, lon: 13.3950, hour: 13.5, country: 'Germany' },
+    { lat: 52.5140, lon: 13.4000, hour: 16.0, country: 'Germany' }
+  ].freeze
+
   def assert_safe_environment!
     return unless Rails.env.production?
     return if ENV['ALLOW_E2E_RESET'] == '1'
@@ -51,6 +95,182 @@ namespace :e2e do
 
     puts "\n🚀 Invoking demo:seed_data..."
     Rake::Task['demo:seed_data'].invoke(geojson_path)
+
+    puts "\n⚠️  Planting anomaly fixtures..."
+    Rake::Task['e2e:seed_anomalies'].invoke
+
+    puts "\n🧭 Seeding the anomaly-window demo trip..."
+    Rake::Task['e2e:seed_demo_trip'].invoke
+
+    puts "\n🏷️  Seeding tag fixtures..."
+    Rake::Task['e2e:seed_tag_fixtures'].invoke
+
+    puts "\n🛤️  Seeding fixture tracks (timeline-replay + journey-leg specs)..."
+    Rake::Task['e2e:seed_fixture_tracks'].invoke
+  end
+
+  desc 'Plant a deterministic set of anomaly points on the demo user (idempotent).'
+  task seed_anomalies: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+    base_day = Time.zone.parse('2025-10-15')
+
+    user.points.where(tracker_id: ['e2e-anomaly', 'e2e-backbone']).delete_all
+
+    E2E_TRIP_BACKBONE_FIXTURE.each do |row|
+      ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
+
+      next if user.points.exists?(timestamp: ts, lonlat: "POINT(#{row[:lon]} #{row[:lat]})")
+
+      user.points.create!(
+        lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
+        timestamp: ts,
+        anomaly: false,
+        tracker_id: 'e2e-backbone',
+        country_name: row[:country]
+      )
+    end
+
+    E2E_ANOMALY_FIXTURE.each do |row|
+      ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
+
+      next if user.points.exists?(timestamp: ts, lonlat: "POINT(#{row[:lon]} #{row[:lat]})")
+
+      user.points.create!(
+        lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
+        timestamp: ts,
+        anomaly: true,
+        tracker_id: 'e2e-anomaly',
+        country_name: row[:country]
+      )
+    end
+
+    count = user.points.where(tracker_id: 'e2e-anomaly').count
+    puts "  ↪ planted #{count} anomaly points (#{count == E2E_ANOMALY_FIXTURE.size ? 'ok' : 'MISMATCH'})"
+
+    polluter = user.points.where(tracker_id: 'e2e-anomaly').order(:timestamp).first
+    day_start = base_day.to_i
+    day_end   = (base_day + 1.day).to_i
+    polluter_track = user.tracks
+                         .where('start_at >= ? AND start_at < ?', Time.zone.at(day_start), Time.zone.at(day_end))
+                         .order(:start_at)
+                         .first
+    if polluter && polluter_track
+      polluter.update_columns(track_id: polluter_track.id)
+      puts "  ↪ assigned anomaly ##{polluter.id} to track ##{polluter_track.id} as #2630 controller-filter polluter"
+    else
+      puts '  ↪ no track available to host polluter anomaly (skipping #2630 controller-side check)'
+    end
+  end
+
+  desc 'Create the demo trip covering the anomaly window and recalculate it synchronously.'
+  task seed_demo_trip: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+
+    user.trips.where(name: E2E_ANOMALY_TRIP_NAME).destroy_all
+
+    trip = user.trips.create!(
+      name: E2E_ANOMALY_TRIP_NAME,
+      started_at: Time.zone.parse(E2E_ANOMALY_TRIP_START),
+      ended_at:   Time.zone.parse(E2E_ANOMALY_TRIP_END)
+    )
+
+    trip.recalculate_path_and_distance!
+    trip.calculate_countries
+    trip.update!(last_recalculated_at: Time.current)
+
+    puts "  ↪ trip ##{trip.id} \"#{trip.name}\" countries=#{trip.visited_countries.inspect}"
+  end
+
+  desc 'Seed tag fixtures (3 tags + a tag-holder place) for the timeline-filters spec.'
+  task seed_tag_fixtures: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+
+    tags = E2E_TAG_NAMES.map do |name|
+      user.tags.find_or_create_by!(name: name)
+    end
+    puts "  ↪ tags: #{tags.map { |t| "#{t.name}(##{t.id})" }.join(', ')}"
+
+    holder = user.places.where(name: E2E_TAG_HOLDER_PLACE_NAME).first ||
+             user.places.create!(
+               name: E2E_TAG_HOLDER_PLACE_NAME,
+               latitude: 52.5300,
+               longitude: 13.4200,
+               lonlat: 'POINT(13.4200 52.5300)',
+               source: 'manual'
+             )
+    holder.tags = tags
+    holder.save!
+    puts "  ↪ tag-holder place ##{holder.id} \"#{holder.name}\" has tags #{holder.reload.tags.map(&:name).inspect}"
+  end
+
+  desc 'Seed deterministic Track fixtures for timeline-replay + timeline-journey-leg specs.'
+  task seed_fixture_tracks: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+
+    _seed_fixture_track(
+      user,
+      tracker_id: 'e2e-replay-track',
+      start_at: Time.zone.parse(E2E_REPLAY_TRACK_START),
+      end_at:   Time.zone.parse(E2E_REPLAY_TRACK_END)
+    )
+
+    _seed_fixture_track(
+      user,
+      tracker_id: 'e2e-journey-track',
+      start_at: Time.zone.parse(E2E_JOURNEY_TRACK_START),
+      end_at:   Time.zone.parse(E2E_JOURNEY_TRACK_END)
+    )
+  end
+
+  # Plant a strip of points walking south-east at ~5m intervals over the
+  # given window, then materialise a Track row via Tracks::TrackBuilder.
+  # Idempotent: removes any prior fixture (points + track) with the same
+  # tracker_id before re-creating.
+  def _seed_fixture_track(user, tracker_id:, start_at:, end_at:)
+    user.tracks.where(tracker_id: tracker_id).destroy_all
+    user.points.where(tracker_id: tracker_id).delete_all
+
+    point_count = 15
+    span_seconds = (end_at - start_at).to_i
+    step_seconds = span_seconds / (point_count - 1)
+    base_lat = 52.5200
+    base_lon = 13.4050
+    step_deg = 0.0005
+
+    points = []
+    point_count.times do |i|
+      lon = base_lon + (i * step_deg)
+      lat = base_lat - (i * step_deg)
+      ts  = start_at.to_i + (i * step_seconds)
+      points << user.points.create!(
+        lonlat: "POINT(#{lon} #{lat})",
+        timestamp: ts,
+        tracker_id: tracker_id,
+        anomaly: false
+      )
+    end
+
+    distance_meters = Point.total_distance(points, :m)
+    builder = Class.new do
+      include Tracks::TrackBuilder
+      def initialize(user); @user = user; end
+      attr_reader :user
+    end.new(user)
+    track = builder.create_track_from_points(
+      points, distance_meters, tracker_id: tracker_id
+    )
+
+    raise "Failed to create fixture track for tracker_id=#{tracker_id}" if track.nil?
+
+    puts "  ↪ fixture track ##{track.id} tracker=#{tracker_id} #{track.start_at.iso8601}..#{track.end_at.iso8601} (#{points.size} pts, #{distance_meters.to_i}m)"
   end
 
   desc 'Wipe data for the e2e users (demo, lite, family members) without deleting the users themselves'
@@ -76,5 +296,6 @@ namespace :e2e do
     user.areas.delete_all if user.respond_to?(:areas)
     user.imports.destroy_all
     user.exports.destroy_all
+    user.trips.destroy_all if user.respond_to?(:trips)
   end
 end

@@ -152,12 +152,14 @@ export class VisitsManager {
     if (this.onResizeNeeded) {
       document.removeEventListener("map:resize-needed", this.onResizeNeeded)
     }
+    this.detachViewportRefetch()
     this.disarmCreateVisit()
   }
 
   /**
    * Toggle visits layer
-   * Fetches visits from backend on first enable (lazy-load pattern)
+   * Fetches visits from backend on first enable (lazy-load pattern).
+   * Fetches are bounded to the current map viewport — see refetchInViewport.
    */
   async toggleVisits(event) {
     const enabled = event.target.checked
@@ -175,10 +177,7 @@ export class VisitsManager {
             isComplete: false,
           })
 
-          const visits = await this.api.fetchVisits({
-            start_at: this.controller.startDateValue,
-            end_at: this.controller.endDateValue,
-          })
+          const visits = await this.fetchVisitsForCurrentViewport()
           this.filterManager.setAllVisits(visits)
           visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
 
@@ -191,6 +190,7 @@ export class VisitsManager {
         if (this.controller.hasVisitsSearchTarget) {
           this.controller.visitsSearchTarget.style.display = "block"
         }
+        this.attachViewportRefetch()
       } catch (error) {
         console.error("Failed to toggle visits layer:", error)
         this.controller.hideProgress()
@@ -200,7 +200,83 @@ export class VisitsManager {
       if (this.controller.hasVisitsSearchTarget) {
         this.controller.visitsSearchTarget.style.display = "none"
       }
+      this.detachViewportRefetch()
     }
+  }
+
+  /**
+   * Build viewport bounds from the live map. Returned shape matches the
+   * keys fetchVisits / fetchVisitsPage expect; returns an empty object
+   * when the map isn't ready so callers can spread it safely.
+   */
+  currentViewportBounds() {
+    const map = this.controller.map
+    if (!map?.getBounds) return {}
+    const b = map.getBounds()
+    return {
+      sw_lat: b.getSouth(),
+      sw_lng: b.getWest(),
+      ne_lat: b.getNorth(),
+      ne_lng: b.getEast(),
+    }
+  }
+
+  /**
+   * Wrapper that always passes the current map viewport. Used both for
+   * the initial toggle-on fetch and for pan/zoom refetches.
+   */
+  async fetchVisitsForCurrentViewport() {
+    return this.api.fetchVisits({
+      start_at: this.controller.startDateValue,
+      end_at: this.controller.endDateValue,
+      ...this.currentViewportBounds(),
+    })
+  }
+
+  /**
+   * Refetch visits for the current viewport and replace the layer's data.
+   * Debounced via moveend timer — see attachViewportRefetch.
+   */
+  async refetchVisitsForViewport() {
+    const visitsLayer = this.layerManager.getLayer("visits")
+    if (!visitsLayer || !visitsLayer.visible) return
+    try {
+      const visits = await this.fetchVisitsForCurrentViewport()
+      this.filterManager.setAllVisits(visits)
+      visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
+    } catch (error) {
+      console.error("[Maps V2] Viewport visit refetch failed:", error)
+    }
+  }
+
+  attachViewportRefetch() {
+    if (this._viewportListenerAttached) return
+    const map = this.controller.map
+    if (!map?.on) return
+
+    this._onViewportMoveEnd = () => {
+      if (this._viewportRefetchTimer) clearTimeout(this._viewportRefetchTimer)
+      this._viewportRefetchTimer = setTimeout(
+        () => this.refetchVisitsForViewport(),
+        400,
+      )
+    }
+    map.on("moveend", this._onViewportMoveEnd)
+    this._viewportListenerAttached = true
+  }
+
+  detachViewportRefetch() {
+    if (!this._viewportListenerAttached) return
+    if (this._viewportRefetchTimer) {
+      clearTimeout(this._viewportRefetchTimer)
+      this._viewportRefetchTimer = null
+    }
+    const map = this.controller.map
+    if (map?.off && this._onViewportMoveEnd) {
+      map.off("moveend", this._onViewportMoveEnd)
+    }
+    this._onViewportMoveEnd = null
+    this._viewportListenerAttached = false
   }
 
   /**
@@ -238,13 +314,6 @@ export class VisitsManager {
    * Esc disarms without creating.
    */
   startCreateVisit() {
-    if (
-      this.controller.hasSettingsPanelTarget &&
-      this.controller.settingsPanelTarget.classList.contains("open")
-    ) {
-      this.controller.toggleSettings()
-    }
-
     this.disarmCreateVisit()
 
     this.controller.map.getCanvas().style.cursor = "crosshair"
@@ -309,14 +378,14 @@ export class VisitsManager {
   }
 
   /**
-   * Handle visit creation event - reload visits and update layer
+   * Handle visit creation event - reload visits, update layer, and
+   * enable the Visits layer so the new visit is immediately visible.
+   * Without auto-enabling, users would create a visit and see nothing
+   * on the map because the layer toggle was off.
    */
   async handleVisitCreated(_event) {
     try {
-      const visits = await this.api.fetchVisits({
-        start_at: this.controller.startDateValue,
-        end_at: this.controller.endDateValue,
-      })
+      const visits = await this.fetchVisitsForCurrentViewport()
 
       this.filterManager.setAllVisits(visits)
       const visitsGeoJSON = this.dataLoader.visitsToGeoJSON(visits)
@@ -324,9 +393,23 @@ export class VisitsManager {
       const visitsLayer = this.layerManager.getLayer("visits")
       if (visitsLayer) {
         visitsLayer.update(visitsGeoJSON)
+        visitsLayer.show()
       } else {
         console.warn("[Maps V2] Visits layer not found, cannot update")
       }
+
+      SettingsManager.updateSetting("visitsEnabled", true)
+
+      const toggle = document.querySelector(
+        '[data-maps--maplibre-target="visitsToggle"]',
+      )
+      if (toggle) toggle.checked = true
+
+      if (this.controller.hasVisitsSearchTarget) {
+        this.controller.visitsSearchTarget.style.display = "block"
+      }
+
+      this.attachViewportRefetch()
     } catch (error) {
       console.error("[Maps V2] Failed to reload visits:", error)
     }

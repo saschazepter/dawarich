@@ -1,7 +1,7 @@
 <div data-controller="area-creation-v2">
   <div class="modal z-[10000]" data-area-creation-v2-target="modal">
     <div class="modal-box max-w-xl">
-      <h3 class="font-bold text-lg mb-4">Create New Area</h3>
+      <h3 class="font-bold text-lg mb-4" data-area-creation-v2-target="modalTitle">Create New Area</h3>
 
       <%= form_with url: areas_path, method: :post, data: {
         area_creation_v2_target: "form",
@@ -9,7 +9,6 @@
       } do |f| %>
         <%= f.hidden_field :latitude, data: { area_creation_v2_target: "latitudeInput" } %>
         <%= f.hidden_field :longitude, data: { area_creation_v2_target: "longitudeInput" } %>
-        <%= f.hidden_field :radius, data: { area_creation_v2_target: "radiusInput" } %>
 
         <div class="space-y-4">
           <div class="form-control">
@@ -26,10 +25,19 @@
           <div class="form-control">
             <label class="label">
               <span class="label-text font-semibold">Radius</span>
+              <span class="label-text-alt">
+                <span data-area-creation-v2-target="radiusDisplay">0</span> meters
+              </span>
             </label>
-            <div class="text-lg font-semibold">
-              <span data-area-creation-v2-target="radiusDisplay">0</span> meters
-            </div>
+            <%= f.number_field :radius,
+                min: 10, step: 10,
+                placeholder: "Radius in meters",
+                class: "input input-bordered w-full",
+                data: {
+                  area_creation_v2_target: "radiusInput",
+                  action: "input->area-creation-v2#updateRadiusDisplay"
+                },
+                required: true %>
           </div>
         </div>
 

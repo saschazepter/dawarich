@@ -7,6 +7,8 @@ module Timeline
     # memory just to compute bounds.
     MAX_RANGE = 31.days
 
+    PHANTOM_STATIONARY_DISTANCE_M = 100
+
     def initialize(user, start_at:, end_at:, distance_unit: 'km')
       @user = user
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
@@ -76,6 +78,7 @@ module Timeline
     def fetch_tracks
       user.scoped_tracks
           .where('start_at <= ? AND end_at >= ?', end_at, start_at)
+          .without_phantom_stationary(PHANTOM_STATIONARY_DISTANCE_M)
           .order(start_at: :asc)
     end
 
@@ -223,7 +226,11 @@ module Timeline
 
     def build_summary(visits, tracks, track_shares)
       total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
-      moving_seconds = tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
+      # Asymmetry with fetch_tracks is intentional: stationary tracks with >=100m
+      # still surface in the timeline as "🛑 stayed" rows, but their duration must
+      # not contribute to "time_moving_minutes" — "stayed" is not "moving".
+      moving_tracks = tracks.reject { |t| t.dominant_mode == 'stationary' }
+      moving_seconds = moving_tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
       stationary_minutes = visits.sum(&:duration)
       status_counts = visits.group_by(&:status).transform_values(&:size)

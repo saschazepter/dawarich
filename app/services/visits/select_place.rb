@@ -12,23 +12,13 @@ module Visits
 
     def call
       @visit.with_lock do
-        place = find_by_osm_id || find_by_name_and_proximity || create_place
+        place = find_by_name_and_proximity || create_place
         @visit.update!(place_id: place.id, name: place.name)
         place
       end
     end
 
     private
-
-    def find_by_osm_id
-      osm_id = @photon[:osm_id]
-      return nil if osm_id.blank?
-
-      @user.places
-           .includes(:tags, :visits)
-           .where("geodata->'properties'->>'osm_id' = ?", osm_id.to_s)
-           .first
-    end
 
     def find_by_name_and_proximity
       name = @photon[:name]
