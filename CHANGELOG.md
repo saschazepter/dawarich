@@ -7,14 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.7.11] - Unreleased
 
+### ⚠️ Upgrade notes
+
+- **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
+
 ### Added
 
 - Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
+- Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
+- Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
+- Trip cards on `/trips` now render their map preview with MapLibre instead of Leaflet, matching Map v2.
 
 ### Changed
 
 - Track segment writes are batched into a single INSERT, and transportation-mode distance calculations run in Ruby instead of round-tripping through PostgreSQL — faster track building and lighter load on the DB during background jobs.
 - Two unused indexes on the `points` table are dropped on upgrade; on large self-hosted instances this frees several GB of disk (~7.4 GB on a production-scale dataset). Migration is non-blocking (`DROP INDEX CONCURRENTLY`).
+- Trip detail toolbar uses **Timeline** consistently (previously labelled "Replay" with a clock icon); the replay scrubber lives inside the Timeline panel.
+- Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
+- Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
 
 ### Fixed
 
@@ -22,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. (#2579)
 - Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly sweep bypasses (and clears) the dedup so points whose retries were exhausted — or whose key still lingers — are picked up on the next run. Bulk re-runs via Settings → Geocoding respect the same dedup.
 - Map v2 visits layer now honours the selected date range. Since 1.7.10 the viewport-bounded visits fetch silently dropped the `start_at`/`end_at` filter on the backend, so all visits inside the viewport were rendered regardless of the date filter. (#2817)
+- Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
 
 
 ## [1.7.10] - 2026-05-26
@@ -110,6 +121,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
+=======
+- Map v2 **Hexagons** layer (Pro) — aggregates your points into colored H3 cells so dense areas pop out at a glance. Toggle from the map settings panel; resolution adapts to zoom. #2568
+- Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
+- Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
+- Trip cards on `/trips` now render their map preview with MapLibre instead of Leaflet, matching Map v2.
+
+### Changed
+
+- Trip detail toolbar uses **Timeline** consistently (previously labelled "Replay" with a clock icon); the replay scrubber lives inside the Timeline panel.
+- Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
+- Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
+
+### Fixed
+
+- Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+>>>>>>> 71f57d7b (Trips update)
 
 ## [1.7.8] - 2026-05-16
 
@@ -713,6 +740,11 @@ In Map V2 Tools, user can now enable Timeline tool, which allows to quickly navi
 
 - Zooming animation is disabled on Map V2 loading #2219
 - Exporting points to GPX and GeoJSON now works better and faster for large numbers of points by processing the export in chunks to reduce memory usage. #2161
+- Default color for Tracks layer on Map V2 is now set to blue instead of red.
+
+## Removed
+
+- `MIN_MINUTES_SPENT_IN_CITY` env variable is removed. It is now user-configurable in the Map v2 Settings panel. You can safely remove the `MIN_MINUTES_SPENT_IN_CITY` variable from your environment variables if you had it set before.
 
 
 ## [1.0.4] - 2026-02-01

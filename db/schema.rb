@@ -209,6 +209,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
+  create_table "notes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "title"
+    t.text "body"
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.string "attachable_type"
+    t.bigint "attachable_id"
+    t.datetime "noted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "attachable_type, attachable_id, ((noted_at)::date)", name: "index_notes_on_attachable_and_noted_date", unique: true, where: "(attachable_id IS NOT NULL)"
+    t.index ["attachable_type", "attachable_id"], name: "index_notes_on_attachable_type_and_attachable_id"
+    t.index ["lonlat"], name: "index_notes_on_lonlat", using: :gist
+    t.index ["user_id", "noted_at"], name: "index_notes_on_user_id_and_noted_at"
+    t.index ["user_id"], name: "index_notes_on_user_id"
+  end
+
   create_table "notifications", force: :cascade do |t|
     t.string "title", null: false
     t.text "content", null: false
@@ -386,7 +403,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.datetime "updated_at", null: false
     t.datetime "corrected_at"
     t.index ["corrected_at"], name: "index_track_segments_on_corrected_at", where: "(corrected_at IS NOT NULL)"
-    t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
   end
 
@@ -447,14 +463,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
-    t.string "provider"
-    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
-    t.datetime "deleted_at"
+    t.string "provider"
+    t.string "uid"
     t.integer "plan", default: 1, null: false
     t.integer "failed_attempts", default: 0, null: false
     t.datetime "locked_at"
@@ -469,7 +484,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.datetime "otp_locked_at"
     t.datetime "visits_redetected_at"
     t.index ["api_key"], name: "index_users_on_api_key"
-    t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["otp_locked_at"], name: "index_users_on_otp_locked_at_not_null", where: "(otp_locked_at IS NOT NULL)"
     t.index ["plan"], name: "index_users_on_plan"
@@ -512,6 +526,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
   add_foreign_key "family_location_requests", "users", column: "target_user_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
+  add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
