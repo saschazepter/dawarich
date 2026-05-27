@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
 
+### Changed
+
+- Track segment writes are batched into a single INSERT, and transportation-mode distance calculations run in Ruby instead of round-tripping through PostgreSQL — faster track building and lighter load on the DB during background jobs.
+- Two unused indexes on the `points` table are dropped on upgrade; on large self-hosted instances this frees several GB of disk (~7.4 GB on a production-scale dataset). Migration is non-blocking (`DROP INDEX CONCURRENTLY`).
+
 ### Fixed
 
 - Cloud only: PostHog exception capture is enabled to help diagnose production errors. Disabled on self-hosted instances and skipped unless `POSTHOG_API_KEY` is configured. The payload includes `user.id`, controller/action, and parameter-filtered request data — email, name, phone, credentials, and coordinates are redacted before send.
