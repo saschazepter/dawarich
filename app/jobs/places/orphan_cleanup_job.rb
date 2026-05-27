@@ -44,7 +44,7 @@ class Places::OrphanCleanupJob < ApplicationJob
       LEFT JOIN taggings t ON t.taggable_id = p.id AND t.taggable_type = 'Place'
       WHERE p.user_id = $1
         AND p.source = #{Place.sources[:photon]}
-        AND p.name = '#{Place::DEFAULT_NAME}'
+        AND p.name = $2
         AND (p.note IS NULL OR p.note = '')
         AND v.id IS NULL
         AND t.id IS NULL
@@ -53,6 +53,9 @@ class Places::OrphanCleanupJob < ApplicationJob
   end
 
   def victim_binds(user_id)
-    [ActiveRecord::Relation::QueryAttribute.new('user_id', user_id, ActiveRecord::Type::Integer.new)]
+    [
+      ActiveRecord::Relation::QueryAttribute.new('user_id', user_id, ActiveRecord::Type::Integer.new),
+      ActiveRecord::Relation::QueryAttribute.new('name', Place::DEFAULT_NAME, ActiveRecord::Type::String.new)
+    ]
   end
 end

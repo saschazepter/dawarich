@@ -25,11 +25,14 @@ namespace :dawarich do
   desc 'Re-enqueue Places::NameFetchingJob for places stuck at DEFAULT_NAME (failed/retried out)'
   task resweep_default_named_places: :environment do
     cutoff = ENV.fetch('STUCK_AFTER_HOURS', '24').to_i.hours.ago
-    scope = Place.where(name: Place::DEFAULT_NAME, source: :photon).where('created_at < ?', cutoff)
+    max_wait = ENV.fetch('MAX_STAGGER_SECONDS', '600').to_i
+    scope = Place.where(name: Place::DEFAULT_NAME, source: :photon)
+                 .where('created_at < ?', cutoff)
+                 .where('updated_at < ?', cutoff)
     count = 0
     scope.in_batches(of: 500) do |batch|
       batch.pluck(:id).each do |pid|
-        Places::NameFetchingJob.set(wait: (count * 0.1).seconds).perform_later(pid)
+        Places::NameFetchingJob.set(wait: [count * 0.1, max_wait].min.seconds).perform_later(pid)
         count += 1
       end
     end

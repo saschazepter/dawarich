@@ -27,7 +27,7 @@ module Visits
       return nil if name.blank?
 
       @user.places
-           .includes(:tags, :visits)
+           .includes(:tags)
            .where(name: name)
            .where(
              'ST_DWithin(lonlat::geography, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',
