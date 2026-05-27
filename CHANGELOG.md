@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+Upgrade notes:
+
+1. **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
+
+### Added
+
+- Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
+- Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
+- Trip cards on `/trips` now render their map preview with MapLibre instead of Leaflet, matching Map v2.
+
+### Changed
+
+- Trip detail toolbar uses **Timeline** consistently (previously labelled "Replay" with a clock icon); the replay scrubber lives inside the Timeline panel.
+- Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
+- Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
+
+### Fixed
+
+- Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+
 ## [1.8.1] - 2026-06-11
 
 Upgrade notes:
@@ -23,11 +45,6 @@ Upgrade notes:
 - Bumped the `oauth2` gem to 2.0.22 to close a known credential-leak advisory (GHSA-pp92-crg2-gfv9) on the Google/GitHub sign-in path
 - CI now runs the full RSpec suite on every pull request; the previous workflow had been disabled
 - Globe view is enabled by default for Pro and self-hosted users.
-
-### Changed
-
-- Track segment writes are batched into a single INSERT, and transportation-mode distance calculations run in Ruby instead of round-tripping through PostgreSQL — faster track building and lighter load on the DB during background jobs.
-- Two unused indexes on the `points` table are dropped on upgrade; on large self-hosted instances this frees several GB of disk (~7.4 GB on a production-scale dataset). Migration is non-blocking (`DROP INDEX CONCURRENTLY`).
 
 ### Fixed
 
@@ -104,6 +121,7 @@ Upgrade notes:
 - `POST /api/v1/visits` no longer links a new visit to a place owned by another user. Passing a foreign `place_id` is ignored — the visit gets a place owned by the requester at the requested coordinates, and the response no longer echoes the other user's place id or coordinates.
 - Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 - The app no longer trips firewall blocks by repeatedly checking family status when you're not part of a family.
+
 
 ## [1.7.10] - 2026-05-26
 

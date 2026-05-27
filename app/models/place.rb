@@ -5,6 +5,7 @@ class Place < ApplicationRecord
   include Nearable
   include Distanceable
   include Taggable
+  include Notable
 
   DEFAULT_NAME = 'Suggested place'
 

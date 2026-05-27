@@ -126,6 +126,7 @@ Rails.application.routes.draw do
       post :recalculate
       post :export
     end
+    resources :notes, controller: 'trips/notes', only: %i[create update destroy]
   end
   resources :tags, except: [:show]
 
@@ -361,6 +362,8 @@ Rails.application.routes.draw do
           end
         end
       end
+
+      resources :notes, only: %i[index show create update destroy]
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
       post 'users/exist', to: 'users#exist'
