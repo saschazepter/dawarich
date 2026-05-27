@@ -303,6 +303,48 @@ RSpec.describe Tracks::TrackBuilder do
     end
   end
 
+  describe '#update_dominant_mode' do
+    let(:track) { create(:track, user: user, dominant_mode: :unknown) }
+
+    it 'is a no-op for empty segment_data' do
+      expect { builder.update_dominant_mode(track, []) }.not_to(change { track.reload.dominant_mode })
+    end
+
+    it 'picks the longest-distance moving mode when mixed with stationary' do
+      segment_data = [
+        { mode: :stationary, distance: 10_000, duration: 7200 },
+        { mode: :walking,    distance: 200,    duration: 300 },
+        { mode: :driving,    distance: 5_000,  duration: 600 }
+      ]
+
+      builder.update_dominant_mode(track, segment_data)
+
+      expect(track.reload.dominant_mode).to eq('driving')
+    end
+
+    it 'falls back to longest-duration mode when no moving segment crosses the distance threshold' do
+      segment_data = [
+        { mode: :stationary, distance: 0,  duration: 3600 },
+        { mode: :stationary, distance: 0,  duration: 1800 },
+        { mode: :walking,    distance: 10, duration: 60 }
+      ]
+
+      builder.update_dominant_mode(track, segment_data)
+
+      expect(track.reload.dominant_mode).to eq('stationary')
+    end
+
+    it 'tolerates nil distance and duration via Track.pick_dominant_mode#to_i coercion' do
+      segment_data = [
+        { mode: :walking, distance: nil, duration: nil },
+        { mode: :driving, distance: 5_000, duration: 600 }
+      ]
+
+      expect { builder.update_dominant_mode(track, segment_data) }.not_to raise_error
+      expect(track.reload.dominant_mode).to eq('driving')
+    end
+  end
+
   describe 'user method requirement' do
     let(:invalid_class) do
       Class.new do

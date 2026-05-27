@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -291,7 +291,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.jsonb "motion_data", default: {}, null: false
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
-    t.index ["anomaly"], name: "index_points_on_not_anomaly", where: "(anomaly IS NOT TRUE)"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
@@ -302,7 +301,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
-    t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
     t.index ["user_id"], name: "index_points_on_user_id"

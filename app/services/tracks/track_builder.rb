@@ -210,29 +210,22 @@ module Tracks::TrackBuilder
 
     return if segment_data.empty?
 
-    segments = segment_data.map do |data|
-      track.track_segments.create(
-        transportation_mode: data[:mode],
-        start_index: data[:start_index],
-        end_index: data[:end_index],
-        distance: data[:distance],
-        duration: data[:duration],
-        avg_speed: data[:avg_speed],
-        max_speed: data[:max_speed],
-        avg_acceleration: data[:avg_acceleration],
-        confidence: data[:confidence],
-        source: data[:source]
-      )
-    end.select(&:persisted?)
-
-    update_dominant_mode(track, segments)
+    TrackSegments::BulkInserter.call(track, segment_data)
+    update_dominant_mode(track, segment_data)
   rescue StandardError => e
     Rails.logger.error "Failed to detect transportation modes for track #{track.id}: #{e.message}"
   end
 
-  def update_dominant_mode(track, segments)
-    return if segments.empty?
+  def update_dominant_mode(track, segment_data)
+    return if segment_data.empty?
 
+    segments = segment_data.map do |d|
+      TrackSegment.new(
+        transportation_mode: d[:mode],
+        distance: d[:distance],
+        duration: d[:duration]
+      )
+    end
     mode = Track.pick_dominant_mode(segments)
     track.update_column(:dominant_mode, mode) if mode
   end
