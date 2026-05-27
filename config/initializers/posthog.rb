@@ -4,6 +4,7 @@
 # Place this file in config/initializers/posthog.rb
 
 return if DawarichSettings.self_hosted?
+return if ENV['POSTHOG_API_KEY'].blank?
 
 # ============================================================================
 # RAILS-SPECIFIC CONFIGURATION
