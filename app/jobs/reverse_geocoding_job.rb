@@ -2,6 +2,7 @@
 
 class ReverseGeocodingJob < ApplicationJob
   queue_as :reverse_geocoding
+  sidekiq_options retry: 3
 
   def perform(klass, id, force: false)
     return unless DawarichSettings.reverse_geocoding_enabled?
