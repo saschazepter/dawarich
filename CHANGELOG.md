@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly rescue sweep bypasses the dedup so points whose initial job failed (or whose dedup key lingers) still get processed. Bulk re-runs via Settings → Geocoding respect the same dedup, and exhausted jobs clear their key so the rescue sweep can pick them up.
+
 ## [1.7.10] - 2026-05-26
 
 ### ⚠️ Upgrade notes

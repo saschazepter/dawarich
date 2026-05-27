@@ -156,6 +156,14 @@ RSpec.describe Point, type: :model do
             .to have_enqueued_job(ReverseGeocodingJob)
             .with('Point', point.id, force: true)
         end
+
+        it 'clears the dedup key so subsequent non-force calls can re-claim' do
+          point.save
+
+          point.async_reverse_geocode(force: true)
+
+          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+        end
       end
 
       context 'with different points' do
