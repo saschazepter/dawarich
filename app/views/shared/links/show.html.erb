@@ -1,0 +1,15 @@
+<% content_for(:title, "#{@link.name} — Shared on Dawarich") %>
+
+<% content_for :head do %>
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="<%= @link.name %>">
+  <meta property="og:description" content="Shared from Dawarich">
+  <meta property="og:image" content="<%= public_shared_link_og_image_url(@link.id) %>">
+  <meta name="twitter:card" content="summary_large_image">
+<% end %>
+
+<% if @resource.nil? %>
+  <%= render 'shared/links/missing_resource' %>
+<% else %>
+  <%= render partial: "shared/links/#{@link.resource_type}", locals: { link: @link, resource: @resource } %>
+<% end %>

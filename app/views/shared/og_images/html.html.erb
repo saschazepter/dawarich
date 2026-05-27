@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; width: 1200px; height: 630px; font-family: system-ui, sans-serif; background: #0f172a; color: white; }
+    .wrap { padding: 60px; }
+    h1 { font-size: 56px; margin: 0; }
+    p  { font-size: 28px; opacity: 0.7; margin-top: 12px; }
+    .brand { position: absolute; bottom: 60px; left: 60px; font-size: 28px; opacity: 0.85; }
+  </style>
+</head><body>
+  <div class="wrap">
+    <h1><%= @link.name %></h1>
+    <% if @resource.respond_to?(:started_at) && @resource.respond_to?(:ended_at) %>
+      <p><%= l(@resource.started_at.to_date, format: :long) %> – <%= l(@resource.ended_at.to_date, format: :long) %></p>
+    <% end %>
+    <p class="brand">Dawarich</p>
+  </div>
+</body></html>

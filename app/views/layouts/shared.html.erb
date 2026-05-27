@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title><%= content_for?(:title) ? yield(:title) : "Shared on Dawarich" %></title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+  <%= yield :head %>
+</head>
+<body class="bg-base-100">
+  <header class="navbar bg-base-200">
+    <%= link_to root_url, class: "btn btn-ghost normal-case text-xl" do %>
+      Dawarich
+    <% end %>
+  </header>
+  <main><%= yield %></main>
+  <footer class="footer footer-center p-10 bg-base-200 text-base-content">
+    <p>Track your own travels — <%= link_to "try Dawarich", root_url, class: "link" %></p>
+  </footer>
+</body>
+</html>

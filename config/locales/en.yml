@@ -1,3 +1,5 @@
 
 en:
-
+  shared:
+    links:
+      invalid_phrase: "That phrase didn't work. Try again."

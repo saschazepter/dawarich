@@ -27,8 +27,12 @@ RUN apt-get update -qq \
     libjemalloc2 libjemalloc-dev \
     cmake \
     ca-certificates \
+    chromium \
+    fonts-liberation \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
+
+ENV FERRUM_BROWSER_PATH=/usr/bin/chromium
 
 # Install Node.js from Debian repositories (supports all architectures including armv7)
 RUN apt-get update -qq \

@@ -1,0 +1,146 @@
+<turbo-frame id="trip-share-modal">
+  <div class="modal modal-open">
+    <div class="modal-box max-w-xl">
+      <%# Close affordance — top-right "X" navigates out of the frame to the trip page. %>
+      <%= link_to trip_path(@trip),
+                  class: "btn btn-sm btn-circle btn-ghost absolute right-3 top-3",
+                  data: { turbo_frame: "_top" },
+                  aria: { label: "Close" } do %>
+        ✕
+      <% end %>
+
+      <% if @share %>
+        <%# Management view %>
+        <div class="flex items-center gap-2 mb-4">
+          <h3 class="font-bold text-lg">Sharing</h3>
+          <span class="badge badge-success badge-sm gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>
+            Public
+          </span>
+        </div>
+        <p class="text-sm text-base-content/70 mb-5"><%= @trip.name %> is shared via a public link.</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="trip-share-url">Public link</label>
+            <div class="join w-full mt-1">
+              <input id="trip-share-url"
+                     type="text"
+                     readonly
+                     value="<%= public_shared_link_url(@share.id) %>"
+                     class="input input-bordered join-item flex-1 font-mono text-sm"
+                     onclick="this.select();">
+              <button type="button"
+                      class="btn btn-outline join-item"
+                      data-controller="clipboard"
+                      data-clipboard-text-value="<%= public_shared_link_url(@share.id) %>"
+                      data-action="click->clipboard#copy"
+                      aria-label="Copy public link">
+                <%= icon 'copy', class: 'w-4 h-4' %>
+              </button>
+            </div>
+          </div>
+
+          <% if @share.magic_phrase.present? %>
+            <div>
+              <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="trip-share-phrase">Magic phrase</label>
+              <div class="join w-full mt-1">
+                <input id="trip-share-phrase"
+                       type="text"
+                       readonly
+                       value="<%= @share.magic_phrase %>"
+                       class="input input-bordered join-item flex-1 font-mono text-sm"
+                       onclick="this.select();">
+                <button type="button"
+                        class="btn btn-outline join-item"
+                        data-controller="clipboard"
+                        data-clipboard-text-value="<%= @share.magic_phrase %>"
+                        data-action="click->clipboard#copy"
+                        aria-label="Copy magic phrase">
+                  <%= icon 'copy', class: 'w-4 h-4' %>
+                </button>
+              </div>
+            </div>
+          <% end %>
+
+          <div class="flex flex-wrap gap-4 text-sm text-base-content/70">
+            <span><%= pluralize(@share.view_count, 'view') %></span>
+            <span class="flex items-center gap-1.5">
+              <%= icon 'clock', class: 'w-4 h-4' %>
+              <% if @share.last_accessed_at %>
+                Last viewed <%= time_ago_in_words(@share.last_accessed_at) %> ago
+              <% else %>
+                Not viewed yet
+              <% end %>
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-base-300">
+            <div class="flex flex-wrap gap-2">
+              <%= button_to regenerate_trip_share_link_path(@trip),
+                            method: :post,
+                            form: { data: { turbo_frame: "trip-share-modal" } },
+                            class: "btn btn-outline btn-sm",
+                            data: { turbo_confirm: "Generate a new URL? The current URL will stop working." } do %>
+                <%= icon 'refresh-ccw', class: 'w-4 h-4' %> Regenerate URL
+              <% end %>
+              <%= button_to regenerate_phrase_trip_share_link_path(@trip),
+                            method: :post,
+                            form: { data: { turbo_frame: "trip-share-modal" } },
+                            class: "btn btn-outline btn-sm",
+                            data: { turbo_confirm: "Generate a new phrase?" } do %>
+                <%= icon 'refresh-ccw', class: 'w-4 h-4' %> Regenerate phrase
+              <% end %>
+            </div>
+            <%= button_to revoke_trip_share_link_path(@trip),
+                          method: :patch,
+                          form: { data: { turbo_frame: "trip-share-modal" } },
+                          class: "btn btn-warning btn-sm",
+                          data: { turbo_confirm: "Revoke this link? It will stop working immediately." } do %>
+              <%= icon 'shield', class: 'w-4 h-4' %> Revoke
+            <% end %>
+          </div>
+        </div>
+
+      <% else %>
+        <%# Create form %>
+        <h3 class="font-bold text-lg mb-1">Share <%= @trip.name %></h3>
+        <p class="text-sm text-base-content/70 mb-5">Anyone with the link will be able to view this trip.</p>
+
+        <%= form_with model: @shared_link, url: trip_share_link_path(@trip), method: :post,
+                      data: { turbo_frame: "trip-share-modal" } do |f| %>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Magic phrase (optional)</span></label>
+            <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
+            <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
+          </div>
+          <div class="form-control mt-4">
+            <label class="label cursor-pointer">
+              <span class="label-text">Show photos</span>
+              <%= f.check_box 'settings[show_photos]', class: 'checkbox' %>
+            </label>
+            <label class="label cursor-pointer">
+              <span class="label-text">Show places</span>
+              <%= f.check_box 'settings[show_places]', { checked: true, class: 'checkbox' }, '1', '0' %>
+            </label>
+            <label class="label cursor-pointer">
+              <span class="label-text">Show addresses</span>
+              <%= f.check_box 'settings[show_addresses]', class: 'checkbox' %>
+            </label>
+            <label class="label cursor-pointer">
+              <span class="label-text">Show stats</span>
+              <%= f.check_box 'settings[show_stats]', { checked: true, class: 'checkbox' }, '1', '0' %>
+            </label>
+          </div>
+          <div class="modal-action">
+            <%= link_to 'Cancel', trip_path(@trip), class: 'btn btn-ghost', data: { turbo_frame: '_top' } %>
+            <%= f.submit 'Create share link', class: 'btn btn-primary' %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <%# Click backdrop to close (DaisyUI pattern) %>
+    <%= link_to '', trip_path(@trip), class: "modal-backdrop", data: { turbo_frame: "_top" }, aria: { label: "Close" } %>
+  </div>
+</turbo-frame>

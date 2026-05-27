@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_21_121115) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pgcrypto"
   enable_extension "postgis"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
@@ -327,6 +328,25 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
   end
 
+  create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "resource_type", null: false
+    t.bigint "resource_id"
+    t.string "name", limit: 255, null: false
+    t.string "magic_phrase", limit: 255
+    t.datetime "expires_at"
+    t.datetime "revoked_at"
+    t.jsonb "settings", default: {}, null: false
+    t.integer "view_count", default: 0, null: false
+    t.datetime "last_accessed_at"
+    t.integer "og_image_state", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["resource_type", "resource_id"], name: "index_shared_links_on_resource_type_and_resource_id", where: "(resource_id IS NOT NULL)"
+    t.index ["user_id"], name: "index_shared_links_active_by_user", where: "(revoked_at IS NULL)"
+    t.index ["user_id"], name: "index_shared_links_on_user_id"
+  end
+
   create_table "stats", force: :cascade do |t|
     t.integer "year", null: false
     t.integer "month", null: false
@@ -521,6 +541,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
+  add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"
