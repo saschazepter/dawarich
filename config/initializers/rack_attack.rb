@@ -273,6 +273,20 @@ Rack::Attack.throttle('shared_links/unlock', limit: 5, period: 5.minutes) do |re
   end
 end
 
+# Unauthenticated tools/signup-handoff endpoint: 60 uploads/hour per IP.
+# Prevents abuse of the public pending-import surface (no API key required,
+# accepts up to 100MB files).
+Rack::Attack.throttle('api/v1/imports/pending CREATE', limit: 60, period: 1.hour) do |req|
+  req.ip if req.post? && req.path == '/api/v1/imports/pending'
+end
+
+# Companion throttle for the signup claim path. The Devise integration that
+# consumes ?import_ticket= arrives in a later task, but registering the
+# throttle now is safe (no-op until the path is wired up).
+Rack::Attack.throttle('imports/claim attempts', limit: 30, period: 1.hour) do |req|
+  req.ip if req.get? && req.path == '/users/sign_up' && req.params['import_ticket'].present?
+end
+
 Rack::Attack.throttled_responder = lambda do |request|
   match_data = request.env['rack.attack.match_data'] || {}
   now = Time.current

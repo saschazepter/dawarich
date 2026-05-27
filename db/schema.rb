@@ -13,6 +13,7 @@
 ActiveRecord::Schema[8.0].define(version: 2026_06_22_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pgcrypto"
   enable_extension "postgis"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
@@ -268,6 +269,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_22_090000) do
     t.datetime "updated_at", null: false
     t.index ["kind"], name: "index_notifications_on_kind"
     t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
+  create_table "pending_imports", force: :cascade do |t|
+    t.uuid "claim_ticket", default: -> { "gen_random_uuid()" }, null: false
+    t.string "original_filename", null: false
+    t.string "source_hint"
+    t.string "origin", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "claimed_at"
+    t.bigint "claimed_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["claim_ticket"], name: "index_pending_imports_on_claim_ticket", unique: true
+    t.index ["claimed_by_user_id"], name: "index_pending_imports_on_claimed_by_user_id"
+    t.index ["expires_at"], name: "index_pending_imports_on_expires_at"
   end
 
   create_table "place_visits", force: :cascade do |t|
@@ -597,6 +613,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_22_090000) do
   add_foreign_key "flights", "users"
   add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
+  add_foreign_key "pending_imports", "users", column: "claimed_by_user_id", on_delete: :nullify
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
