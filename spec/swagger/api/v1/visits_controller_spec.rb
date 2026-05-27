@@ -172,6 +172,7 @@ describe 'Visits API', type: :request do
             properties: {
               name: { type: :string },
               place_id: { type: :integer },
+              area_id: { type: :integer, nullable: true },
               status: { type: :string, enum: %w[suggested confirmed declined] }
             }
           }
