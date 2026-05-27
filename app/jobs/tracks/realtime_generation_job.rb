@@ -40,7 +40,7 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
 
     user.points
         .not_reverse_geocoded
-        .where('timestamp > ?', 6.hours.ago.to_i)
+        .where('created_at > ?', 5.minutes.ago)
         .find_each(&:async_reverse_geocode)
   end
 end
