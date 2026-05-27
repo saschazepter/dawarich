@@ -36,7 +36,12 @@ class Jobs::Create
       next if ids.empty?
 
       jobs = ids.map { |id| ReverseGeocodingJob.new('Point', id, force: force) }
-      ActiveJob.perform_all_later(jobs)
+      begin
+        ActiveJob.perform_all_later(jobs)
+      rescue StandardError
+        clear_dedup_keys(ids) unless force
+        raise
+      end
     end
   end
 

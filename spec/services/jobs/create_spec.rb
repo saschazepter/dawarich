@@ -149,6 +149,16 @@ RSpec.describe Jobs::Create do
           described_class.new('start_reverse_geocoding', user.id).call
         end.to have_enqueued_job(ReverseGeocodingJob).with('Point', point.id, force: true)
       end
+
+      it 'releases dedup keys when bulk enqueue raises after claiming' do
+        allow(ActiveJob).to receive(:perform_all_later).and_raise(StandardError, 'queue down')
+
+        expect do
+          described_class.new('continue_reverse_geocoding', user.id).call
+        end.to raise_error(StandardError, 'queue down')
+
+        expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+      end
     end
   end
 end
