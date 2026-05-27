@@ -3,7 +3,7 @@
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
 <div id="maps-maplibre-container"
-     data-controller="maps--maplibre area-drawer maps--maplibre-realtime"
+     data-controller="maps--maplibre area-drawer maps--maplibre-realtime video-form"
      data-maps--maplibre-api-key-value="<%= current_user.api_key %>"
      data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
@@ -56,6 +56,9 @@
 
   <!-- Area creation modal -->
   <%= render 'map/maplibre/area_creation_modal' %>
+
+  <!-- Video creation modal (shared by day & track triggers) -->
+  <%= render 'videos/create_modal' %>
 
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>

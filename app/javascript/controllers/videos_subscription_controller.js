@@ -26,6 +26,8 @@ export default class extends Controller {
       return
     }
     if (this.hasTbodyTarget) {
+      const emptyRow = this.tbodyTarget.querySelector("[data-videos-empty]")
+      if (emptyRow) emptyRow.remove()
       this.tbodyTarget.insertAdjacentHTML("afterbegin", data.html)
     }
   }

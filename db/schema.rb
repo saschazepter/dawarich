@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_11_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -204,6 +204,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.datetime "processing_started_at"
     t.text "error_message"
     t.boolean "demo", default: false, null: false
+    t.integer "additional_data_extraction_status", default: 0, null: false
+    t.jsonb "additional_data_extraction", default: {}, null: false
+    t.index ["additional_data_extraction_status"], name: "index_imports_on_additional_data_extraction_status"
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
@@ -245,6 +248,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.bigint "user_id"
     t.text "note"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
+    t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
   end
@@ -389,6 +393,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.datetime "corrected_at"
     t.index ["corrected_at"], name: "index_track_segments_on_corrected_at", where: "(corrected_at IS NOT NULL)"
     t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
+    t.index ["track_id", "start_index"], name: "idx_track_segments_track_start_index_unique", unique: true
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
   end
 
@@ -407,8 +412,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "dominant_mode", default: 0
+    t.string "tracker_id"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
+    t.index ["user_id", "start_at", "end_at"], name: "index_tracks_on_user_start_end_unique", unique: true
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
+    t.index ["user_id", "tracker_id", "start_at"], name: "idx_tracks_user_tracker_start_at_unique", unique: true
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
@@ -422,6 +430,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.datetime "updated_at", null: false
     t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
+    t.datetime "last_recalculated_at"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -463,6 +472,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.text "otp_backup_codes", array: true
     t.integer "subscription_source", default: 0, null: false
     t.string "signup_variant"
+    t.datetime "visits_redetected_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -472,6 +482,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"
     t.index ["status"], name: "index_users_on_status"
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
+    t.index ["visits_redetected_at"], name: "index_users_on_visits_redetected_at"
   end
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
@@ -488,6 +499,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.datetime "processing_started_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "name", limit: 200
     t.index ["status"], name: "index_videos_on_status"
     t.index ["track_id"], name: "index_videos_on_track_id"
     t.index ["user_id", "status"], name: "index_videos_on_user_id_and_status"
@@ -508,6 +520,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_144951) do
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
+    t.index ["user_id", "started_at", "place_id"], name: "idx_visits_user_started_at_place_unique", unique: true
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 

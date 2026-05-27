@@ -5,7 +5,18 @@ module Videos
     class RenderError < StandardError; end
 
     MAX_COORDINATES = 50_000
-    DEFAULT_CONFIG = { map_behavior: 'fit_full_route' }.freeze
+    # Hard 30-second total video cap, also enforced server-side.
+    # Portrait 9:16 (1080x1920) for mobile/social sharing.
+    DEFAULT_CONFIG = {
+      orientation: 'portrait',
+      target_duration: 30,
+      map_style: 'dark',
+      map_behavior: 'north_up',
+      fit_full_route: true,
+      overlay_layout: 'bottom_row_card',
+      screen_preset: 'sporty_midnight_run',
+      overlays: { time: true, speed: true, distance: true, track_name: true }
+    }.freeze
 
     def initialize(video:)
       @video = video
@@ -52,11 +63,14 @@ module Videos
 
     def render_payload
       urls = callback_urls
+      config = DEFAULT_CONFIG.dup
+      config[:track_name] = video.name if video.name.present?
+
       {
-        video_id: video.id,
+        video_export_id: video.id,
         callback_url: urls.first,
         callback_urls: urls,
-        config: DEFAULT_CONFIG,
+        config: config,
         coordinates: track_coordinates
       }
     end

@@ -1,30 +1,40 @@
-<tr id="<%= dom_id(video) %>" class="hover">
-  <td class="font-medium"><%= video.display_name %></td>
-  <td>
-    <% case video.status %>
-    <% when 'created', 'processing' %>
-      <span class="badge badge-info gap-1">
-        <span class="loading loading-spinner loading-xs"></span>
-        <%= video.status.titleize %>
-      </span>
-    <% when 'completed' %>
-      <span class="badge badge-success">Ready</span>
-    <% when 'failed' %>
-      <span class="badge badge-error tooltip" data-tip="<%= video.error_message %>">Failed</span>
-    <% end %>
+<tr id="<%= dom_id(video) %>" class="hover:bg-base-200/50 transition-colors">
+  <td class="px-4 py-3">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
+        <%= icon 'video', class: 'w-4 h-4' %>
+      </div>
+      <div>
+        <div class="font-medium"><%= video.display_name %></div>
+        <% if video.track_id.present? %>
+          <div class="text-xs text-base-content/50">From track</div>
+        <% else %>
+          <div class="text-xs text-base-content/50">From day</div>
+        <% end %>
+      </div>
+    </div>
   </td>
-  <td><%= time_ago_in_words(video.created_at) %> ago</td>
-  <td class="text-right space-x-2">
-    <% if video.completed? && video.file.attached? %>
-      <%= link_to 'Download',
-                  rails_blob_path(video.file, disposition: 'attachment',
-                                              filename: video.download_filename),
-                  class: 'btn btn-xs btn-primary' %>
-    <% end %>
-    <%= button_to 'Delete', video_path(video),
-                  method: :delete,
-                  data: { turbo_confirm: 'Delete this video?' },
-                  class: 'btn btn-xs btn-ghost text-error',
-                  form: { class: 'inline' } %>
+  <td class="px-4 py-3" data-status-display>
+    <%= status_badge(video) %>
+  </td>
+  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(video.created_at, video.user.safe_settings.timezone) %></td>
+  <td class="px-4 py-3 text-right">
+    <div class="flex items-center gap-1 justify-end">
+      <% if video.completed? && video.file.attached? %>
+        <div class="tooltip" data-tip="Download video">
+          <%= link_to rails_blob_path(video.file, disposition: 'attachment', filename: video.download_filename),
+                      class: 'btn btn-ghost btn-xs' do %>
+            <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
+          <% end %>
+        </div>
+      <% end %>
+      <div class="tooltip" data-tip="Delete video">
+        <%= link_to url_for(video),
+                    data: { turbo_confirm: 'Delete this video?', turbo_method: :delete },
+                    class: 'btn btn-ghost btn-xs text-error hover:bg-error/10' do %>
+          <%= icon 'trash-2', class: 'w-4 h-4' %>
+        <% end %>
+      </div>
+    </div>
   </td>
 </tr>

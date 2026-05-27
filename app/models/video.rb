@@ -9,6 +9,7 @@ class Video < ApplicationRecord
   has_one_attached :file
 
   validates :start_at, :end_at, presence: true
+  validates :name, length: { maximum: 200 }
   validate :end_at_after_start_at
   validate :track_belongs_to_user, if: -> { track_id.present? && track_id_changed? }
 
@@ -20,6 +21,8 @@ class Video < ApplicationRecord
   after_commit :broadcast_status, on: %i[create update], if: :saved_change_to_status?
 
   def display_name
+    return name if name.present?
+
     "#{start_at&.strftime('%Y-%m-%d')} — #{end_at&.strftime('%Y-%m-%d')}"
   end
 

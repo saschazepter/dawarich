@@ -790,7 +790,8 @@
   opacity: 0.45;
 }
 
-.day-select-toggle {
+.day-select-toggle,
+.day-header-pill {
   margin-left: 8px;
   font-size: 11px;
   padding: 2px 8px;
@@ -801,7 +802,8 @@
   cursor: pointer;
 }
 
-.day-select-toggle:hover {
+.day-select-toggle:hover,
+.day-header-pill:hover {
   background: oklch(var(--bc) / 0.05);
   color: oklch(var(--bc));
 }

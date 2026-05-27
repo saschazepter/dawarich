@@ -42,15 +42,14 @@
       <span id="track-replay-label">Replay</span>
     </button>
     <% if DawarichSettings.video_service_enabled? && !current_user.plan_restricted? %>
-      <%= button_to videos_path(track_id: track.id),
-                    method: :post,
-                    data: { turbo_stream: true },
-                    class: 'btn btn-xs btn-ghost gap-1 px-2',
-                    title: 'Generate replay video',
-                    form: { class: 'inline' } do %>
+      <button type="button"
+              class="btn btn-xs btn-ghost gap-1 px-2"
+              title="Generate replay video"
+              data-action="click->video-form#open"
+              data-video-form-track-id-param="<%= track.id %>">
         <%= icon 'video', class: 'w-3 h-3' %>
         <span>Video</span>
-      <% end %>
+      </button>
     <% end %>
   </div>
 
