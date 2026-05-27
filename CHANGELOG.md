@@ -100,6 +100,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Insights "Top Visited Locations" no longer underreports days for multi-month totals (e.g. 133 days rendered as "4 days"). #2743
 
 
+### Fixed
+
+- Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
+
 ## [1.7.8] - 2026-05-16
 
 ### ⚠️ Upgrade notes
