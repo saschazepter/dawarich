@@ -17,6 +17,12 @@ module ApplicationHelper
   end
 
   def new_version_available?
+    # When chibichange is wired up, it's the source of truth for "update
+    # available" via the inline widget mounted in the navbar. Skip the
+    # GitHub-tag-API check so the user doesn't get two indicators saying the
+    # same thing from different sources.
+    return false if ENV["CHIBICHANGE_URL"].present?
+
     CheckAppVersion.new.call
   end
 

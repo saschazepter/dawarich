@@ -46,6 +46,18 @@
         });
       </script>
     <% end %>
+
+    <%# chibichange widget — opt-in via CHIBICHANGE_URL. Renders an inline
+        "What's New" indicator next to the version badge. The widget only
+        sends (project_slug, version, page_origin); no IPs, no fingerprints. %>
+    <% chibichange_url = ENV["CHIBICHANGE_URL"].to_s.chomp("/") %>
+    <% if chibichange_url.present? %>
+      <script src="<%= chibichange_url %>/w/v1/loader.js"
+              data-slug="dawarich"
+              data-version="<%= APP_VERSION %>"
+              data-mount="#cc-version-mount"
+              defer></script>
+    <% end %>
   </head>
 
   <body class='min-h-screen flex flex-col'>

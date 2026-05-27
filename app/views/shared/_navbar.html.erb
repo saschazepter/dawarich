@@ -53,7 +53,9 @@
       </ul>
     </div>
     <%= link_to 'Dawarich<sup>α</sup>'.html_safe, (user_signed_in? ? preferred_map_path : root_path), class: 'btn btn-ghost normal-case text-xl'%>
-    <div class="badge mx-4 <%= 'badge-outline' if new_version_available? %>">
+    <%# Version badge — `id` is the mount target for the chibichange widget
+        when CHIBICHANGE_URL is configured (see application.html.erb). %>
+    <div id="cc-version-mount" class="badge mx-4 <%= 'badge-outline' if new_version_available? %>">
       <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
         <% if new_version_available? %>
           <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
