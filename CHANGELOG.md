@@ -4,14 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.7.10] - Unreleased
+## [1.7.11] - Unreleased
+
+### Fixed
+
+- Cloud only: PostHog exception capture is enabled to help diagnose production errors. Disabled on self-hosted instances and skipped unless `POSTHOG_API_KEY` is configured. The payload includes `user.id`, controller/action, and parameter-filtered request data — email, name, phone, credentials, and coordinates are redacted before send.
+
+## [1.7.10] - 2026-05-26
+
+### ⚠️ Upgrade notes
+
+- Stops shorter than 5 minutes are no longer suggested as visits by default. Change the threshold under **Map V2 ->Settings -> Visit detection** if you want shorter stops included.
+- Smart density fill now works correctly (it was broken in 1.7.8–1.7.9). You may see more visit suggestions, especially on days when your tracker recorded points unevenly.
 
 ### Added
 
 - Map v2 family member markers show name + last-seen datetime on hover.
 - Map v2 area info card exposes an **Edit** button that opens the area modal pre-filled — rename and resize existing areas without redrawing. Backed by a new `PATCH /areas/:id` route.
 - Map v2 selection tool: **Delete N Anomaly Points** button appears when the selection contains anomaly points, so you can clean up GPS noise without touching real points.
-- Cloud only: PostHog exception capture is enabled to help diagnose production errors. Disabled on self-hosted instances and skipped unless `POSTHOG_API_KEY` is configured. The payload includes `user.id`, controller/action, and parameter-filtered request data — email, name, phone, credentials, and coordinates are redacted before send.
+- New **Minimum visit duration** setting under Settings → Visit detection (1–60 minutes, default 5). Raise it to ignore short drive-bys; lower it to catch brief errands. Replaces the hardcoded 3-minute floor that was the same for everyone in 1.7.8–1.7.9.
 
 ### Changed
 
@@ -23,6 +34,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map v2 Place creation modal now closes on successful submit — the success path is no longer gated on a Turbo Stream side-effect, so the modal always dismisses after the place is saved.
 - Stats page no longer 500s after deleting an import or recalculating a month with no points. #2682
+- Timeline no longer fills with `traveled · 0m` rows from stationary keepalive clusters; commutes that absorb adjacent stationary points are correctly labeled by their moving mode (e.g. `drove`) rather than `stationary`. Hit **Settings → Recalculate** to apply to existing data.
+- New tracks now honor the user's enabled transportation modes during initial detection. Previously only the Recalculate path respected disabled modes, so a user who turned off (e.g.) cycling still saw cycling assigned to freshly built tracks. #2787
+- Visit detection no longer suggests stops at places you only drove past. Clusters where the device was moving faster than walking pace between real GPS points are rejected, so road centerlines on busy arterials stop showing up as "visits" to Kent Street / Leach Highway / etc. #2736 #2775
+- Visit detection requires real GPS points (not interpolated density-fill ghost points) to meet the minimum-points threshold, so a single drive between two real fixes can't be inflated into a visit. #2736
+- Smart density fill now works correctly — it was silently disabled in 1.7.8 and 1.7.9.
+- Visit detection now respects your **Visit time threshold** setting when deciding where one visit ends and the next begins. The setting was previously ignored and always treated as 30 minutes.
 
 
 ## [1.7.9] - 2026-05-21
