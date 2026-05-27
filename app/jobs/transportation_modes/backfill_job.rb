@@ -81,8 +81,14 @@ module TransportationModes
 
       TrackSegments::BulkInserter.call(track, segment_data)
 
-      dominant = segment_data.max_by { |d| d[:duration] || 0 }
-      track.update_column(:dominant_mode, (dominant && dominant[:mode]) || :unknown)
+      segments = segment_data.map do |d|
+        TrackSegment.new(
+          transportation_mode: d[:mode],
+          distance: d[:distance],
+          duration: d[:duration]
+        )
+      end
+      track.update_column(:dominant_mode, Track.pick_dominant_mode(segments) || :unknown)
     end
   end
 end
