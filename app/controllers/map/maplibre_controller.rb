@@ -25,9 +25,36 @@ module Map
 
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
+
+      @memories_payload = build_memories_payload
     end
 
     private
+
+    # The "On this day, N time ago" reel — only built when ?memories=true is
+    # in the URL. Anchor defaults to Time.current; a non-prod `anchor=YYYY-MM-DD`
+    # param allows the Playwright suite to pin the lookup date to seeded fixtures.
+    # We render the partial even when no chapters surfaced so the user sees an
+    # empty-state hint rather than silence.
+    def build_memories_payload
+      return nil unless params[:memories].to_s == 'true'
+
+      payload = MemorySerializer.new(current_user, anchor: memories_anchor).call
+      Rails.logger.info(
+        "[Memories] user=#{current_user.id} anchor=#{payload[:anchor]} " \
+        "chapters=#{payload[:chapters].size}"
+      )
+      payload
+    end
+
+    def memories_anchor
+      return Time.current if Rails.env.production?
+      return Time.current if params[:anchor].blank?
+
+      Time.zone.parse(params[:anchor]) || Time.current
+    rescue ArgumentError
+      Time.current
+    end
 
     # Reuses the same month-resolution rule as the calendar helper so the
     # filter pills are aligned with whatever month the calendar lands on

@@ -1,0 +1,94 @@
+<%# Map v2 Memories reel + viewer overlay.
+    Locals:
+      memories — MemorySerializer.new(user).call payload, a hash with :chapters
+    The `data-controller="memories"` lives on the surrounding
+    #maps-maplibre-container in index.html.erb so the same controller scope
+    also reaches the map div (for the blur class).
+%>
+<div data-testid="memories-root">
+  <% if memories[:chapters].any? %>
+    <div class="memory-reel" data-memories-target="reel" data-testid="memory-reel">
+      <% memories[:chapters].each_with_index do |chapter, idx| %>
+        <button type="button"
+                class="memory-reel-item memory-reel-item--<%= chapter[:bucket] %>"
+                data-memories-target="reelItem"
+                data-action="click->memories#open"
+                data-idx="<%= idx %>"
+                data-period="<%= chapter[:period_key] %>"
+                data-testid="memory-reel-item-<%= chapter[:period_key] %>"
+                aria-label="Open <%= chapter[:period_label] %> memory">
+          <span class="memory-reel-avatar">
+            <span class="memory-reel-avatar-inner"><%= chapter[:period_short] %></span>
+          </span>
+          <span class="memory-reel-label"><%= chapter[:date_short] %></span>
+        </button>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="memory-empty" data-testid="memory-empty">
+      <strong>No memories on this day yet.</strong>
+      <span>No points found on
+        <%= ['1mo', '3mo', '6mo', '1y', '2y', '3y', '5y', '10y'].join(' / ') %>
+        ago from
+        <code><%= memories[:anchor] %></code>.
+        Try a different <code>?anchor=YYYY-MM-DD</code>, or come back when more history is recorded.
+      </span>
+    </div>
+  <% end %>
+
+  <div class="memory-viewer hidden"
+       data-memories-target="viewer"
+       data-testid="memory-viewer"
+       aria-hidden="true"
+       role="dialog"
+       aria-modal="true">
+    <div class="memory-viewer-backdrop" data-action="click->memories#close"></div>
+
+    <div class="memory-viewer-frame" data-memories-target="viewerFrame">
+      <button type="button"
+              class="memory-viewer-close"
+              data-action="click->memories#close"
+              data-testid="memory-viewer-close"
+              aria-label="Close memory">
+        <%= icon 'x', class: 'w-4 h-4' %>
+      </button>
+
+      <div class="memory-viewer-progress text-base-content/60"
+           data-memories-target="progressBar"
+           data-testid="memory-viewer-progress">
+        Memory 1 of <%= memories[:chapters].length %>
+      </div>
+
+      <div class="memory-viewer-header">
+        <span class="memory-viewer-dot"></span>
+        <strong data-memories-target="chapterTitle"><%= memories[:chapters].first&.dig(:period_label) %></strong>
+        <span class="memory-viewer-day text-base-content/60" data-memories-target="chapterDay">
+          <%= memories[:chapters].first&.dig(:date_long) %>
+        </span>
+      </div>
+
+      <div class="memory-viewer-photo" data-memories-target="photo">
+        <%# Filled by memories_controller#renderMiniMap on open %>
+      </div>
+
+      <div class="memory-viewer-caption text-base-content"
+           data-memories-target="caption"
+           data-testid="memory-viewer-caption">
+        <%= memories[:chapters].first&.dig(:caption_html).to_s.html_safe %>
+      </div>
+
+      <div class="memory-viewer-nav">
+        <button type="button" class="btn btn-sm btn-ghost"
+                data-action="click->memories#prev"
+                data-testid="memory-viewer-prev">← Prev</button>
+        <span class="memory-viewer-auto text-base-content/60">
+          <span class="memory-viewer-auto-dot"></span>
+          Auto-advancing
+        </span>
+        <button type="button" class="btn btn-sm btn-ghost"
+                data-action="click->memories#next"
+                data-testid="memory-viewer-next">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -44,6 +44,18 @@ namespace :e2e do
   E2E_ANOMALY_TRIP_START = '2025-10-15 11:00:00'.freeze
   E2E_ANOMALY_TRIP_END   = '2025-10-15 18:00:00'.freeze
 
+  # Cities planted at each lookback offset for the Memories reel e2e spec.
+  # `offset` is the duration ago from Time.current at seed-time; the lookback
+  # ladder in Memories::Builder mirrors these values.
+  E2E_MEMORIES_FIXTURE = [
+    { ago: :one_month,    city: 'Berlin', country: 'Germany',        lat: 52.5200, lon: 13.4050 },
+    { ago: :three_months, city: 'Prague', country: 'Czech Republic', lat: 50.0800, lon: 14.4300 },
+    { ago: :six_months,   city: 'Rome',   country: 'Italy',          lat: 41.9000, lon: 12.5000 },
+    { ago: :one_year,     city: 'Vienna', country: 'Austria',        lat: 48.2100, lon: 16.3700 },
+    { ago: :two_years,    city: 'Paris',  country: 'France',         lat: 48.8566, lon:  2.3522 },
+    { ago: :three_years,  city: 'Madrid', country: 'Spain',          lat: 40.4168, lon: -3.7038 }
+  ].freeze
+
   # Normal (non-anomaly) Berlin points that sit inside the anomaly trip
   # window. Demo data has many points but most carry country_name=nil, so
   # without these the trip's calculate_countries returns []. These are the
@@ -84,6 +96,9 @@ namespace :e2e do
 
     puts "\n🧭 Seeding the anomaly-window demo trip..."
     Rake::Task['e2e:seed_demo_trip'].invoke
+
+    puts "\n📚 Seeding historical points for the Memories reel..."
+    Rake::Task['e2e:seed_memories_history'].invoke
   end
 
   desc 'Plant a deterministic set of anomaly points on the demo user (idempotent).'
@@ -155,6 +170,51 @@ namespace :e2e do
     trip.update!(last_recalculated_at: Time.current)
 
     puts "  ↪ trip ##{trip.id} \"#{trip.name}\" countries=#{trip.visited_countries.inspect}"
+  end
+
+  desc 'Plant historical points at fixed lookback offsets so the Map v2 Memories reel has data to surface.'
+  task seed_memories_history: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+
+    user.points.where(tracker_id: 'e2e-memories').delete_all
+
+    ago_to_duration = {
+      one_month: 1.month,
+      three_months: 3.months,
+      six_months: 6.months,
+      one_year: 1.year,
+      two_years: 2.years,
+      three_years: 3.years
+    }
+
+    E2E_MEMORIES_FIXTURE.each do |row|
+      anchor = (Time.current - ago_to_duration.fetch(row[:ago])).change(hour: 12, min: 0, sec: 0)
+      country = Country.find_or_create_by(name: row[:country]) do |c|
+        iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(row[:country])
+        c.iso_a2 = iso_a2
+        c.iso_a3 = iso_a3
+        c.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
+      end
+
+      3.times do |i|
+        user.points.create!(
+          timestamp: (anchor + (i * 30).minutes).to_i,
+          latitude: row[:lat] + (i * 0.0005),
+          longitude: row[:lon] + (i * 0.0005),
+          lonlat: "POINT(#{row[:lon] + (i * 0.0005)} #{row[:lat] + (i * 0.0005)})",
+          city: row[:city],
+          country: row[:country],
+          country_name: row[:country],
+          country_id: country.id,
+          tracker_id: 'e2e-memories'
+        )
+      end
+    end
+
+    count = user.points.where(tracker_id: 'e2e-memories').count
+    puts "  ↪ planted #{count} historical points across #{E2E_MEMORIES_FIXTURE.size} lookback slots"
   end
 
   desc 'Wipe data for the e2e users (demo, lite, family members) without deleting the users themselves'
