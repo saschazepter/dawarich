@@ -204,7 +204,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     end
 
     context 'when updating name together with place_id' do
-      let(:new_place) { create(:place, name: 'Coffee Shop') }
+      let(:new_place) { create(:place, name: 'Coffee Shop', user: user) }
 
       it 'preserves the user-provided name instead of overwriting it with the place name' do
         put "/api/v1/visits/#{visit.id}",
