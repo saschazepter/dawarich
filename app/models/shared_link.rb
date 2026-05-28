@@ -31,6 +31,7 @@ class SharedLink < ApplicationRecord
   validates :name, presence: true, length: { maximum: 255 }
   validates :magic_phrase, length: { maximum: 255 }, allow_nil: true
   validate :resource_id_matches_type
+  validate :timeline_dates_present_and_ordered
 
   scope :active, lambda {
     where(revoked_at: nil)
@@ -63,5 +64,33 @@ class SharedLink < ApplicationRecord
     elsif !needs_id && resource_id.present?
       errors.add(:resource_id, 'must be blank for this resource type')
     end
+  end
+
+  def timeline_dates_present_and_ordered
+    return unless timeline?
+
+    start_date = settings['start_date'].presence
+    end_date   = settings['end_date'].presence
+
+    if start_date.blank? || end_date.blank?
+      errors.add(:settings, 'must include start_date and end_date for timeline shares')
+      return
+    end
+
+    parsed_start = safe_parse_date(start_date)
+    parsed_end   = safe_parse_date(end_date)
+
+    if parsed_start.nil? || parsed_end.nil?
+      errors.add(:settings, 'start_date and end_date must be parseable as dates')
+      return
+    end
+
+    errors.add(:settings, 'end_date must be on or after start_date') if parsed_end < parsed_start
+  end
+
+  def safe_parse_date(value)
+    Date.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
   end
 end

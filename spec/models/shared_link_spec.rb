@@ -92,6 +92,32 @@ RSpec.describe SharedLink, type: :model do
     end
   end
 
+  describe 'timeline validations' do
+    let(:user) { create(:user) }
+
+    it 'requires start_date and end_date in settings for timeline type' do
+      link = build(:shared_link, user: user, resource_type: :timeline, resource_id: nil,
+                                 settings: {}, autobuild_trip: false)
+      expect(link).not_to be_valid
+      expect(link.errors[:settings]).to include(/start_date/)
+    end
+
+    it 'requires end_date >= start_date' do
+      link = build(:shared_link, user: user, resource_type: :timeline, resource_id: nil,
+                                 settings: { 'start_date' => '2026-04-14', 'end_date' => '2026-04-01' },
+                                 autobuild_trip: false)
+      expect(link).not_to be_valid
+      expect(link.errors[:settings]).to include(/end_date must be on or after start_date/)
+    end
+
+    it 'is valid with a proper date range' do
+      link = build(:shared_link, user: user, resource_type: :timeline, resource_id: nil,
+                                 settings: { 'start_date' => '2026-04-01', 'end_date' => '2026-04-14' },
+                                 autobuild_trip: false)
+      expect(link).to be_valid
+    end
+  end
+
   describe 'DEFAULT_SETTINGS' do
     it 'provides settings for each resource type' do
       expect(SharedLink::DEFAULT_SETTINGS[:trip]).to include('show_photos' => false, 'show_places' => true)
