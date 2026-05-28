@@ -91,4 +91,18 @@ RSpec.describe SharedLink, type: :model do
       expect(link.last_accessed_at).to be >= before_call
     end
   end
+
+  describe 'DEFAULT_SETTINGS' do
+    it 'provides settings for each resource type' do
+      expect(SharedLink::DEFAULT_SETTINGS[:trip]).to include('show_photos' => false, 'show_places' => true)
+      expect(SharedLink::DEFAULT_SETTINGS[:track]).to include('show_stats' => true)
+      expect(SharedLink::DEFAULT_SETTINGS[:timeline]).to include('show_places' => true)
+      expect(SharedLink::DEFAULT_SETTINGS[:live]).to include('history_hours' => 6)
+    end
+
+    it 'returns defaults via .default_settings_for' do
+      expect(SharedLink.default_settings_for(:trip)).to eq(SharedLink::DEFAULT_SETTINGS[:trip])
+      expect(SharedLink.default_settings_for('timeline')).to eq(SharedLink::DEFAULT_SETTINGS[:timeline])
+    end
+  end
 end

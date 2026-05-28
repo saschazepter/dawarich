@@ -97,7 +97,7 @@ module Trips
     end
 
     def default_settings
-      { 'show_photos' => false, 'show_places' => true, 'show_addresses' => false, 'show_stats' => true }
+      SharedLink.default_settings_for(:trip)
     end
 
     def create_params

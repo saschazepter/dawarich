@@ -9,6 +9,25 @@ class SharedLink < ApplicationRecord
   enum :resource_type, { trip: 0, track: 1, timeline: 2, live: 3 }
   enum :og_image_state, { pending: 0, ready: 1, failed: 2 }, prefix: :og_image
 
+  DEFAULT_SETTINGS = {
+    trip: {
+      'show_photos' => false, 'show_places' => true, 'show_addresses' => false, 'show_stats' => true
+    }.freeze,
+    track: {
+      'show_photos' => false, 'show_places' => false, 'show_addresses' => false, 'show_stats' => true
+    }.freeze,
+    timeline: {
+      'show_photos' => false, 'show_places' => true, 'show_addresses' => false
+    }.freeze,
+    live: {
+      'show_photos' => false, 'show_places' => false, 'show_addresses' => false, 'history_hours' => 6
+    }.freeze
+  }.freeze
+
+  def self.default_settings_for(resource_type)
+    DEFAULT_SETTINGS.fetch(resource_type.to_sym).dup
+  end
+
   validates :name, presence: true, length: { maximum: 255 }
   validates :magic_phrase, length: { maximum: 255 }, allow_nil: true
   validate :resource_id_matches_type
