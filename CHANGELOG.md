@@ -10,6 +10,39 @@ Upgrade notes:
 
 1. **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
 
+2. **Points with missing coordinates:** this release stops *new* points with missing coordinates from being created, but it does not touch points that were already saved without coordinates by older versions. If your points API still returns a 500, clean up the existing rows as follows. Open a database console on your instance with `bundle exec rails dbconsole` (or `psql` directly), then:
+
+   **Count how many points are missing coordinates:**
+
+   ```sql
+   SELECT COUNT(*) FROM points WHERE lonlat IS NULL;
+   ```
+
+   **(Optional) Delete every point that is missing coordinates:**
+
+   ```sql
+   DELETE FROM points WHERE lonlat IS NULL;
+   ```
+
+   **Or recover coordinates from the legacy `latitude`/`longitude` columns first:**
+
+   ```sql
+   UPDATE points
+   SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+   WHERE lonlat IS NULL
+     AND latitude IS NOT NULL
+     AND longitude IS NOT NULL;
+   ```
+
+   **Then delete the points that are beyond recovery:**
+
+   ```sql
+   DELETE FROM points
+   WHERE lonlat IS NULL
+     AND latitude IS NULL
+     AND longitude IS NULL;
+   ```
+
 ### Added
 
 - Run the app and Sidekiq containers under a custom user via `PUID`/`PGID` environment variables: the container starts as root, fixes ownership of the mounted volumes, then drops privileges. Use this instead of Compose `user:`, which cannot write to root-owned volumes (#1159).
@@ -33,6 +66,7 @@ Upgrade notes:
 - Users signed in via Google will now be able to sign in with new password after setting it up, instead of being locked out by the old password being ignored.
 - Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
+- Importers no longer persist points with missing coordinates, which previously caused the points API to return a 500 when serializing them. (#2519)
 
 ## [1.8.1] - 2026-06-11
 
@@ -129,7 +163,6 @@ Upgrade notes:
 - `POST /api/v1/visits` no longer links a new visit to a place owned by another user. Passing a foreign `place_id` is ignored — the visit gets a place owned by the requester at the requested coordinates, and the response no longer echoes the other user's place id or coordinates.
 - Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 - The app no longer trips firewall blocks by repeatedly checking family status when you're not part of a family.
-
 
 ## [1.7.10] - 2026-05-26
 
