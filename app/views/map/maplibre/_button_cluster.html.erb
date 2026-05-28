@@ -10,7 +10,10 @@
     <%= icon 'calendar-clock' %>
     <% count = @suggestions_pending_count.to_i %>
     <% if count.positive? %>
-      <span class="map-button-cluster__badge" aria-label="<%= count %> suggestions pending">
+      <% tooltip = "#{count} unreviewed #{'visit'.pluralize(count)}" %>
+      <span class="map-button-cluster__badge"
+            aria-label="<%= tooltip %>"
+            title="<%= tooltip %>">
         <%= count > 99 ? '99+' : count %>
       </span>
     <% end %>

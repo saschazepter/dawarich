@@ -3,59 +3,42 @@
 require 'rails_helper'
 
 RSpec.describe DemoData::Importer do
-  subject(:importer) { described_class.new(user) }
-
   let(:user) { create(:user) }
 
   describe '#call' do
-    it 'creates a demo import' do
-      result = importer.call
-
+    it 'returns :created and creates a demo Import' do
+      result = described_class.new(user).call
       expect(result[:status]).to eq(:created)
-      expect(result[:import]).to be_persisted
-      expect(result[:import].demo).to be true
-      expect(result[:import].name).to eq('Demo Data (Berlin)')
-      expect(result[:import].source).to eq('geojson')
+      expect(user.imports.where(demo: true).count).to eq(1)
     end
 
-    it 'attaches a JSON file' do
-      result = importer.call
-
-      expect(result[:import].file).to be_attached
-      expect(result[:import].file.filename.to_s).to eq('demo_data.json')
+    it 'seeds points, tags, places, visits, and a trip in one call' do
+      described_class.new(user).call
+      expect(user.points.count).to be > 600
+      expect(user.tags.demo.count).to be >= 6
+      expect(user.visits.demo.count).to be >= 50
+      expect(user.trips.demo.count).to eq(1)
     end
 
-    it 'enqueues the import processing job' do
-      expect { importer.call }.to have_enqueued_job(Import::ProcessJob)
+    it 'completes synchronously without enqueuing Import::ProcessJob' do
+      expect { described_class.new(user).call }.not_to(
+        have_enqueued_job(Import::ProcessJob)
+      )
     end
 
-    context 'when demo data already exists' do
-      before { create(:import, user: user, demo: true, name: 'Demo Data (Berlin)') }
-
-      it 'returns exists status' do
-        result = importer.call
-
-        expect(result[:status]).to eq(:exists)
-      end
-
-      it 'does not create a new import' do
-        expect { importer.call }.not_to change(Import, :count)
-      end
+    it 'is idempotent — second call returns :exists and does not duplicate data' do
+      described_class.new(user).call
+      result = described_class.new(user).call
+      expect(result[:status]).to eq(:exists)
+      expect(user.imports.where(demo: true).count).to eq(1)
     end
 
-    context 'when user is on trial with max imports' do
-      let(:user) { create(:user, :trial) }
-
-      before do
-        5.times { |i| create(:import, user: user, name: "import_#{i}") }
-      end
-
-      it 'still creates a demo import bypassing trial limits' do
-        result = importer.call
-
-        expect(result[:status]).to eq(:created)
-        expect(result[:import]).to be_persisted
-      end
+    it 'rolls back the entire transaction on seeder error' do
+      allow_any_instance_of(DemoData::DerivativesSeeder).to receive(:call).and_raise(StandardError, 'boom')
+      result = described_class.new(user).call
+      expect(result[:status]).to eq(:error)
+      expect(user.imports.where(demo: true).count).to eq(0)
+      expect(user.points.count).to eq(0)
     end
   end
 end
