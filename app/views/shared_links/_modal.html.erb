@@ -4,6 +4,7 @@
       resource           — the object being shared (Trip / nil for timeline)
       share              — the active SharedLink, or nil
       title              — string shown as modal heading when share is nil
+      subtitle           — string shown under the "Public" badge in the active state; optional
       close_path         — where the X / Cancel / backdrop sends the user
       paths              — Hash with keys: create, revoke, regenerate, regenerate_phrase, destroy
       create_form_partial — partial path for the create form (rendered when share is nil)
@@ -19,7 +20,7 @@
       <% end %>
 
       <% if share %>
-        <%= render 'shared_links/modal_active', share: share, paths: paths %>
+        <%= render 'shared_links/modal_active', share: share, paths: paths, subtitle: local_assigns[:subtitle] %>
       <% else %>
         <h3 class="font-bold text-lg mb-1"><%= title %></h3>
         <p class="text-sm text-base-content/70 mb-5">Anyone with the link will be able to view this.</p>

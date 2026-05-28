@@ -2,6 +2,7 @@
            resource: @trip,
            share: @share,
            title: "Share #{@trip.name}",
+           subtitle: "#{@trip.name} is shared via a public link.",
            close_path: trip_path(@trip),
            paths: {
              create:            trip_share_link_path(@trip),

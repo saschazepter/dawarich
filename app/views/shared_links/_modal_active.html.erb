@@ -7,6 +7,10 @@
   </span>
 </div>
 
+<% if local_assigns[:subtitle].present? %>
+  <p class="text-sm text-base-content/70 mb-5"><%= subtitle %></p>
+<% end %>
+
 <div class="space-y-4">
   <div>
     <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-url">Public link</label>
