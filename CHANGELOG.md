@@ -10,38 +10,18 @@ Upgrade notes:
 
 1. **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
 
-2. **Points with missing coordinates:** this release stops *new* points with missing coordinates from being created, but it does not touch points that were already saved without coordinates by older versions. If your points API still returns a 500, clean up the existing rows as follows. Open a database console on your instance with `bundle exec rails dbconsole` (or `psql` directly), then:
-
-   **Count how many points are missing coordinates:**
+2. **Points with missing coordinates:** the `points.lonlat` column is now `NOT NULL` at the database level. Older versions could save points without coordinates (the bug behind the points-API 500s fixed in this release); a migration resolves them automatically before adding the constraint — it rebuilds `lonlat` from the legacy `latitude`/`longitude` columns wherever those still hold values, deletes any remaining points that have no coordinates at all (`lonlat`, `latitude`, and `longitude` all NULL) and re-syncs the affected users' `points_count`, then sets the `NOT NULL` constraint via a validated check constraint (so the change does not lock the table for a full scan). To preview how many points will be affected before upgrading, run with `bundle exec rails dbconsole` (or `psql`):
 
    ```sql
+   -- Points missing coordinates (the migration will recover or remove these)
    SELECT COUNT(*) FROM points WHERE lonlat IS NULL;
+
+   -- Of those, how many are recoverable from the legacy columns
+   SELECT COUNT(*) FROM points
+   WHERE lonlat IS NULL AND latitude IS NOT NULL AND longitude IS NOT NULL;
    ```
 
-   **(Optional) Delete every point that is missing coordinates:**
-
-   ```sql
-   DELETE FROM points WHERE lonlat IS NULL;
-   ```
-
-   **Or recover coordinates from the legacy `latitude`/`longitude` columns first:**
-
-   ```sql
-   UPDATE points
-   SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-   WHERE lonlat IS NULL
-     AND latitude IS NOT NULL
-     AND longitude IS NOT NULL;
-   ```
-
-   **Then delete the points that are beyond recovery:**
-
-   ```sql
-   DELETE FROM points
-   WHERE lonlat IS NULL
-     AND latitude IS NULL
-     AND longitude IS NULL;
-   ```
+   The difference between the two counts is the number of points that will be deleted as unrecoverable.
 
 ### Added
 
@@ -56,6 +36,7 @@ Upgrade notes:
 - Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
 - Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
 - Ruby version updated to 3.4.9
+- The `points.lonlat` column is now `NOT NULL` at the database level, enforcing that every point has coordinates.
 
 ### Fixed
 
