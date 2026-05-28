@@ -76,5 +76,12 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       get "/api/v1/shared/#{link.id}/points"
       expect(JSON.parse(response.body).size).to eq(2)
     end
+
+    it 'returns [] when settings has unparseable dates' do
+      link.update_columns(settings: { 'start_date' => 'not-a-date', 'end_date' => 'also-bogus' })
+      get "/api/v1/shared/#{link.id}/points"
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq([])
+    end
   end
 end

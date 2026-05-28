@@ -18,12 +18,23 @@ module Api
 
             trip.points
           when :timeline
-            start_at = Time.find_zone('UTC').parse(link.settings['start_date'].to_s).beginning_of_day.to_i
-            end_at   = Time.find_zone('UTC').parse(link.settings['end_date'].to_s).end_of_day.to_i
-            link.user.points.not_anomaly.where(timestamp: start_at..end_at).order(:timestamp)
+            range = timeline_epoch_range
+            return [] if range.nil?
+
+            link.user.points.not_anomaly.where(timestamp: range).order(:timestamp)
           else
             []
           end
+        end
+
+        def timeline_epoch_range
+          start_parsed = Time.find_zone('UTC').parse(link.settings['start_date'].to_s)
+          end_parsed   = Time.find_zone('UTC').parse(link.settings['end_date'].to_s)
+          return nil if start_parsed.nil? || end_parsed.nil?
+
+          start_parsed.beginning_of_day.to_i..end_parsed.end_of_day.to_i
+        rescue ArgumentError, TypeError
+          nil
         end
 
         def serialize(points)
