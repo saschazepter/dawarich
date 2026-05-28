@@ -1,0 +1,31 @@
+<%# Trip create form. Locals: resource (the Trip), paths, close_path %>
+<%= form_with model: SharedLink.new, url: paths[:create], method: :post,
+              data: { turbo_frame: "trip-share-modal" } do |f| %>
+  <div class="form-control">
+    <label class="label"><span class="label-text">Magic phrase (optional)</span></label>
+    <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
+    <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
+  </div>
+  <div class="form-control mt-4">
+    <label class="label cursor-pointer">
+      <span class="label-text">Show photos</span>
+      <%= f.check_box 'settings[show_photos]', class: 'checkbox' %>
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Show places</span>
+      <%= f.check_box 'settings[show_places]', { checked: true, class: 'checkbox' }, '1', '0' %>
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Show addresses</span>
+      <%= f.check_box 'settings[show_addresses]', class: 'checkbox' %>
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Show stats</span>
+      <%= f.check_box 'settings[show_stats]', { checked: true, class: 'checkbox' }, '1', '0' %>
+    </label>
+  </div>
+  <div class="modal-action">
+    <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top' } %>
+    <%= f.submit 'Create share link', class: 'btn btn-primary' %>
+  </div>
+<% end %>
