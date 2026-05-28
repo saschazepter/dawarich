@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_28_225732) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -282,7 +282,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_14_120100) do
     t.decimal "course", precision: 8, scale: 5
     t.decimal "course_accuracy", precision: 8, scale: 5
     t.string "external_track_id"
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}, null: false
     t.bigint "country_id"
     t.bigint "track_id"
     t.string "country_name"

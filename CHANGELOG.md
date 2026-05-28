@@ -10,48 +10,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Importers no longer persist points with missing coordinates, which previously caused the points API to return a 500 when serializing them. (#2519)
 
+### Changed
+
+- The `points.lonlat` column is now `NOT NULL` at the database level, enforcing that every point has coordinates.
+
 ### ⚠️ Upgrade notes
 
-This release stops *new* points with missing coordinates from being created, but it does not touch points that were already saved without coordinates by older versions. If your points API still returns a 500, clean up the existing rows with the commands below.
+This release adds a `NOT NULL` constraint to `points.lonlat`. Older versions could save points without coordinates (the bug behind the 500s above); those rows must be resolved before the column can be constrained. **The migration does this automatically:**
 
-Open a database console on your instance with `bundle exec rails dbconsole` (or `psql` directly), then:
+1. It rebuilds `lonlat` from the legacy `latitude`/`longitude` columns wherever those still hold values, so no recoverable point is lost.
+2. It then deletes any remaining points that have no coordinates at all (`lonlat`, `latitude`, and `longitude` all NULL) and re-syncs the affected users' `points_count`.
+3. Finally it sets the `NOT NULL` constraint (using a validated check constraint, so the change does not lock the table for a full scan).
 
-**1. Count how many points are missing coordinates:**
+To preview how many points will be affected before you upgrade, run on your instance with `bundle exec rails dbconsole` (or `psql`):
 
 ```sql
+-- Points missing coordinates (the migration will recover or remove these)
 SELECT COUNT(*) FROM points WHERE lonlat IS NULL;
+
+-- Of those, how many are recoverable from the legacy columns
+SELECT COUNT(*) FROM points
+WHERE lonlat IS NULL AND latitude IS NOT NULL AND longitude IS NOT NULL;
 ```
 
-**2a. (Optional) Delete every point that is missing coordinates:**
-
-If you do not care about recovering these points, delete them all in one go:
-
-```sql
-DELETE FROM points WHERE lonlat IS NULL;
-```
-
-**2b. Or recover coordinates from the legacy `latitude`/`longitude` columns first:**
-
-Older versions stored coordinates in separate `latitude` and `longitude` columns. Where those still hold values, rebuild `lonlat` from them instead of deleting the point:
-
-```sql
-UPDATE points
-SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-WHERE lonlat IS NULL
-  AND latitude IS NOT NULL
-  AND longitude IS NOT NULL;
-```
-
-**3. Delete the points that are beyond recovery:**
-
-Any remaining points where `lonlat`, `latitude`, and `longitude` are all NULL carry no location at all and should be removed:
-
-```sql
-DELETE FROM points
-WHERE lonlat IS NULL
-  AND latitude IS NULL
-  AND longitude IS NULL;
-```
+The difference between the two counts is the number of points that will be deleted as unrecoverable.
 
 ## [1.7.10] - 2026-05-26
 
