@@ -17,6 +17,10 @@ module Api
             return [] if trip.nil?
 
             trip.points
+          when :timeline
+            start_at = Time.find_zone('UTC').parse(link.settings['start_date'].to_s).beginning_of_day.to_i
+            end_at   = Time.find_zone('UTC').parse(link.settings['end_date'].to_s).end_of_day.to_i
+            link.user.points.not_anomaly.where(timestamp: start_at..end_at).order(:timestamp)
           else
             []
           end
