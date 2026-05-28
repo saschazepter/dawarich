@@ -4,6 +4,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Importers no longer persist points with missing coordinates, which previously caused the points API to return a 500 when serializing them. (#2519)
+
+### ⚠️ Upgrade notes
+
+This release stops *new* points with missing coordinates from being created, but it does not touch points that were already saved without coordinates by older versions. If your points API still returns a 500, clean up the existing rows with the commands below.
+
+Open a database console on your instance with `bundle exec rails dbconsole` (or `psql` directly), then:
+
+**1. Count how many points are missing coordinates:**
+
+```sql
+SELECT COUNT(*) FROM points WHERE lonlat IS NULL;
+```
+
+**2a. (Optional) Delete every point that is missing coordinates:**
+
+If you do not care about recovering these points, delete them all in one go:
+
+```sql
+DELETE FROM points WHERE lonlat IS NULL;
+```
+
+**2b. Or recover coordinates from the legacy `latitude`/`longitude` columns first:**
+
+Older versions stored coordinates in separate `latitude` and `longitude` columns. Where those still hold values, rebuild `lonlat` from them instead of deleting the point:
+
+```sql
+UPDATE points
+SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+WHERE lonlat IS NULL
+  AND latitude IS NOT NULL
+  AND longitude IS NOT NULL;
+```
+
+**3. Delete the points that are beyond recovery:**
+
+Any remaining points where `lonlat`, `latitude`, and `longitude` are all NULL carry no location at all and should be removed:
+
+```sql
+DELETE FROM points
+WHERE lonlat IS NULL
+  AND latitude IS NULL
+  AND longitude IS NULL;
+```
+
 ## [1.7.10] - 2026-05-26
 
 ### ⚠️ Upgrade notes
