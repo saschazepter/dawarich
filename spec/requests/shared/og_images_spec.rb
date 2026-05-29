@@ -24,6 +24,22 @@ RSpec.describe 'Shared::OgImages', type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(link.name)
     end
+
+    context 'for a timeline share' do
+      let(:link) do
+        create(:shared_link, resource_type: :timeline, resource_id: nil,
+                             settings: { 'start_date' => '2026-04-01', 'end_date' => '2026-04-14' },
+                             name: 'Timeline: 2026-04-01 → 2026-04-14',
+                             autobuild_trip: false)
+      end
+
+      it 'renders the OG snapshot HTML with timeline title + date range' do
+        get "/s/#{link.id}/og.html", headers: { 'X-OG-Render-Token' => 'spec-token-here' }
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('Timeline')
+        expect(response.body).to include('April')
+      end
+    end
   end
 
   describe 'GET /s/:id/og.png' do
