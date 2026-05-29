@@ -8,7 +8,7 @@
   <meta name="twitter:card" content="summary_large_image">
 <% end %>
 
-<% if @resource.nil? %>
+<% if @resource.nil? && SharedLink::RESOURCE_TYPES_REQUIRING_ID.include?(@link.resource_type) %>
   <%= render 'shared/links/missing_resource' %>
 <% else %>
   <%= render partial: "shared/links/#{@link.resource_type}", locals: { link: @link, resource: @resource } %>
