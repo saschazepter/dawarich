@@ -7,12 +7,14 @@ module Trips
     before_action :load_active_share
 
     def new
-      @shared_link = SharedLink.new(
-        user: current_user,
-        resource_type: :trip,
-        resource_id: @trip.id,
-        name: "Trip: #{@trip.name}"
-      ) unless @share
+      unless @share
+        @shared_link = SharedLink.new(
+          user: current_user,
+          resource_type: :trip,
+          resource_id: @trip.id,
+          name: "Trip: #{@trip.name}"
+        )
+      end
       render layout: false if turbo_frame_request?
     end
 

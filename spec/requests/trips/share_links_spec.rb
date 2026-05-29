@@ -62,7 +62,8 @@ RSpec.describe 'Trips::ShareLinks', type: :request do
 
   describe 'POST /trips/:trip_id/share_link/regenerate_phrase' do
     it 'changes the magic_phrase to a fresh generated value' do
-      share = create(:shared_link, user: user, resource_type: :trip, resource_id: trip.id, magic_phrase: 'old-phrase-here')
+      share = create(:shared_link, user: user, resource_type: :trip, resource_id: trip.id,
+                                   magic_phrase: 'old-phrase-here')
       post regenerate_phrase_trip_share_link_path(trip)
       expect(share.reload.magic_phrase).not_to eq('old-phrase-here')
       expect(share.magic_phrase).to match(/\A[a-z]+-[a-z]+-[a-z]+\z/)
