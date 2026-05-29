@@ -1018,6 +1018,18 @@
 
       <!-- Timeline Feed Tab -->
       <div class="tab-content<%= ' active' if timeline_panel_open %>" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
+        <div class="timeline-tab-header flex justify-end mb-2">
+          <%= link_to new_share_links_timeline_path(
+                        start_date: (params[:start_at] || params[:date] || 7.days.ago.to_date),
+                        end_date:   (params[:end_at]   || params[:date] || Date.current)
+                      ),
+                      class: "btn btn-ghost btn-sm",
+                      data: { turbo_frame: "trip-share-modal", testid: "timeline-share-button" } do %>
+            <%= icon 'share', class: 'w-4 h-4' %>
+            <span class="ml-1">Share</span>
+          <% end %>
+          <turbo-frame id="trip-share-modal"></turbo-frame>
+        </div>
         <div class="timeline-tab-content" data-controller="timeline-feed">
           <%# ---------- LEFT RAIL ---------- %>
           <aside class="timeline-rail">
