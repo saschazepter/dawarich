@@ -1,0 +1,52 @@
+<%# Timeline create form. Locals: resource (nil), paths, close_path %>
+<%= form_with model: SharedLink.new, url: paths[:create], method: :post,
+              data: { turbo_frame: "trip-share-modal" } do |f| %>
+  <div class="grid grid-cols-2 gap-3">
+    <div class="form-control">
+      <label class="label"><span class="label-text">Start date</span></label>
+      <%= f.date_field :start_date,
+                       value: (@shared_link&.settings&.dig('start_date') || 7.days.ago.to_date),
+                       class: 'input input-bordered',
+                       required: true %>
+    </div>
+    <div class="form-control">
+      <label class="label"><span class="label-text">End date</span></label>
+      <%= f.date_field :end_date,
+                       value: (@shared_link&.settings&.dig('end_date') || Date.current),
+                       class: 'input input-bordered',
+                       required: true %>
+    </div>
+  </div>
+
+  <div class="form-control mt-4">
+    <label class="label"><span class="label-text">Magic phrase (optional)</span></label>
+    <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
+    <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
+  </div>
+
+  <div class="form-control mt-4">
+    <label class="label cursor-pointer">
+      <span class="label-text">Show places</span>
+      <%= f.check_box 'settings[show_places]', { checked: true, class: 'checkbox' }, '1', '0' %>
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Show addresses</span>
+      <%= f.check_box 'settings[show_addresses]', class: 'checkbox' %>
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Show photos</span>
+      <%= f.check_box 'settings[show_photos]', class: 'checkbox' %>
+    </label>
+  </div>
+
+  <% if @shared_link&.errors&.any? %>
+    <div class="alert alert-error mt-4 text-sm">
+      <%= @shared_link.errors.full_messages.join(', ') %>
+    </div>
+  <% end %>
+
+  <div class="modal-action">
+    <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top' } %>
+    <%= f.submit 'Create share link', class: 'btn btn-primary' %>
+  </div>
+<% end %>

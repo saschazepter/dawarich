@@ -2,7 +2,7 @@
            resource: nil,
            share: @share,
            title: "Share a date range",
-           subtitle: nil,
+           subtitle: (@share ? "#{@share.settings['start_date']} → #{@share.settings['end_date']} is shared via a public link." : nil),
            close_path: map_v2_path,
            paths: {
              create:            share_links_timeline_path,
@@ -11,4 +11,4 @@
              regenerate_phrase: regenerate_phrase_share_links_timeline_path,
              destroy:           share_links_timeline_path
            },
-           create_form_partial: 'shared_links/modal_trip_create_form' %>
+           create_form_partial: 'shared_links/modal_timeline_create_form' %>

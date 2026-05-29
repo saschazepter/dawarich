@@ -13,7 +13,7 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
       expect(response.body).to include('trip-share-modal')
     end
 
-    xit 'pre-fills dates from query params when provided' do
+    it 'pre-fills dates from query params when provided' do
       get new_share_links_timeline_path, params: { start_date: '2026-04-01', end_date: '2026-04-14' }
       expect(response.body).to include('2026-04-01')
       expect(response.body).to include('2026-04-14')
