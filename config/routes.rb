@@ -132,6 +132,14 @@ Rails.application.routes.draw do
       post  :regenerate_phrase
     end
   end
+
+  namespace :share_links do
+    resource :timeline, only: %i[new create destroy], controller: 'timelines' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+  end
   resources :tags, except: [:show]
 
   # Public shared-link viewer
