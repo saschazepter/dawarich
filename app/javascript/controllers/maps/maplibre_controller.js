@@ -69,6 +69,7 @@ export default class extends Controller {
     "scratchToggle",
     "anomaliesToggle",
     "familyToggle",
+    "flightsToggle",
     // Speed-colored routes
     "routesOptions",
     "speedColoredToggle",
@@ -1355,6 +1356,9 @@ export default class extends Controller {
   }
   toggleTracks(event) {
     return this.routesManager.toggleTracks(event)
+  }
+  toggleFlights(event) {
+    return this.routesManager.toggleFlights(event)
   }
   toggleSpeedColoredRoutes(event) {
     return this.routesManager.toggleSpeedColoredRoutes(event)

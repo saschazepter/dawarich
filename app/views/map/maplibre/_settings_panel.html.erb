@@ -138,6 +138,18 @@
             <p class="text-sm text-base-content/60 ml-14">Show backend-calculated tracks</p>
           </div>
 
+          <!-- Flights Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="flightsToggle"
+                     data-action="change->maps--maplibre#toggleFlights" />
+              <span class="label-text font-medium">Flights</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show AirTrail flights as arcs (hides overlapping GPS)</p>
+          </div>
+
           <div class="divider"></div>
 
           <!-- Heatmap Layer -->

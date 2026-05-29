@@ -851,6 +851,30 @@ export class ApiClient {
     return response.json()
   }
 
+  /**
+   * Fetch AirTrail flights for a date range as a GeoJSON FeatureCollection.
+   * @param {Object} options - { start_at, end_at }
+   * @returns {Promise<Object>} GeoJSON FeatureCollection
+   */
+  async fetchFlights({ start_at, end_at } = {}) {
+    const params = new URLSearchParams()
+    if (start_at) params.set("start_at", start_at)
+    if (end_at) params.set("end_at", end_at)
+
+    const query = params.toString()
+    const url = query
+      ? `${this.baseURL}/flights?${query}`
+      : `${this.baseURL}/flights`
+
+    const response = await fetch(url, { headers: this.getHeaders() })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch flights: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
   getHeaders() {
     return {
       Authorization: `Bearer ${this.apiKey}`,
