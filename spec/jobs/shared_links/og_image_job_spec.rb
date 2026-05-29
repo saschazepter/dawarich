@@ -5,6 +5,11 @@ require 'rails_helper'
 RSpec.describe SharedLinks::OgImageJob do
   let(:link) { create(:shared_link) }
 
+  before do
+    clear_enqueued_jobs
+    clear_performed_jobs
+  end
+
   describe '#perform' do
     it 'attaches the rendered PNG and marks state ready' do
       fake_renderer = instance_double(SharedLinks::OgImageRenderer, call: "\x89PNG\r\n\x1a\nFAKEDATA".b)
