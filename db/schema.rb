@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_29_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -447,13 +447,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
-    t.string "provider"
-    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
+    t.string "provider"
+    t.string "uid"
     t.datetime "deleted_at"
     t.integer "plan", default: 1, null: false
     t.integer "failed_attempts", default: 0, null: false
@@ -494,6 +494,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "place_id"
+    t.integer "confidence", limit: 2
+    t.jsonb "confidence_breakdown", default: {}, null: false
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
