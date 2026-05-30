@@ -16,7 +16,7 @@ module Atlas
     def initialize
       @url = ENV.fetch('ATLAS_API_URL', DEFAULT_URL)
       @api_key = ENV.fetch('ATLAS_API_KEY', nil)
-      @timeout = ENV.fetch('ATLAS_API_TIMEOUT', DEFAULT_TIMEOUT).to_i
+      @timeout = positive_timeout(ENV.fetch('ATLAS_API_TIMEOUT', DEFAULT_TIMEOUT))
       self.enabled_tools = tools_from_env
     end
 
@@ -43,6 +43,11 @@ module Atlas
       raise ArgumentError, "unknown atlas tool(s): #{unknown.join(', ')}" if unknown.any?
 
       symbols
+    end
+
+    def positive_timeout(value)
+      timeout = value.to_i
+      timeout.positive? ? timeout : DEFAULT_TIMEOUT
     end
   end
 end

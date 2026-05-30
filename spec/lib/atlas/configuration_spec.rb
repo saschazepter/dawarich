@@ -20,6 +20,13 @@ RSpec.describe Atlas::Configuration do
     it 'defaults the timeout to 5 seconds' do
       expect(configuration.timeout).to eq(5)
     end
+
+    it 'falls back to the default timeout when ATLAS_API_TIMEOUT is zero or negative' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('ATLAS_API_TIMEOUT', described_class::DEFAULT_TIMEOUT).and_return('0')
+
+      expect(described_class.new.timeout).to eq(described_class::DEFAULT_TIMEOUT)
+    end
   end
 
   describe 'enabled tools' do

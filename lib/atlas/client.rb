@@ -84,7 +84,10 @@ module Atlas
     def normalize_query(query)
       case query
       when Hash
-        { q: query[:q] || query['q'], limit: query[:limit] || query['limit'] }.compact
+        q = query[:q] || query['q']
+        raise ArgumentError, "geocode query is missing :q (got #{query.inspect})" if q.nil?
+
+        { q: q, limit: query[:limit] || query['limit'] }.compact
       else
         { q: query }
       end
@@ -121,12 +124,15 @@ module Atlas
       raise RateLimited, error_message(response, 'Rate limit exceeded') if status == 429
       raise ServerError, error_message(response, "Server error: #{status}") if status >= 500
 
-      raise Error, error_message(response, "Unexpected response: #{status}")
+      message = error_message(response, "Unexpected response: #{status}")
+      Rails.logger.warn("Atlas request returned #{status}: #{message}")
+      raise Error, message
     end
 
     def error_message(response, fallback)
-      JSON.parse(response.body).dig('error', 'message') || fallback
-    rescue JSON::ParserError, TypeError
+      parsed = JSON.parse(response.body)
+      (parsed.is_a?(Hash) && parsed.dig('error', 'message')) || fallback
+    rescue JSON::ParserError
       fallback
     end
 
@@ -138,7 +144,7 @@ module Atlas
 
     def connection
       @connection ||= Faraday.new(url: @configuration.url) do |conn|
-        conn.request :authorization, 'Bearer', @configuration.api_key
+        conn.request :authorization, 'Bearer', @configuration.api_key if @configuration.api_key.present?
         conn.options.timeout = @configuration.timeout
         conn.options.open_timeout = @configuration.timeout
       end

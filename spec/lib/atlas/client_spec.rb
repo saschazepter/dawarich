@@ -161,6 +161,37 @@ RSpec.describe Atlas::Client do
 
       expect { client.reverse_geocode_batch([[1, 2]]) }.to raise_error(Atlas::Client::Error, /Atlas request failed/)
     end
+
+    it 'raises Error and logs on an unhandled status (e.g. 403)' do
+      stub_request(:post, geocode_url).to_return(status: 403, body: { error: { message: 'Forbidden' } }.to_json)
+      allow(Rails.logger).to receive(:warn)
+
+      expect { client.geocode_batch(['x']) }.to raise_error(Atlas::Client::Error, /Forbidden/)
+      expect(Rails.logger).to have_received(:warn).with(/Atlas request returned 403/)
+    end
+
+    it 'falls back to the default message when the error body is not a JSON object' do
+      stub_request(:post, geocode_url).to_return(status: 404, body: '"plain string"')
+
+      expect { client.geocode_batch(['x']) }.to raise_error(Atlas::Client::Error, /Unexpected response: 404/)
+    end
+  end
+
+  describe 'authentication' do
+    it 'omits the Authorization header when no api key is configured' do
+      configuration.api_key = nil
+      stub_request(:post, geocode_url).to_return(status: 200, body: { results: [] }.to_json)
+
+      client.geocode_batch(['Berlin'])
+
+      expect(a_request(:post, geocode_url).with { |req| !req.headers.key?('Authorization') }).to have_been_made
+    end
+  end
+
+  describe 'query validation' do
+    it 'raises ArgumentError when a Hash query has no :q' do
+      expect { client.geocode_batch([{ limit: 1 }]) }.to raise_error(ArgumentError, /missing :q/)
+    end
   end
 
   describe 'tool gating' do
