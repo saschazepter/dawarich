@@ -149,6 +149,18 @@ RSpec.describe Atlas::Client do
 
       expect { client.geocode_batch(['x']) }.to raise_error(Atlas::Client::ServerError)
     end
+
+    it 'wraps connection timeouts in Atlas::Client::Error' do
+      stub_request(:post, geocode_url).to_timeout
+
+      expect { client.geocode_batch(['x']) }.to raise_error(Atlas::Client::Error, /Atlas request failed/)
+    end
+
+    it 'wraps connection failures in Atlas::Client::Error' do
+      stub_request(:post, reverse_url).to_raise(Faraday::ConnectionFailed.new('refused'))
+
+      expect { client.reverse_geocode_batch([[1, 2]]) }.to raise_error(Atlas::Client::Error, /Atlas request failed/)
+    end
   end
 
   describe 'tool gating' do

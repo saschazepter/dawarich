@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
+- Internal client for the self-hosted Atlas geocoding service (batch geocode/reverse), with a capability allowlist (`ATLAS_ENABLED_TOOLS`) to limit which Atlas tools an instance may call. Not yet wired into geocoding — groundwork for replacing the geocoder gem's API role. (#2834)
 
 ### Changed
 

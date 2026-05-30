@@ -25,7 +25,9 @@ module Atlas
     end
 
     # @param queries [Array<String, Hash>] each a query string or { q:, limit: }
-    # @return [Array<Array<Atlas::Result>>] matches per query, input-aligned
+    # @return [Array<Array<Atlas::Result>>] one match list per `results` entry
+    #   returned by Atlas, in response order. Aligned to input order only when
+    #   Atlas echoes one entry per query (it does not pad missing queries).
     def geocode_batch(queries, lang: nil)
       ensure_tool_enabled!(:geocoding)
 
@@ -40,7 +42,9 @@ module Atlas
     end
 
     # @param coordinates [Array<Array(Numeric, Numeric), Hash>] [lat, lon] or { lat:, lon:, zoom: }
-    # @return [Array<Atlas::Result, nil>] one result (or nil) per coordinate, input-aligned
+    # @return [Array<Atlas::Result, nil>] one result (or nil) per `results` entry
+    #   returned by Atlas, in response order. Aligned to input order only when
+    #   Atlas echoes one entry per coordinate (it does not pad missing entries).
     def reverse_geocode_batch(coordinates, lang: nil)
       ensure_tool_enabled!(:geocoding)
 
@@ -105,6 +109,8 @@ module Atlas
       end
 
       handle_response(response)
+    rescue Faraday::Error => e
+      raise Error, "Atlas request failed: #{e.message}"
     end
 
     def handle_response(response)
@@ -134,6 +140,7 @@ module Atlas
       @connection ||= Faraday.new(url: @configuration.url) do |conn|
         conn.request :authorization, 'Bearer', @configuration.api_key
         conn.options.timeout = @configuration.timeout
+        conn.options.open_timeout = @configuration.timeout
       end
     end
   end

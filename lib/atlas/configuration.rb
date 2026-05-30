@@ -34,7 +34,7 @@ module Atlas
       raw = ENV.fetch('ATLAS_ENABLED_TOOLS', nil)
       return KNOWN_TOOLS.dup if raw.nil? || raw.strip.empty?
 
-      raw.split(',')
+      raw.split(',').map(&:strip).reject(&:empty?)
     end
 
     def normalize_tools(tools)

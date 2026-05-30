@@ -40,6 +40,13 @@ RSpec.describe Atlas::Configuration do
       expect(configuration.enabled_tools).to eq(%i[geocoding])
     end
 
+    it 'ignores blank segments and surrounding whitespace in ATLAS_ENABLED_TOOLS' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('ATLAS_ENABLED_TOOLS', nil).and_return('geocoding, ,map_matching,')
+
+      expect(described_class.new.enabled_tools).to eq(%i[geocoding map_matching])
+    end
+
     it 'disables tools that are not in the allowlist' do
       allow(ENV).to receive(:fetch).and_call_original
       allow(ENV).to receive(:fetch).with('ATLAS_ENABLED_TOOLS', nil).and_return('geocoding')
