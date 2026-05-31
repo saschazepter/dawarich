@@ -4,10 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.8.0] - Unreleased
+
+### Added
+
+- Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
+
+  Enable it (Rails console):
+  - One user: `Flipper.enable_actor(:stay_point_detection, user)`
+  - Everyone: `Flipper.enable(:stay_point_detection)`
+  - Or toggle in `/admin/flipper`
+  - Re-detect past history: `Visits::FullHistoryRedetectJob.perform_later(user.id)`
+
 ## [1.7.11] - 2026-05-31
 
 ### Added
-- Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off, toggle in `/admin/flipper`). It's a single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
 
 - Onboarding "Load demo data" now seeds a fully populated `/map/v2` instantly: 30 days of Berlin + a Prague-weekend trip, ~80 visits with tags and places, and stats anchored to the current calendar month. "Remove demo data" wipes everything in one click while preserving anything you've confirmed, edited, or built on top of (visits, trips, places, tags adopted by user action stay).
 - Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. #2577
