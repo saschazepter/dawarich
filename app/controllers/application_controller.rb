@@ -96,7 +96,7 @@ class ApplicationController < ActionController::Base
       return
     end
 
-    return if current_user.pro?
+    return if current_user.full_access?
 
     respond_to do |format|
       format.html do

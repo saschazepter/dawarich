@@ -111,7 +111,7 @@
           </div>
 
           <%# === V2 (MapLibre) settings === %>
-          <% can_customize_layers = DawarichSettings.self_hosted? || current_user.pro? %>
+          <% can_customize_layers = current_user.full_access? %>
           <% hidden_categories = @maps['hidden_tile_categories'] || [] %>
           <% disabled_poi_groups = @maps['disabled_poi_groups'] || [] %>
           <div data-map-settings-target="v2Section"

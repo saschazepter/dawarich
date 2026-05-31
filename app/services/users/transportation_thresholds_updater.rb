@@ -62,7 +62,7 @@ module Users
         @user.settings[key] = value
       end
 
-      sanitize_gated_layers if @user.lite?
+      sanitize_gated_layers if @user.plan_restricted?
     end
 
     def sanitize_gated_layers

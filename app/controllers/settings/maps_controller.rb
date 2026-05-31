@@ -14,7 +14,7 @@ class Settings::MapsController < ApplicationController
     merged['disabled_poi_groups'] = parse_json_array(merged['disabled_poi_groups'])
 
     # Lite cloud users cannot customize map layers or POI groups
-    unless DawarichSettings.self_hosted? || current_user.pro?
+    unless current_user.full_access?
       merged.delete('hidden_tile_categories')
       merged.delete('disabled_poi_groups')
     end
