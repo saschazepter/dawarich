@@ -114,6 +114,21 @@ RSpec.describe Visits::StayPointDetector do
       expect(detect.size).to eq(2)
     end
 
+    it '(m) re-anchors drift after a long gap but keeps the original start (drift_ref != first)' do
+      # pre-gap stay at spot A
+      [0, 150, 300].each { |t| make_point(at: base_ts + t, dnorth: 0) }
+      # after a > MAX_GAP gap, a co-located re-entry (within radius of the anchor) that then drifts north;
+      # the gap branch re-anchors the drift reference to the post-gap point, but `first` (start_time) is preserved.
+      [7200, 7320, 7440].each_with_index { |t, i| make_point(at: base_ts + t, dnorth: 40 + (i * 30)) }
+
+      clusters = detect
+
+      expect(clusters.size).to eq(1)
+      expect(clusters.first[:point_count]).to eq(6)
+      expect(clusters.first[:start_time]).to eq(base_ts)       # first member preserved across the gap
+      expect(clusters.first[:end_time]).to eq(base_ts + 7440)  # one visit spans the dead-battery gap
+    end
+
     it 'returns the DbscanClusterer cluster-hash shape with positive real point ids' do
       ids = 4.times.map { |i| make_point(at: base_ts + i * 120, dnorth: 5).id }
 
