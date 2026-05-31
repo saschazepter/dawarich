@@ -40,6 +40,7 @@ export default class extends Controller {
     this.pendingVisitId = null
 
     this.pendingTrackId = null
+    this.pendingTrackTime = null
 
     // Browsers (Firefox especially) restore the search field's value on a
     // full page reload via the form-autocomplete cache, even with
@@ -145,14 +146,27 @@ export default class extends Controller {
   }
 
   handleOpenTrack(event) {
-    const { trackId, date } = event.detail || {}
+    const { trackId, date, startAtMs, endAtMs } = event.detail || {}
     const tid = Number.parseInt(trackId, 10)
-    if (!Number.isFinite(tid)) return
-    this.pendingTrackId = tid
+
+    if (Number.isFinite(tid)) {
+      this.pendingTrackId = tid
+    } else if (Number.isFinite(Number(startAtMs))) {
+      // Route click: no track id, so focus the journey whose time range
+      // overlaps the route's. Both are epoch ms, so the match is tz-safe.
+      this.pendingTrackTime = {
+        startAtMs: Number(startAtMs),
+        endAtMs: Number.isFinite(Number(endAtMs))
+          ? Number(endAtMs)
+          : Number(startAtMs),
+      }
+    } else {
+      return
+    }
 
     // If the clicked track is on the already-selected day, the journey
     // entry is already rendered — expand it immediately. Otherwise navigate
-    // to the day; the frame-load handler will consume pendingTrackId once the
+    // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date)
@@ -227,7 +241,9 @@ export default class extends Controller {
       }
     }
 
-    if (this.pendingTrackId) this._tryExpandPendingTrack()
+    if (this.pendingTrackId || this.pendingTrackTime) {
+      this._tryExpandPendingTrack()
+    }
 
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
@@ -245,13 +261,20 @@ export default class extends Controller {
   // collapses via `toggleTrackInfo`, but programmatic expansion only opens
   // a closed entry, never collapses an open one.
   _tryExpandPendingTrack() {
-    const tid = this.pendingTrackId
-    if (!tid) return
-    this.pendingTrackId = null
+    let toggle = null
 
-    const toggle = this.element.querySelector(
-      `.journey-leg[data-track-id="${tid}"]`,
-    )
+    if (this.pendingTrackId) {
+      const tid = this.pendingTrackId
+      this.pendingTrackId = null
+      toggle = this.element.querySelector(
+        `.journey-leg[data-track-id="${tid}"]`,
+      )
+    } else if (this.pendingTrackTime) {
+      const { startAtMs, endAtMs } = this.pendingTrackTime
+      this.pendingTrackTime = null
+      toggle = this._findJourneyToggleByTime(startAtMs, endAtMs)
+    }
+
     if (!toggle) return
 
     const frameId = toggle.dataset.frameId
@@ -266,6 +289,29 @@ export default class extends Controller {
       behavior: "smooth",
       block: "nearest",
     })
+  }
+
+  // Find the journey leg whose [started_at, ended_at] window overlaps the most
+  // with a given epoch-ms range (a clicked route). Returns the `.journey-leg`
+  // toggle so `_tryExpandPendingTrack` can open it. Journey timestamps are
+  // ISO8601 with offset, so Date.parse yields a tz-safe epoch.
+  _findJourneyToggleByTime(startAtMs, endAtMs) {
+    const entries = this.element.querySelectorAll(
+      '.timeline-entry[data-entry-type="journey"]',
+    )
+    let best = null
+    let bestOverlap = 0
+    for (const entry of entries) {
+      const s = new Date(entry.dataset.startedAt).getTime()
+      const e = new Date(entry.dataset.endedAt).getTime()
+      if (!Number.isFinite(s) || !Number.isFinite(e)) continue
+      const overlap = Math.min(e, endAtMs) - Math.max(s, startAtMs)
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap
+        best = entry
+      }
+    }
+    return best?.querySelector(".journey-leg[data-track-id]") || null
   }
 
   // ---------- Calendar ----------

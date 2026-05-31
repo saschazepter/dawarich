@@ -1,0 +1,14 @@
+[
+    {
+        "relation": [
+            "delegate_permission/common.get_login_creds"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "app.dawarich.Dawarich",
+            "sha256_cert_fingerprints": [
+                "<PRODUCTION_SIGNING_CERTIFICATE_SHA256>"
+            ]
+        }
+    }
+]

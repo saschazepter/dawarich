@@ -53,14 +53,21 @@ export class VisitsManager {
       // request can resolve last and overwrite the larger result.
       if (date && mapReady && !this.isDayWithinLoadedRange(date)) {
         try {
-          const startAt = `${date}T00:00:00Z`
-          const endAt = `${date}T23:59:59Z`
+          // Local day bounds (no trailing Z) to match navigateToDay and the
+          // top date-range form. Using UTC here shifted the window by the tz
+          // offset, so the day's visits — including the one just clicked —
+          // could fall outside it and the layer got replaced with nothing.
+          const startAt = `${date}T00:00:00`
+          const endAt = `${date}T23:59:59`
           const visits = await this.api.fetchVisits({
             start_at: startAt,
             end_at: endAt,
           })
           const layer = this.layerManager?.getLayer("visits")
-          if (layer && map.isStyleLoaded()) {
+          // Don't wipe existing markers on an empty result: this refetch only
+          // runs for a day the user is focusing because it contains a visit,
+          // so an empty response is erroneous rather than a genuinely empty day.
+          if (layer && map.isStyleLoaded() && visits.length > 0) {
             layer.update(this.dataLoader.visitsToGeoJSON(visits))
             layer.show?.()
           }
@@ -213,11 +220,22 @@ export class VisitsManager {
     const map = this.controller.map
     if (!map?.getBounds) return {}
     const b = map.getBounds()
+    const swLng = b.getWest()
+    const neLng = b.getEast()
+
+    // When zoomed out far enough to see the whole world — or far enough that
+    // getBounds() wraps the antimeridian and returns west >= east — a bbox is
+    // meaningless. Sending it builds an inverted ST_MakeEnvelope server-side
+    // that matches nothing, so every visit marker vanishes on zoom-out.
+    // Drop the bounds entirely; fetchVisits then returns all visits in range.
+    if (neLng - swLng >= 360 || swLng >= neLng) return {}
+
+    // Clamp to valid lat/lng so the server envelope stays well-formed.
     return {
-      sw_lat: b.getSouth(),
-      sw_lng: b.getWest(),
-      ne_lat: b.getNorth(),
-      ne_lng: b.getEast(),
+      sw_lat: Math.max(b.getSouth(), -90),
+      sw_lng: Math.max(swLng, -180),
+      ne_lat: Math.min(b.getNorth(), 90),
+      ne_lng: Math.min(neLng, 180),
     }
   }
 
@@ -383,42 +401,73 @@ export class VisitsManager {
    * Without auto-enabling, users would create a visit and see nothing
    * on the map because the layer toggle was off.
    */
-  async handleVisitCreated(_event) {
+  async handleVisitCreated(event) {
     try {
-      const visits = await this.fetchVisitsForCurrentViewport()
+      const visitsLayer = this.layerManager.getLayer("visits")
+      if (!visitsLayer) {
+        console.warn("[Maps V2] Visits layer not found, cannot update")
+        return
+      }
+
+      const visit = event?.detail?.visit
+      let visits
+      if (visit && this.filterManager.allVisits?.length) {
+        // Layer already populated — append/replace this visit locally instead
+        // of re-pulling the whole viewport from the backend.
+        visits = this._upsertVisit(this.filterManager.allVisits, visit)
+      } else {
+        // Initial load: fetch the viewport set once, then make sure the
+        // just-saved visit is included even if it falls outside the current
+        // date range or viewport bounds (otherwise its marker never appears).
+        const fetched = await this.fetchVisitsForCurrentViewport()
+        visits = visit ? this._upsertVisit(fetched, visit) : fetched
+      }
 
       this.filterManager.setAllVisits(visits)
-      const visitsGeoJSON = this.dataLoader.visitsToGeoJSON(visits)
+      visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
 
-      const visitsLayer = this.layerManager.getLayer("visits")
-      if (visitsLayer) {
-        visitsLayer.update(visitsGeoJSON)
-        visitsLayer.show()
-      } else {
-        console.warn("[Maps V2] Visits layer not found, cannot update")
-      }
-
-      SettingsManager.updateSetting("visitsEnabled", true)
-
-      const toggle = document.querySelector(
-        '[data-maps--maplibre-target="visitsToggle"]',
-      )
-      if (toggle) toggle.checked = true
-
-      if (this.controller.hasVisitsSearchTarget) {
-        this.controller.visitsSearchTarget.style.display = "block"
-      }
-
+      this._ensureVisitsVisible(visitsLayer)
       this.attachViewportRefetch()
     } catch (error) {
-      console.error("[Maps V2] Failed to reload visits:", error)
+      console.error("[Maps V2] Failed to update visits:", error)
     }
   }
 
   /**
-   * Handle visit update event - reload visits and update layer
+   * Handle visit update event - same upsert path as creation.
    */
   async handleVisitUpdated(event) {
     await this.handleVisitCreated(event)
+  }
+
+  /**
+   * Append or replace a visit in a list by id, returning a new array.
+   * @private
+   */
+  _upsertVisit(visits, visit) {
+    const list = visits || []
+    const index = list.findIndex((v) => v.id === visit.id)
+    return index >= 0
+      ? list.map((v, i) => (i === index ? visit : v))
+      : [...list, visit]
+  }
+
+  /**
+   * Show and enable the Visits layer. Without this, creating a visit while the
+   * layer toggle is off would leave the new marker in a hidden layer.
+   * @private
+   */
+  _ensureVisitsVisible(visitsLayer) {
+    visitsLayer.show()
+    SettingsManager.updateSetting("visitsEnabled", true)
+
+    const toggle = document.querySelector(
+      '[data-maps--maplibre-target="visitsToggle"]',
+    )
+    if (toggle) toggle.checked = true
+
+    if (this.controller.hasVisitsSearchTarget) {
+      this.controller.visitsSearchTarget.style.display = "block"
+    }
   }
 }
