@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.8.0] - Unreleased
+
+### Added
+
+- Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
+
+  Enable it (Rails console):
+  - One user: `Flipper.enable_actor(:stay_point_detection, user)`
+  - Everyone: `Flipper.enable(:stay_point_detection)`
+  - Or toggle in `/admin/flipper`
+  - Re-detect past history: `Visits::FullHistoryRedetectJob.perform_later(user.id)`
+
 ## [1.7.11] - 2026-05-31
 
 ### Added
