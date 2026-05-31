@@ -4,6 +4,7 @@
 # Place this file in config/initializers/posthog.rb
 
 return if DawarichSettings.self_hosted?
+return if ENV['POSTHOG_API_KEY'].blank?
 
 # ============================================================================
 # RAILS-SPECIFIC CONFIGURATION
@@ -34,9 +35,7 @@ PostHog::Rails.configure do |config|
   config.capture_user_context = true
 
   # Controller method name to get current user (default: :current_user)
-  # Change this if your app uses a different method name (e.g., :authenticated_user)
-  # When configured, exceptions will include user context (distinct_id, email, name),
-  # making it easier to identify affected users and debug user-specific issues.
+  # Exceptions are tagged with the user's id (distinct_id) only — no email or name.
   config.current_user_method = :current_user
 
   # Additional exception classes to exclude from reporting

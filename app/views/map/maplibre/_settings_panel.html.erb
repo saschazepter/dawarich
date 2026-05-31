@@ -999,6 +999,11 @@
               </div>
 
               <div class="mt-4 pt-4 border-t border-base-300">
+                <%# button_to renders a nested <form>. The HTML5 parser implicitly closes
+                    the outer <form data-action="submit->maps--maplibre#updateAdvancedSettings">
+                    here, so any controls placed inside this <details> or after this
+                    block are orphaned from outer-form submission. Keep the outer
+                    submit button BEFORE the Transportation Mode <details>. %>
                 <%= button_to 'Re-classify my history',
                               tracks_recalculation_path,
                               method: :post,

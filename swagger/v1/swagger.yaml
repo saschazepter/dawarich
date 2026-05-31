@@ -1033,7 +1033,7 @@ paths:
                   sharing_enabled:
                     type: boolean
                     description: Whether the current user has sharing enabled
-        '403':
+        '404':
           description: user not in a family
         '401':
           description: unauthorized
@@ -4761,6 +4761,9 @@ paths:
                       type: string
                     place_id:
                       type: integer
+                    area_id:
+                      type: integer
+                      nullable: true
                     status:
                       type: string
                       enum:

@@ -94,6 +94,12 @@ class VisitsController < ApplicationController
       return render_unprocessable('Invalid place') unless allowed
     end
 
+    selected_area = nil
+    if params_to_update[:area_id].present?
+      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
+      return render_unprocessable('Invalid area') unless selected_area
+    end
+
     # Capture both old and new month so cache busts cover edits that move
     # a visit across month boundaries.
     @affected_started_at = [@visit.started_at]
@@ -104,6 +110,8 @@ class VisitsController < ApplicationController
 
     if params_to_update[:place_id].present?
       update_visit_name_from_place(params_to_update[:place_id])
+    elsif selected_area
+      @visit.name = selected_area.name if selected_area.name.present?
     elsif confirming_suggested_visit?(params_to_update)
       # Only auto-pick from the visit's first suggested place when the
       # user did NOT explicitly select one — otherwise we'd overwrite the
@@ -112,6 +120,7 @@ class VisitsController < ApplicationController
     end
 
     if @visit.update(params_to_update)
+      @visit.adopt! unless @visit.status == 'declined'
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: build_update_streams
@@ -134,7 +143,10 @@ class VisitsController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: turbo_stream.remove("visit_item_#{@visit.id}")
+        render turbo_stream: [
+          turbo_stream.remove("visit_item_#{@visit.id}"),
+          suggestions_badge_stream
+        ]
       end
       format.html { redirect_to build_timeline_url(date: 'today'), status: :see_other }
     end
@@ -229,6 +241,7 @@ class VisitsController < ApplicationController
     streams << turbo_stream.replace('filter-count-declined',
                                     partial: 'map/timeline_feeds/filter_count',
                                     locals: { status: 'declined', count: status_counts['declined'].to_i })
+    streams << suggestions_badge_stream
     streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} #{status}.")
     streams
   end
@@ -266,6 +279,7 @@ class VisitsController < ApplicationController
       turbo_stream.replace('filter-count-declined',
                            partial: 'map/timeline_feeds/filter_count',
                            locals: { status: 'declined', count: status_counts['declined'].to_i }),
+      suggestions_badge_stream,
       stream_flash(:notice, "Visit #{@visit.status}.")
     ]
   end
@@ -274,6 +288,15 @@ class VisitsController < ApplicationController
     params = { panel: 'timeline', date: date }
     params[:status] = status if status.present?
     "/map/v2?#{params.to_query}"
+  end
+
+  # Refreshes the lifetime pending-suggestion badge on the Timeline map button
+  # so it doesn't go stale after a confirm/decline/merge/delete (it would
+  # otherwise keep the count from the initial page render).
+  def suggestions_badge_stream
+    turbo_stream.replace('timeline-suggestions-badge',
+                         partial: 'map/timeline_feeds/suggestions_badge',
+                         locals: { count: current_user.scoped_visits.suggested.count })
   end
 
   # Visits-by-status counts scoped to the month containing `date_str`. Used by
@@ -343,7 +366,7 @@ class VisitsController < ApplicationController
   end
 
   def visit_params
-    params.require(:visit).permit(:name, :place_id, :started_at, :ended_at, :status)
+    params.require(:visit).permit(:name, :place_id, :area_id, :started_at, :ended_at, :status)
   end
 
   def same_day?(visits)
@@ -392,6 +415,7 @@ class VisitsController < ApplicationController
     streams << turbo_stream.replace('filter-count-declined',
                                     partial: 'map/timeline_feeds/filter_count',
                                     locals: { status: 'declined', count: status_counts['declined'].to_i })
+    streams << suggestions_badge_stream
     streams << stream_flash(:notice, 'Visits merged.')
     streams
   end
@@ -408,6 +432,7 @@ class VisitsController < ApplicationController
     day_stream = build_day_frame_stream(visible_date, tz)
     streams << day_stream if day_stream
     streams.concat(filter_count_streams(counts_date_str))
+    streams << suggestions_badge_stream
     streams << stream_flash(:notice, bulk_destroy_success_message(count))
     streams
   end
