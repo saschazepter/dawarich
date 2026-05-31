@@ -55,5 +55,3 @@ if Tag.none?
     end
   end
 end
-
-Flipper.add(:stay_point_detection) unless Flipper.exist?(:stay_point_detection)
