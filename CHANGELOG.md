@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - Or toggle in `/admin/flipper`
   - Re-detect past history: `Visits::FullHistoryRedetectJob.perform_later(user.id)`
 
+### Fixed
+
+- Reverse geocoding (and other background work) no longer stalls behind GPS anomaly detection. Every incoming location used to trigger an anomaly check that re-scanned the whole current month of points — up to ~30 seconds late in a busy tracking month — and those jobs monopolized the worker pool, starving the reverse-geocoding queue. The check now inspects only the newly-received points plus their immediate neighbours, so it runs in milliseconds regardless of how full the month is.
+
 ## [1.7.11] - 2026-05-31
 
 ### Added
