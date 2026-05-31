@@ -14,8 +14,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Two unused indexes on the `points` table are dropped on upgrade; on large self-hosted instances this frees several GB of disk.
-- A track's travel mode is now picked by the distance covered in each mode rather than the time spent, so a short pause no longer mislabels a drive.
-- Visit detection now honours your configured time-gap setting when splitting stops into separate visits.
 - Areas now validate their geometry: radius must be greater than 0, latitude must be within -90…90, and longitude within -180…180. Invalid values are rejected instead of silently saved.
 - Bumped bundled gems (aws-sdk, devise, jwt, httparty, and others) to close 9 known CVEs. Self-hosters get the security fixes by upgrading.
 
