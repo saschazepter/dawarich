@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Track segment writes are batched into a single INSERT, and transportation-mode distance calculations run in Ruby instead of round-tripping through PostgreSQL — faster track building and lighter load on the DB during background jobs.
 - Two unused indexes on the `points` table are dropped on upgrade; on large self-hosted instances this frees several GB of disk (~7.4 GB on a production-scale dataset). Migration is non-blocking (`DROP INDEX CONCURRENTLY`).
+- Areas now validate their geometry: radius must be greater than 0, latitude must be within -90…90, and longitude within -180…180. Invalid values are rejected instead of silently saved.
+- Bumped bundled gems (aws-sdk, devise, jwt, httparty, and others) to close 9 known CVEs. Self-hosters get the security fixes by upgrading.
 
 ### Fixed
 
@@ -22,6 +24,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. (#2579)
 - Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly sweep bypasses (and clears) the dedup so points whose retries were exhausted — or whose key still lingers — are picked up on the next run. Bulk re-runs via Settings → Geocoding respect the same dedup.
 - Map v2 visits layer now honours the selected date range. Since 1.7.10 the viewport-bounded visits fetch silently dropped the `start_at`/`end_at` filter on the backend, so all visits inside the viewport were rendered regardless of the date filter. (#2817)
+- `POST /api/v1/visits` no longer links a new visit to a place owned by another user. Passing a foreign `place_id` is ignored — the visit gets a place owned by the requester at the requested coordinates, and the response no longer echoes the other user's place id or coordinates.
+- Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 
 ## [1.7.10] - 2026-05-26
 
@@ -104,11 +108,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `RemoveUnusedIndexes` migration drops invalid `points` indexes left by failed `REINDEX CONCURRENTLY` before removing unused ones. #2124
 - Vendored `h3-js` retains its upstream Apache-2.0 license header.
 - Insights "Top Visited Locations" no longer underreports days for multi-month totals (e.g. 133 days rendered as "4 days"). #2743
-
-
-### Fixed
-
-- Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 
 ## [1.7.8] - 2026-05-16
 
