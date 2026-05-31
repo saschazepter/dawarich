@@ -13,7 +13,7 @@ class Visit < ApplicationRecord
   after_commit :cleanup_old_place_if_orphan, on: :update
   after_commit :propagate_adoption_to_dependents, on: %i[create update]
   after_destroy_commit :cleanup_place_if_orphan
-  after_commit :bust_timeline_month_summary_cache
+  after_commit :bust_timeline_month_summary_cache, unless: :demo?
 
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 

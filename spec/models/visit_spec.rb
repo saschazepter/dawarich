@@ -112,5 +112,18 @@ RSpec.describe Visit, type: :model do
       expect(counts).to include('confirmed' => 1)
       expect(counts).not_to include('suggested')
     end
+
+    it 'does not bust the cache for demo visits (the demo importer busts once at the end)' do
+      create(:visit, user: user, area: nil, place: nil, status: :confirmed,
+                     started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+      expect(summary_status_counts).to include('confirmed' => 1) # warm cache
+
+      create(:visit, user: user, area: nil, place: nil, status: :suggested, demo: true,
+                     started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+
+      counts = summary_status_counts
+      expect(counts).to include('confirmed' => 1)
+      expect(counts).not_to include('suggested')
+    end
   end
 end

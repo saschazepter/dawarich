@@ -25,6 +25,7 @@ class DemoData::TracksSeeder
       mode_int = MODE_TO_ENUM.fetch(row['mode'])
       avg_speed_ms = (row['avg_speed_kmh'] || 0) * 1000.0 / 3600.0
       coords = row['path_coordinates']
+      next if coords.blank? || coords.length < 2
 
       track = @user.tracks.create!(
         start_at: starts,
