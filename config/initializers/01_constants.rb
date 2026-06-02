@@ -71,3 +71,9 @@ ALLOW_EMAIL_PASSWORD_LOGIN = ENV.fetch('ALLOW_EMAIL_PASSWORD_LOGIN', 'true') == 
 
 # Raw data archival setting
 ARCHIVE_RAW_DATA = ENV.fetch('ARCHIVE_RAW_DATA', 'false') == 'true'
+
+# chibichange "What's New" widget. Rendered only for users who explicitly
+# opt in (see User#changelog_consent). Self-hosters can point this at their
+# own chibichange instance.
+CHIBICHANGE_WIDGET_HOST = ENV.fetch('CHIBICHANGE_WIDGET_HOST', 'https://my.chibichange.com')
+CHIBICHANGE_SLUG = ENV.fetch('CHIBICHANGE_SLUG', 'dawarich')

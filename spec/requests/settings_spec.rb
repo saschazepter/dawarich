@@ -100,4 +100,41 @@ RSpec.describe 'Settings', type: :request do
       end
     end
   end
+
+  describe 'PATCH /settings/changelog_consent' do
+    context 'when user is not signed in' do
+      it 'redirects to the sign in page' do
+        patch '/settings/changelog_consent', params: { decision: 'granted' }
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+
+    context 'when user is signed in' do
+      let(:user) { create(:user) }
+
+      before { sign_in user }
+
+      it 'records granted and responds with a turbo stream replacing the indicator' do
+        patch '/settings/changelog_consent', params: { decision: 'granted' },
+              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.changelog_consent_granted?).to be(true)
+        expect(response.body).to include('version-indicator')
+      end
+
+      it 'records declined' do
+        patch '/settings/changelog_consent', params: { decision: 'declined' },
+              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(user.reload.changelog_consent_declined?).to be(true)
+      end
+
+      it 'rejects an invalid decision without changing state' do
+        patch '/settings/changelog_consent', params: { decision: 'bogus' }
+
+        expect(user.reload.changelog_consent).to be_nil
+      end
+    end
+  end
 end

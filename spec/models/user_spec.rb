@@ -31,6 +31,28 @@ RSpec.describe User, type: :model do
     it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
   end
 
+  describe 'changelog consent' do
+    it 'defaults to nil (not yet prompted) and reports prompt pending' do
+      user = create(:user)
+      expect(user.changelog_consent).to be_nil
+      expect(user.changelog_prompt_pending?).to be(true)
+    end
+
+    it 'records a granted choice' do
+      user = create(:user)
+      user.update!(changelog_consent: :granted)
+      expect(user.changelog_consent_granted?).to be(true)
+      expect(user.changelog_prompt_pending?).to be(false)
+    end
+
+    it 'records a declined choice' do
+      user = create(:user)
+      user.update!(changelog_consent: :declined)
+      expect(user.changelog_consent_declined?).to be(true)
+      expect(user.changelog_prompt_pending?).to be(false)
+    end
+  end
+
   describe 'callbacks' do
     describe '#create_api_key' do
       let(:user) { create(:user) }
