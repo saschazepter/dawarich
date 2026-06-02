@@ -6,7 +6,7 @@ require 'rails_helper'
 # mask_privacy_zones=true. Adding a new map endpoint? Add it here and
 # implement masking, or this spec stays red.
 MASKED_MAP_ENDPOINTS = %w[
-  points places visits photos tracks hexagons
+  points places visits photos tracks hexagons track_points
 ].freeze
 
 RSpec.describe 'Privacy zone masking contract', type: :request do
@@ -20,7 +20,7 @@ RSpec.describe 'Privacy zone masking contract', type: :request do
 
   it 'enumerates every masked map endpoint (update when adding a map layer)' do
     expect(MASKED_MAP_ENDPOINTS).to contain_exactly(
-      'points', 'places', 'visits', 'photos', 'tracks', 'hexagons'
+      'points', 'places', 'visits', 'photos', 'tracks', 'hexagons', 'track_points'
     )
   end
 
