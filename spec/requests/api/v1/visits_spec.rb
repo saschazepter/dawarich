@@ -367,6 +367,8 @@ RSpec.describe 'Api::V1::Visits', type: :request do
                        started_at: 2.hours.ago, ended_at: 1.hour.ago)
       @shown = create(:visit, user: pz_user, place: far_place,
                       started_at: 2.hours.ago, ended_at: 1.hour.ago)
+      @nil_place_visit = create(:visit, user: pz_user, place: nil,
+                                started_at: 2.hours.ago, ended_at: 1.hour.ago)
     end
 
     it 'omits visits whose place is in a zone when flagged' do
@@ -377,6 +379,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
 
       ids = JSON.parse(response.body).pluck('id')
       expect(ids).to include(@shown.id)
+      expect(ids).to include(@nil_place_visit.id)
       expect(ids).not_to include(@hidden.id)
     end
 
