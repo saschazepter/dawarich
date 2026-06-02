@@ -57,4 +57,50 @@ RSpec.describe Maps::PrivacyZoneMasker do
       expect(result).not_to include(berlin, munich)
     end
   end
+
+  describe '#mask_places' do
+    it 'excludes the zone-defining place itself and keeps places outside' do
+      make_zone(lat: 52.444, lon: 13.500, radius: 1000)
+      far = create(:place, user: user, latitude: 52.600, longitude: 13.700)
+
+      result = described_class.new(user).mask_places(user.places)
+
+      expect(result).to include(far)
+      expect(result.map { |p| [p.latitude.to_f, p.longitude.to_f] })
+        .not_to include([52.444, 13.500])
+    end
+  end
+
+  describe '#in_zone_place_ids' do
+    it 'returns ids of places inside any zone' do
+      tag = make_zone(lat: 52.444, lon: 13.500, radius: 1000)
+      center = tag.places.first
+      far = create(:place, user: user, latitude: 52.600, longitude: 13.700)
+
+      ids = described_class.new(user).in_zone_place_ids
+
+      expect(ids).to include(center.id)
+      expect(ids).not_to include(far.id)
+    end
+
+    it 'is empty when there are no zones' do
+      create(:place, user: user, latitude: 52.444, longitude: 13.500)
+
+      expect(described_class.new(user).in_zone_place_ids).to be_empty
+    end
+  end
+
+  describe '#in_zone?' do
+    it 'is true for a coordinate inside a zone, false outside' do
+      make_zone(lat: 52.444, lon: 13.500, radius: 1000)
+      masker = described_class.new(user)
+
+      expect(masker.in_zone?(13.500, 52.444)).to be(true)
+      expect(masker.in_zone?(13.700, 52.600)).to be(false)
+    end
+
+    it 'is always false when there are no zones' do
+      expect(described_class.new(user).in_zone?(13.500, 52.444)).to be(false)
+    end
+  end
 end
