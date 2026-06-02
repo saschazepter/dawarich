@@ -2,14 +2,12 @@
 
 module Maps
   class PrivacyZoneMasker
-    Circle = Struct.new(:lon, :lat, :radius_meters)
+    Circle = Struct.new(:lon, :lat, :radius_meters, keyword_init: true)
+
+    delegate :any?, to: :circles
 
     def initialize(user)
       @user = user
-    end
-
-    def any?
-      circles.any?
     end
 
     def mask_points(relation)
@@ -39,7 +37,7 @@ module Maps
     def circles
       @circles ||= user.tags.privacy_zones.includes(:places).flat_map do |tag|
         tag.places.map do |place|
-          Circle.new(place.longitude.to_f, place.latitude.to_f, tag.privacy_radius_meters)
+          Circle.new(lon: place.longitude.to_f, lat: place.latitude.to_f, radius_meters: tag.privacy_radius_meters)
         end
       end
     end
