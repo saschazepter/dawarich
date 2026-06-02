@@ -33,6 +33,9 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
+  scope :outside_privacy_zones, lambda { |user|
+    Maps::PrivacyZoneMasker.new(user).mask_points(all)
+  }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country

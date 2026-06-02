@@ -205,6 +205,22 @@ RSpec.describe Point, type: :model do
     end
   end
 
+  describe '.outside_privacy_zones' do
+    it 'excludes points inside the user\'s privacy zones' do
+      user = create(:user)
+      tag = create(:tag, :privacy_zone, user: user, privacy_radius_meters: 1000)
+      place = create(:place, user: user, latitude: 52.444, longitude: 13.500)
+      create(:tagging, tag: tag, taggable: place)
+      inside = create(:point, user: user, lonlat: 'POINT(13.500 52.444)')
+      outside = create(:point, user: user, lonlat: 'POINT(13.700 52.600)')
+
+      result = Point.outside_privacy_zones(user)
+
+      expect(result).to include(outside)
+      expect(result).not_to include(inside)
+    end
+  end
+
   describe '.dedup_key' do
     let(:timestamp) { Time.zone.at(1_700_000_000) }
 
