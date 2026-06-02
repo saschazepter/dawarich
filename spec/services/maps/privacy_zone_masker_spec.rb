@@ -124,14 +124,19 @@ RSpec.describe Maps::PrivacyZoneMasker do
     end
 
     it 'breaks a line that passes through a zone into two features' do
-      coords = [[13.300, 52.444], [13.500, 52.444], [13.700, 52.444]]
+      coords = [
+        [13.300, 52.444], [13.350, 52.444],
+        [13.500, 52.444],
+        [13.650, 52.444], [13.700, 52.444]
+      ]
 
       result = masker.mask_track_geojson(feature_collection(coords))
 
-      expect(result['features'].length).to eq(2)
       coordinate_sets = result['features'].map { |f| f['geometry']['coordinates'] }
-      expect(coordinate_sets).to contain_exactly([[13.300, 52.444]], [[13.700, 52.444]])
-        .or contain_exactly([[13.700, 52.444]], [[13.300, 52.444]])
+      expect(coordinate_sets).to contain_exactly(
+        [[13.300, 52.444], [13.350, 52.444]],
+        [[13.650, 52.444], [13.700, 52.444]]
+      )
     end
 
     it 'drops a feature entirely when every vertex is in a zone' do

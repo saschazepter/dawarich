@@ -32,9 +32,10 @@ module Maps
     def mask_track_geojson(geojson)
       return geojson unless any?
 
-      features = Array(geojson['features']).flat_map { |feature| split_feature(feature) }
+      normalized = geojson.deep_stringify_keys
+      features = Array(normalized['features']).flat_map { |feature| split_feature(feature) }
 
-      geojson.merge('features' => features)
+      normalized.merge('features' => features)
     end
 
     private
@@ -95,7 +96,7 @@ module Maps
       end
       segments << current unless current.empty?
 
-      segments
+      segments.reject { |s| s.length < 2 }
     end
 
     def haversine_m(lat1, lon1, lat2, lon2)
