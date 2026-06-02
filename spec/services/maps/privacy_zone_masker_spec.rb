@@ -103,4 +103,50 @@ RSpec.describe Maps::PrivacyZoneMasker do
       expect(described_class.new(user).in_zone?(13.500, 52.444)).to be(false)
     end
   end
+
+  describe '#mask_track_geojson' do
+    let(:masker) do
+      make_zone(lat: 52.444, lon: 13.500, radius: 1000)
+      described_class.new(user)
+    end
+
+    def feature_collection(coords)
+      {
+        'type' => 'FeatureCollection',
+        'features' => [
+          {
+            'type' => 'Feature',
+            'geometry' => { 'type' => 'LineString', 'coordinates' => coords },
+            'properties' => { 'id' => 1 }
+          }
+        ]
+      }
+    end
+
+    it 'breaks a line that passes through a zone into two features' do
+      coords = [[13.300, 52.444], [13.500, 52.444], [13.700, 52.444]]
+
+      result = masker.mask_track_geojson(feature_collection(coords))
+
+      expect(result['features'].length).to eq(2)
+      coordinate_sets = result['features'].map { |f| f['geometry']['coordinates'] }
+      expect(coordinate_sets).to contain_exactly([[13.300, 52.444]], [[13.700, 52.444]])
+        .or contain_exactly([[13.700, 52.444]], [[13.300, 52.444]])
+    end
+
+    it 'drops a feature entirely when every vertex is in a zone' do
+      coords = [[13.500, 52.444], [13.5005, 52.4441]]
+
+      result = masker.mask_track_geojson(feature_collection(coords))
+
+      expect(result['features']).to be_empty
+    end
+
+    it 'returns the collection untouched when there are no zones' do
+      no_zone_masker = described_class.new(create(:user))
+      fc = feature_collection([[13.300, 52.444], [13.700, 52.444]])
+
+      expect(no_zone_masker.mask_track_geojson(fc)).to eq(fc)
+    end
+  end
 end

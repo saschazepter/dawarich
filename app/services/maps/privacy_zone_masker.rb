@@ -29,6 +29,14 @@ module Maps
       circles.any? { |c| haversine_m(lat, lon, c.lat, c.lon) <= c.radius_meters }
     end
 
+    def mask_track_geojson(geojson)
+      return geojson unless any?
+
+      features = Array(geojson['features']).flat_map { |feature| split_feature(feature) }
+
+      geojson.merge('features' => features)
+    end
+
     private
 
     attr_reader :user
@@ -55,6 +63,39 @@ module Maps
           Circle.new(lon: place.longitude.to_f, lat: place.latitude.to_f, radius_meters: tag.privacy_radius_meters)
         end
       end
+    end
+
+    def split_feature(feature)
+      geometry = feature['geometry']
+      lines =
+        case geometry&.fetch('type', nil)
+        when 'LineString' then [geometry['coordinates']]
+        when 'MultiLineString' then geometry['coordinates']
+        else return [feature]
+        end
+
+      lines.flat_map { |line| split_line(line) }.map do |segment|
+        feature.merge(
+          'geometry' => { 'type' => 'LineString', 'coordinates' => segment }
+        )
+      end
+    end
+
+    def split_line(coords)
+      segments = []
+      current = []
+
+      coords.each do |(lon, lat)|
+        if in_zone?(lon, lat)
+          segments << current unless current.empty?
+          current = []
+        else
+          current << [lon, lat]
+        end
+      end
+      segments << current unless current.empty?
+
+      segments
     end
 
     def haversine_m(lat1, lon1, lat2, lon2)
