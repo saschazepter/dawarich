@@ -150,7 +150,7 @@ class Point < ApplicationRecord
 
   # Metrics/AbcSize
   def broadcast_coordinates
-    if user.safe_settings.live_map_enabled
+    if user.safe_settings.live_map_enabled && !in_privacy_zone?
       PointsChannel.broadcast_to(
         user,
         [
@@ -167,6 +167,10 @@ class Point < ApplicationRecord
     end
 
     broadcast_to_family if should_broadcast_to_family?
+  end
+
+  def in_privacy_zone?
+    Maps::PrivacyZoneMasker.new(user).in_zone?(lon, lat)
   end
 
   def should_broadcast_to_family?
