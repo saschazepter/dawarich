@@ -16,16 +16,18 @@ Code scanning** tab, grouped by category.
 | `security.yml` | `bundler-audit` | bundler-audit | Known-vulnerable gems in `Gemfile.lock` (advisory DB refreshed in-job) | **Blocking** |
 | `security.yml` | `semgrep` | Semgrep (`p/ruby`, `p/rails`, `p/secrets`, `p/owasp-top-ten`) | SAST + secret patterns | Report-only |
 | `security.yml` | `gitleaks` | gitleaks | Secrets in the PR/push diff | **Blocking** |
-| `trivy.yml` | `image` | Trivy (image) | OS/library CVEs in the built Docker image | **Blocking** — fixable HIGH/CRITICAL only |
+| `trivy.yml` | `image` | Trivy (image) | OS/library CVEs in the built Docker image (fixable HIGH/CRITICAL) | Report-only |
 | `trivy.yml` | `config` | Trivy (config) | Dockerfile / IaC misconfigurations | Report-only |
 
 **Report-only** jobs always pass; their findings still upload to the Security tab.
 This is intentional for the first pass — gather signal before gating merges.
 To gate on them later, remove the `continue-on-error: true` step (Brakeman /
-Semgrep) or raise the Trivy `config` `exit-code` to `1`.
+Semgrep / Trivy config) or set the Trivy `image` scan `--exit-code 1`.
 
-**Trivy image gate:** fails only on HIGH/CRITICAL CVEs that have a fix available
-(`ignore-unfixed: true`). Unfixable CVEs are reported but do not block.
+**Trivy image scan:** reports HIGH/CRITICAL CVEs that have a fix available
+(`--ignore-unfixed`). Runs from the pinned `ghcr.io/aquasecurity/trivy` container
+against the locally built image. Set `--exit-code 1` to make fixable
+HIGH/CRITICAL CVEs block merges.
 
 Dependency and base-image freshness is handled by Dependabot
 (`.github/dependabot.yml`): weekly PRs for `bundler`, the Docker base image
