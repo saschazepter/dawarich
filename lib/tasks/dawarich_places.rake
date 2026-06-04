@@ -37,7 +37,8 @@ namespace :dawarich do
     count = 0
     scope.in_batches(of: 500) do |batch|
       batch.pluck(:id).each do |pid|
-        Places::NameFetchingJob.set(wait: [count * 0.1, max_wait].min.seconds).perform_later(pid)
+        wait = (count % (max_wait * 10)) * 0.1
+        Places::NameFetchingJob.set(wait: wait.seconds).perform_later(pid)
         count += 1
       end
     end
