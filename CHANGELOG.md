@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Sign in with Apple on the web (Dawarich Cloud only). The button appears on the sign-in/sign-up pages when configured, and is hidden on self-hosted instances and inside mobile in-app browsers.
 - Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
 
   Enable it (Rails console):

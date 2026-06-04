@@ -197,6 +197,9 @@ Rails.application.routes.draw do
 
   get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
 
+  get  'users/auth/apple',          to: 'users/apple_oauth#request_phase', as: :apple_oauth_request
+  post 'users/auth/apple/callback', to: 'users/apple_oauth#callback',      as: :apple_oauth_callback
+
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions',
