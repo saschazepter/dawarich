@@ -9,9 +9,9 @@
   - families
   - imports
   - exports
+  - tracks
   - stats
   - trips
-  - tracks
   - reverse_geocoding
   - visit_suggesting
   - places

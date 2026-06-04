@@ -22,8 +22,6 @@ export default class extends Controller {
     "mergeButton",
     "confirmForm",
     "confirmButton",
-    "declineForm",
-    "declineButton",
     "deleteForm",
     "deleteButton",
   ]
@@ -40,6 +38,7 @@ export default class extends Controller {
     this.pendingVisitId = null
 
     this.pendingTrackId = null
+    this.pendingTrackTime = null
 
     // Browsers (Firefox especially) restore the search field's value on a
     // full page reload via the form-autocomplete cache, even with
@@ -145,14 +144,27 @@ export default class extends Controller {
   }
 
   handleOpenTrack(event) {
-    const { trackId, date } = event.detail || {}
+    const { trackId, date, startAtMs, endAtMs } = event.detail || {}
     const tid = Number.parseInt(trackId, 10)
-    if (!Number.isFinite(tid)) return
-    this.pendingTrackId = tid
+
+    if (Number.isFinite(tid)) {
+      this.pendingTrackId = tid
+    } else if (Number.isFinite(Number(startAtMs))) {
+      // Route click: no track id, so focus the journey whose time range
+      // overlaps the route's. Both are epoch ms, so the match is tz-safe.
+      this.pendingTrackTime = {
+        startAtMs: Number(startAtMs),
+        endAtMs: Number.isFinite(Number(endAtMs))
+          ? Number(endAtMs)
+          : Number(startAtMs),
+      }
+    } else {
+      return
+    }
 
     // If the clicked track is on the already-selected day, the journey
     // entry is already rendered — expand it immediately. Otherwise navigate
-    // to the day; the frame-load handler will consume pendingTrackId once the
+    // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date)
@@ -179,7 +191,15 @@ export default class extends Controller {
 
     // Date selection — "today" means the user's local today, not UTC today.
     // Using toISOString() would shift the date near midnight in non-UTC zones.
-    const date = params.get("date")
+    // Fall back to the range's end date when there's no explicit `date=` param
+    // (arriving via the top date-range form / Search / Last 7 days) so the
+    // panel lands on the most recent day of the range instead of going blank —
+    // keeping the range and the panel in sync (C1).
+    let date = params.get("date")
+    if (!date) {
+      const endAt = params.get("end_at")
+      if (endAt) date = endAt.slice(0, 10)
+    }
     if (date) {
       const isoDate =
         date === "today" ? new Date().toLocaleDateString("en-CA") : date
@@ -219,7 +239,9 @@ export default class extends Controller {
       }
     }
 
-    if (this.pendingTrackId) this._tryExpandPendingTrack()
+    if (this.pendingTrackId || this.pendingTrackTime) {
+      this._tryExpandPendingTrack()
+    }
 
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
@@ -237,13 +259,20 @@ export default class extends Controller {
   // collapses via `toggleTrackInfo`, but programmatic expansion only opens
   // a closed entry, never collapses an open one.
   _tryExpandPendingTrack() {
-    const tid = this.pendingTrackId
-    if (!tid) return
-    this.pendingTrackId = null
+    let toggle = null
 
-    const toggle = this.element.querySelector(
-      `.journey-leg[data-track-id="${tid}"]`,
-    )
+    if (this.pendingTrackId) {
+      const tid = this.pendingTrackId
+      this.pendingTrackId = null
+      toggle = this.element.querySelector(
+        `.journey-leg[data-track-id="${tid}"]`,
+      )
+    } else if (this.pendingTrackTime) {
+      const { startAtMs, endAtMs } = this.pendingTrackTime
+      this.pendingTrackTime = null
+      toggle = this._findJourneyToggleByTime(startAtMs, endAtMs)
+    }
+
     if (!toggle) return
 
     const frameId = toggle.dataset.frameId
@@ -258,6 +287,29 @@ export default class extends Controller {
       behavior: "smooth",
       block: "nearest",
     })
+  }
+
+  // Find the journey leg whose [started_at, ended_at] window overlaps the most
+  // with a given epoch-ms range (a clicked route). Returns the `.journey-leg`
+  // toggle so `_tryExpandPendingTrack` can open it. Journey timestamps are
+  // ISO8601 with offset, so Date.parse yields a tz-safe epoch.
+  _findJourneyToggleByTime(startAtMs, endAtMs) {
+    const entries = this.element.querySelectorAll(
+      '.timeline-entry[data-entry-type="journey"]',
+    )
+    let best = null
+    let bestOverlap = 0
+    for (const entry of entries) {
+      const s = new Date(entry.dataset.startedAt).getTime()
+      const e = new Date(entry.dataset.endedAt).getTime()
+      if (!Number.isFinite(s) || !Number.isFinite(e)) continue
+      const overlap = Math.min(e, endAtMs) - Math.max(s, startAtMs)
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap
+        best = entry
+      }
+    }
+    return best?.querySelector(".journey-leg[data-track-id]") || null
   }
 
   // ---------- Calendar ----------
@@ -290,11 +342,6 @@ export default class extends Controller {
     params.set("panel", "timeline")
     params.set("date", date)
     window.history.pushState({}, "", `/map/v2?${params.toString()}`)
-
-    const startInput = document.querySelector('input[name="start_at"]')
-    const endInput = document.querySelector('input[name="end_at"]')
-    if (startInput) startInput.value = startAtLocal
-    if (endInput) endInput.value = endAtLocal
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
@@ -353,6 +400,14 @@ export default class extends Controller {
         day: "numeric",
       })
     }
+
+    // Keep the top date-range form inputs aligned with the selected day so the
+    // range and the panel never silently disagree — applies on calendar/arrow
+    // navigation AND on URL hydration (deep-links), both ways (C1).
+    const startInput = document.querySelector('input[name="start_at"]')
+    const endInput = document.querySelector('input[name="end_at"]')
+    if (startInput) startInput.value = `${date}T00:00`
+    if (endInput) endInput.value = `${date}T23:59`
   }
 
   // Pure UI update — no navigation. Called on connect() when URL params
@@ -787,14 +842,6 @@ export default class extends Controller {
     return this.scopedQuery('[data-timeline-feed-target="confirmButton"]')
   }
 
-  activeDeclineForm() {
-    return this.scopedQuery('[data-timeline-feed-target="declineForm"]')
-  }
-
-  activeDeclineButton() {
-    return this.scopedQuery('[data-timeline-feed-target="declineButton"]')
-  }
-
   activeDeleteForm() {
     return this.scopedQuery('[data-timeline-feed-target="deleteForm"]')
   }
@@ -833,7 +880,6 @@ export default class extends Controller {
     }
     for (const [getter, label] of [
       [this.activeConfirmButton.bind(this), "Confirm"],
-      [this.activeDeclineButton.bind(this), "Decline"],
       [this.activeDeleteButton.bind(this), "Delete"],
     ]) {
       const btn = getter()
@@ -855,14 +901,6 @@ export default class extends Controller {
     this.submitBulkAction(event, {
       formGetter: this.activeConfirmForm.bind(this),
       buttonGetter: this.activeConfirmButton.bind(this),
-      minSelected: 1,
-    })
-  }
-
-  submitBulkDecline(event) {
-    this.submitBulkAction(event, {
-      formGetter: this.activeDeclineForm.bind(this),
-      buttonGetter: this.activeDeclineButton.bind(this),
       minSelected: 1,
     })
   }

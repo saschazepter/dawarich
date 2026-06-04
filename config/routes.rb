@@ -113,7 +113,7 @@ Rails.application.routes.draw do
       post :merge
     end
   end
-  resources :areas, only: [:create]
+  resources :areas, only: %i[create update]
   resources :places, only: %i[index show destroy create update] do
     collection do
       get 'nearby'
@@ -123,6 +123,7 @@ Rails.application.routes.draw do
   resources :trips do
     member do
       post :recalculate
+      post :export
     end
   end
   resources :tags, except: [:show]
@@ -266,6 +267,7 @@ Rails.application.routes.draw do
       resources :places,    only: %i[index show create update destroy] do
         collection do
           get 'nearby'
+          get 'search'
         end
       end
       resources :locations, only: %i[index] do
@@ -281,6 +283,7 @@ Rails.application.routes.draw do
       end
       resources :visits, only: %i[index show create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
+        post 'select_place', to: 'visits/select_place#create', on: :member
         collection do
           post 'merge', to: 'visits#merge'
           post 'bulk_update', to: 'visits#bulk_update'

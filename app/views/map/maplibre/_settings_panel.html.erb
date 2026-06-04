@@ -155,6 +155,22 @@
 
           <div class="divider"></div>
 
+          <!-- Hexagons Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-testid="hexagons-toggle"
+                     data-maps--maplibre-target="hexagonsToggle"
+                     data-action="change->maps--maplibre#toggleHexagons" />
+              <span class="label-text font-medium">Hexagons</span>
+              <%= pro_badge_tag %>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show point density as hexagonal cells</p>
+          </div>
+
+          <div class="divider"></div>
+
           <!-- Visits Layer -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
@@ -580,6 +596,75 @@
 
           <div class="divider"></div>
 
+          <!-- Points Rendering Mode -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Points Rendering Mode</span>
+            </label>
+            <div class="flex flex-col gap-2">
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="raw"
+                       class="radio radio-primary radio-sm"
+                       checked />
+                <span class="label-text">Raw (all points)</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="simplified"
+                       class="radio radio-primary radio-sm" />
+                <span class="label-text">Simplified (reduced points)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Speed-Colored Routes -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="speedColoredRoutes"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium">Speed-Colored Routes</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Live Mode -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps--maplibre-realtime#toggleLiveMode"
+                     data-maps--maplibre-realtime-target="liveModeToggle" />
+              <span class="label-text font-medium">Live Mode</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Update Button -->
+          <button type="submit" class="btn btn-sm btn-primary btn-block">
+            <%= icon 'save' %>
+            Apply Settings
+          </button>
+
+          <!-- Reset Settings -->
+          <button type="button"
+                  class="btn btn-sm btn-outline btn-block"
+                  data-action="click->maps--maplibre#resetSettings">
+            <%= icon 'rotate-ccw' %>
+            Reset to Defaults
+          </button>
+
+          <div class="divider"></div>
+
           <!-- Transportation Mode Detection Thresholds -->
           <details class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
@@ -914,6 +999,11 @@
               </div>
 
               <div class="mt-4 pt-4 border-t border-base-300">
+                <%# button_to renders a nested <form>. The HTML5 parser implicitly closes
+                    the outer <form data-action="submit->maps--maplibre#updateAdvancedSettings">
+                    here, so any controls placed inside this <details> or after this
+                    block are orphaned from outer-form submission. Keep the outer
+                    submit button BEFORE the Transportation Mode <details>. %>
                 <%= button_to 'Re-classify my history',
                               tracks_recalculation_path,
                               method: :post,
@@ -928,75 +1018,6 @@
               </div>
             </div>
           </details>
-
-          <div class="divider"></div>
-
-          <!-- Points Rendering Mode -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">Points Rendering Mode</span>
-            </label>
-            <div class="flex flex-col gap-2">
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="raw"
-                       class="radio radio-primary radio-sm"
-                       checked />
-                <span class="label-text">Raw (all points)</span>
-              </label>
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="simplified"
-                       class="radio radio-primary radio-sm" />
-                <span class="label-text">Simplified (reduced points)</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Speed-Colored Routes -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     name="speedColoredRoutes"
-                     class="toggle toggle-primary" />
-              <span class="label-text font-medium">Speed-Colored Routes</span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Live Mode -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     class="toggle toggle-primary"
-                     data-action="change->maps--maplibre-realtime#toggleLiveMode"
-                     data-maps--maplibre-realtime-target="liveModeToggle" />
-              <span class="label-text font-medium">Live Mode</span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Update Button -->
-          <button type="submit" class="btn btn-sm btn-primary btn-block">
-            <%= icon 'save' %>
-            Apply Settings
-          </button>
-
-          <!-- Reset Settings -->
-          <button type="button"
-                  class="btn btn-sm btn-outline btn-block"
-                  data-action="click->maps--maplibre#resetSettings">
-            <%= icon 'rotate-ccw' %>
-            Reset to Defaults
-          </button>
         </form>
       </div>
 
@@ -1042,14 +1063,6 @@
                 <span class="flex-1">Suggested</span>
                 <%= render 'map/timeline_feeds/filter_count',
                            status: 'suggested', count: @status_counts&.dig('suggested').to_i %>
-              </label>
-              <label class="timeline-filter-row timeline-filter-row--muted">
-                <input type="checkbox" class="checkbox checkbox-xs"
-                       data-status="declined" data-testid="filter-declined"
-                       data-action="change->timeline-feed#filterChanged" />
-                <span class="flex-1">Declined</span>
-                <%= render 'map/timeline_feeds/filter_count',
-                           status: 'declined', count: @status_counts&.dig('declined').to_i %>
               </label>
             </div>
 
@@ -1320,6 +1333,24 @@
 
           <!-- Selection Actions (shown after area is selected) -->
           <div class="hidden mt-4 space-y-2" data-maps--maplibre-target="selectionActions">
+            <% unless current_user.plan_restricted? %>
+              <button type="button"
+                      class="btn btn-sm btn-outline btn-error btn-block"
+                      data-action="click->maps--maplibre#deleteSelectedPoints"
+                      data-maps--maplibre-target="deletePointsButton">
+                <%= icon 'trash-2' %>
+                <span data-maps--maplibre-target="deleteButtonText">Delete Selected Points</span>
+              </button>
+
+              <button type="button"
+                      class="hidden btn btn-sm btn-outline btn-warning btn-block"
+                      data-action="click->maps--maplibre#deleteSelectedAnomalies"
+                      data-maps--maplibre-target="deleteAnomaliesButton">
+                <%= icon 'trash-2' %>
+                <span data-maps--maplibre-target="deleteAnomaliesButtonText">Delete Anomaly Points</span>
+              </button>
+            <% end %>
+
             <!-- Selected Visits Container -->
             <div class="hidden mt-4 max-h-full overflow-y-auto" data-maps--maplibre-target="selectedVisitsContainer">
               <!-- Visit cards will be dynamically inserted here -->

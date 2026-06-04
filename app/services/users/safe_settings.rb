@@ -56,7 +56,9 @@ class Users::SafeSettings
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
-    'visit_density_fill_enabled' => true
+    'visit_min_duration_minutes' => 5,
+    'visit_density_fill_enabled' => true,
+    'stay_max_gap_minutes' => 60
   }.freeze
 
   GPS_ACCURACY_THRESHOLD_MIN = 50
@@ -102,7 +104,9 @@ class Users::SafeSettings
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
-      visit_density_fill_enabled: visit_density_fill_enabled?
+      visit_min_duration_minutes: visit_min_duration_minutes,
+      visit_density_fill_enabled: visit_density_fill_enabled?,
+      stay_max_gap_minutes: stay_max_gap_minutes
     }
   end
 
@@ -131,7 +135,7 @@ class Users::SafeSettings
   end
 
   def time_threshold_minutes
-    settings['time_threshold_minutes'].to_i
+    settings['time_threshold_minutes'].to_i.clamp(1, 1440)
   end
 
   def merge_threshold_minutes
@@ -292,8 +296,17 @@ class Users::SafeSettings
     settings['visit_min_points'].to_i.clamp(2, 20)
   end
 
+  def visit_min_duration_minutes
+    raw = settings['visit_min_duration_minutes'] || DEFAULT_VALUES['visit_min_duration_minutes']
+    raw.to_i.clamp(1, 60)
+  end
+
   def visit_density_fill_enabled?
     ActiveModel::Type::Boolean.new.cast(settings['visit_density_fill_enabled'])
+  end
+
+  def stay_max_gap_minutes
+    settings['stay_max_gap_minutes'].to_i.clamp(5, 720)
   end
 
   private

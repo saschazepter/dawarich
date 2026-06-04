@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Place < ApplicationRecord
+  include Demoable
   include Nearable
   include Distanceable
   include Taggable
@@ -8,13 +9,13 @@ class Place < ApplicationRecord
   DEFAULT_NAME = 'Suggested place'
 
   belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
-  has_many :visits, dependent: :destroy
+  has_many :visits, dependent: :nullify
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
 
-  validates :name, presence: true
+  validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
 
   enum :source, { manual: 0, photon: 1 }

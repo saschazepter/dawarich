@@ -108,8 +108,7 @@ RSpec.describe User, type: :model do
       it 'does not enqueue any billing-related emails (Manager service owns billing emails)' do
         user = create(:user, :inactive)
 
-        %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
-           trial_first_payment_soon trial_converted
+        %w[trial_first_payment_soon trial_converted
            pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
           expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
         end
@@ -851,8 +850,7 @@ subscription_source: :none)
       user = build(:user)
       user.save!
 
-      %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
-         trial_first_payment_soon trial_converted
+      %w[trial_first_payment_soon trial_converted
          pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
         expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
       end

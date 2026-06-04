@@ -54,6 +54,7 @@ const LAYER_NAME_MAP = {
   Points: "pointsVisible",
   Routes: "routesVisible",
   Heatmap: "heatmapEnabled",
+  Hexagons: "hexagonsEnabled",
   Visits: "visitsEnabled",
   Photos: "photosEnabled",
   Areas: "areasEnabled",

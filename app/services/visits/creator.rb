@@ -5,55 +5,70 @@ module Visits
   class Creator
     attr_reader :user
 
-    def initialize(user)
+    def initialize(user, scoring_on: false)
       @user = user
+      @scoring_on = scoring_on
     end
 
     def create_visits(visits)
       visits.map do |visit_data|
-        # Check for existing visits at this location
         existing_visit = find_existing_visit(visit_data)
         next nil if existing_visit
 
-        # Variables to store data outside the transaction
-        visit_instance = nil
-        place_data = nil
-
-        # First transaction to create the visit
         ActiveRecord::Base.transaction do
-          # Try to find matching area
           area = find_matching_area(visit_data)
-
-          # Only find/create place if no area was found
-          place_data = PlaceFinder.new(user).find_or_create_place(visit_data) unless area
-
-          main_place = place_data&.dig(:main_place)
+          main_place = area ? nil : PlaceFinder.new(user).find_or_create_place(visit_data)
 
           visit_instance = Visit.create!(
-            user: user,
-            area: area,
-            place: main_place,
-            started_at: Time.zone.at(visit_data[:start_time]),
-            ended_at: Time.zone.at(visit_data[:end_time]),
-            duration: visit_data[:duration] / 60, # Convert to minutes
-            name: generate_visit_name(area, main_place, visit_data[:suggested_name]),
-            status: :suggested
+            {
+              user: user, area: area, place: main_place,
+              started_at: Time.zone.at(visit_data[:start_time]),
+              ended_at:   Time.zone.at(visit_data[:end_time]),
+              duration:   visit_data[:duration] / 60,
+              name:       generate_visit_name(area, main_place, visit_data[:suggested_name]),
+              status:     :suggested
+            }.merge(confidence_attributes(visit_data, area, main_place))
           )
 
           Point.where(id: visit_data[:points].map(&:id)).update_all(visit_id: visit_instance.id)
+          visit_instance
         end
-
-        # Associate suggested places outside the main transaction
-        # to avoid deadlocks when multiple processes run simultaneously
-        if place_data&.dig(:suggested_places).present?
-          associate_suggested_places(visit_instance, place_data[:suggested_places])
-        end
-
-        visit_instance
       end.compact
     end
 
     private
+
+    def confidence_attributes(visit_data, area, main_place)
+      return {} unless @scoring_on
+
+      result = Visits::ConfidenceScorer.new(
+        duration_seconds:   visit_data[:end_time] - visit_data[:start_time],
+        point_count:        visit_data[:points].size,
+        accuracies:         visit_data[:points].map(&:accuracy),
+        radius_meters:      visit_data[:radius],
+        stay_radius_meters: stay_radius_meters,
+        min_points:         min_points_setting,
+        place_match:        place_match_kind(area, main_place)
+      ).call
+
+      { confidence: result[:score], confidence_breakdown: result[:breakdown] }
+    end
+
+    # Constant per job run — read once and memoize instead of per visit in the loop.
+    def stay_radius_meters
+      @stay_radius_meters ||= user.safe_settings.visit_radius_meters
+    end
+
+    def min_points_setting
+      @min_points_setting ||= user.safe_settings.visit_min_points
+    end
+
+    def place_match_kind(area, main_place)
+      return :area if area
+      return :place if main_place && main_place.name != Place::DEFAULT_NAME
+
+      nil
+    end
 
     # Find if there's already a confirmed/suggested/declined visit at this location within a similar time
     def find_existing_visit(visit_data)
@@ -83,25 +98,6 @@ module Visits
       end
 
       nil
-    end
-
-    # Create place_visits records directly to avoid deadlocks
-    def associate_suggested_places(visit, suggested_places)
-      existing_place_ids = visit.place_visits.pluck(:place_id)
-
-      # Only create associations that don't already exist
-      place_ids_to_add = suggested_places.map(&:id) - existing_place_ids
-
-      # Skip if there's nothing to add
-      return if place_ids_to_add.empty?
-
-      # Batch create place_visit records
-      place_visits_attrs = place_ids_to_add.map do |place_id|
-        { visit_id: visit.id, place_id: place_id, created_at: Time.current, updated_at: Time.current }
-      end
-
-      # Use insert_all for efficient bulk insertion without callbacks
-      PlaceVisit.insert_all(place_visits_attrs) if place_visits_attrs.any?
     end
 
     def find_matching_area(visit_data)

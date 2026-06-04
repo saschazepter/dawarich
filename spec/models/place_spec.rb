@@ -4,14 +4,28 @@ require 'rails_helper'
 
 RSpec.describe Place, type: :model do
   describe 'associations' do
-    it { is_expected.to have_many(:visits).dependent(:destroy) }
+    it { is_expected.to have_many(:visits).dependent(:nullify) }
     it { is_expected.to have_many(:place_visits).dependent(:destroy) }
     it { is_expected.to have_many(:suggested_visits).through(:place_visits) }
+  end
+
+  describe 'destroying a place' do
+    it 'nullifies place_id on associated visits, does not delete them' do
+      user = create(:user)
+      place = create(:place, user: user)
+      visit = create(:visit, user: user, place: place, area: nil)
+
+      place.destroy!
+
+      expect(Visit.exists?(visit.id)).to be(true)
+      expect(visit.reload.place_id).to be_nil
+    end
   end
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:lonlat) }
+    it { is_expected.to validate_length_of(:name).is_at_most(255) }
   end
 
   describe 'enums' do

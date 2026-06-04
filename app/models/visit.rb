@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Visit < ApplicationRecord
+  include Demoable
+
   belongs_to :area, optional: true
   belongs_to :place, optional: true
   belongs_to :user
@@ -8,11 +10,25 @@ class Visit < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_places, through: :place_visits, source: :place
 
+  after_commit :cleanup_old_place_if_orphan, on: :update
+  after_commit :propagate_adoption_to_dependents, on: %i[create update]
+  after_destroy_commit :cleanup_place_if_orphan
+  after_commit :bust_timeline_month_summary_cache, unless: :demo?
+
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 
   validates :ended_at, comparison: { greater_than: :started_at }
+  validates :confidence, numericality: { only_integer: true, in: 0..100 }, allow_nil: true
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
+
+  def confidence_band
+    return nil if confidence.nil?
+    return :high if confidence >= 70
+    return :medium if confidence >= 40
+
+    :low
+  end
 
   def coordinates
     points.pluck(:latitude, :longitude).map { [_1[0].to_f, _1[1].to_f] }
@@ -45,6 +61,18 @@ class Visit < ApplicationRecord
     end
   end
 
+  def adopt!
+    return unless demo?
+
+    Visit.transaction do
+      super
+      place&.adopt!
+      place&.tags&.demo&.find_each(&:adopt!)
+    end
+  end
+
+  private
+
   def center_from_points
     return [0, 0] if points.empty?
 
@@ -53,5 +81,50 @@ class Visit < ApplicationRecord
     count = points.size.to_f
 
     [lat_sum / count, lon_sum / count]
+  end
+
+  def propagate_adoption_to_dependents
+    return if demo?
+    return unless previously_new_record? || saved_change_to_demo? || saved_change_to_place_id?
+    return unless place&.demo?
+
+    place.adopt!
+    place.tags.demo.find_each(&:adopt!)
+  end
+
+  def cleanup_old_place_if_orphan
+    old_id, = previous_changes['place_id']
+    return unless old_id
+
+    Places::DeleteIfOrphanJob.perform_later(old_id)
+  end
+
+  def cleanup_place_if_orphan
+    return if demo?
+    return unless place_id
+
+    Places::DeleteIfOrphanJob.perform_later(place_id)
+  end
+
+  # Keeps the Timeline calendar/filter-count cache fresh when visits are
+  # created or changed by ANY path — background import/detection jobs as well
+  # as the controller. Without this, MonthSummary (cached 5 min) serves stale
+  # status_counts right after a visit is auto-detected, so the FILTER pills
+  # read 0 until the user happens to act. Busts both the old and new month so
+  # edits that move a visit across a month boundary clear both.
+  def bust_timeline_month_summary_cache
+    return unless user
+
+    tz = user.safe_settings.timezone.presence || 'UTC'
+    times = [started_at]
+    times << saved_change_to_started_at&.first if saved_change_to_started_at?
+
+    Time.use_zone(tz) do
+      times.compact.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
+        Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start))
+      end
+    end
+  rescue StandardError => e
+    Rails.logger.warn("[Visit##{id}] timeline month cache bust failed: #{e.class}: #{e.message}")
   end
 end

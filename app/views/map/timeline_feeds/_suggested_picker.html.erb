@@ -55,10 +55,16 @@
         </li>
       <% end %>
     </ul>
+
+    <% if visible.size <= 1 && overflow.empty? %>
+      <p class="suggested-picker__note" data-testid="visit-no-alternatives">
+        No alternative suggestions yet. Confirm or decline this place, or edit it from the visit detail.
+      </p>
+    <% end %>
   <% end %>
 
-  <%= button_to 'Decline', visit_path(entry[:visit_id], visit: { status: :declined }),
-                method: :patch,
-                data: { testid: 'visit-decline' },
+  <%= button_to 'Delete', visit_path(entry[:visit_id]),
+                method: :delete,
+                data: { testid: 'visit-delete', turbo_confirm: 'Delete this visit? Your location points stay.' },
                 class: 'suggested-picker__decline' %>
 </div>

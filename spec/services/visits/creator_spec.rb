@@ -228,7 +228,7 @@ RSpec.describe Visits::Creator do
 
       before do
         allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
-        allow(place_finder).to receive(:find_or_create_place).and_return({ main_place: place, suggested_places: [] })
+        allow(place_finder).to receive(:find_or_create_place).and_return(place)
       end
 
       it 'creates a new visit because existing visit location is determined by area (far away)' do
@@ -267,7 +267,7 @@ longitude: -73.9000)
 
       before do
         allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
-        allow(place_finder).to receive(:find_or_create_place).and_return({ main_place: place, suggested_places: [] })
+        allow(place_finder).to receive(:find_or_create_place).and_return(place)
       end
 
       it 'creates a new suggested visit' do
@@ -323,19 +323,11 @@ longitude: -73.9000)
 
     context 'when matching a place' do
       let(:place) { create(:place, name: 'Test Place') }
-      let(:suggested_place1) { create(:place, name: 'Suggested Place 1') }
-      let(:suggested_place2) { create(:place, name: 'Suggested Place 2') }
       let(:place_finder) { instance_double(Visits::PlaceFinder) }
-      let(:place_data) do
-        {
-          main_place: place,
-          suggested_places: [suggested_place1, suggested_place2]
-        }
-      end
 
       before do
         allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
-        allow(place_finder).to receive(:find_or_create_place).and_return(place_data)
+        allow(place_finder).to receive(:find_or_create_place).and_return(place)
       end
 
       it 'creates a visit associated with the place' do
@@ -347,36 +339,6 @@ longitude: -73.9000)
         expect(visit.area).to be_nil
         expect(visit.place).to eq(place)
         expect(visit.name).to eq(place.name)
-      end
-
-      it 'associates suggested places with the visit' do
-        visits = subject.create_visits([visit_data])
-        visit = visits.first
-
-        # Check for place_visits associations
-        expect(visit.place_visits.count).to eq(2)
-        expect(visit.place_visits.pluck(:place_id)).to contain_exactly(
-          suggested_place1.id,
-          suggested_place2.id
-        )
-        expect(visit.suggested_places).to contain_exactly(suggested_place1, suggested_place2)
-      end
-
-      it 'does not create duplicate place_visit associations' do
-        # Create an existing association
-        visit = create(:visit, user: user, place: place)
-        create(:place_visit, visit: visit, place: suggested_place1)
-
-        allow(Visit).to receive(:create!).and_return(visit)
-
-        # Only one new association should be created
-        expect do
-          subject.create_visits([visit_data])
-        end.to change(PlaceVisit, :count).by(1)
-        expect(visit.place_visits.pluck(:place_id)).to contain_exactly(
-          suggested_place1.id,
-          suggested_place2.id
-        )
       end
     end
 
@@ -426,10 +388,8 @@ longitude: -73.9000)
 
       before do
         allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
-        allow(place_finder).to receive(:find_or_create_place)
-          .with(visit_data).and_return({ main_place: place1, suggested_places: [] })
-        allow(place_finder).to receive(:find_or_create_place)
-          .with(visit_data2).and_return({ main_place: place2, suggested_places: [] })
+        allow(place_finder).to receive(:find_or_create_place).with(visit_data).and_return(place1)
+        allow(place_finder).to receive(:find_or_create_place).with(visit_data2).and_return(place2)
       end
 
       it 'creates multiple visits' do
@@ -460,6 +420,31 @@ longitude: -73.9000)
         # Points should not be associated with any visit
         expect(point1.reload.visit_id).to be_nil
         expect(point2.reload.visit_id).to be_nil
+      end
+    end
+
+    context 'confidence scoring' do
+      let(:point1) { create(:point, user: user, accuracy: 10) }
+      let(:point2) { create(:point, user: user, accuracy: 12) }
+      let(:place_finder) { instance_double(Visits::PlaceFinder) }
+
+      before do
+        allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
+        allow(place_finder).to receive(:find_or_create_place).and_return(nil)
+      end
+
+      it 'leaves confidence nil when scoring is off (default)' do
+        visit = described_class.new(user).create_visits([visit_data]).first.reload
+
+        expect(visit.confidence).to be_nil
+        expect(visit.confidence_breakdown).to eq({})
+      end
+
+      it 'sets an integer confidence and a breakdown when scoring is on' do
+        visit = described_class.new(user, scoring_on: true).create_visits([visit_data]).first.reload
+
+        expect(visit.confidence).to be_between(0, 100)
+        expect(visit.confidence_breakdown.keys).to include('dwell', 'tightness', 'density', 'accuracy')
       end
     end
   end
@@ -512,6 +497,26 @@ longitude: -73.9000)
 
       result = subject.send(:near_area?, center, area)
       expect(result).to be false
+    end
+  end
+
+  describe 'no PlaceVisit fan-out' do
+    let(:user) { create(:user) }
+
+    it 'creates exactly one Place per detected visit (no PlaceVisit rows)' do
+      allow(Places::NameFetcher).to receive(:lookup_attrs).and_return(
+        { name: 'Café Bravo', city: 'Berlin', country: 'Germany', geodata: {} }
+      )
+      points = [create(:point, user: user, timestamp: 1.hour.ago.to_i)]
+      visit_data = [{
+        center_lat: 52.5126, center_lon: 13.4012,
+        suggested_name: nil, points: points,
+        start_time: 1.hour.ago.to_i, end_time: Time.current.to_i, duration: 3600
+      }]
+
+      expect { described_class.new(user).create_visits(visit_data) }
+        .to change { Place.count }.by(1)
+        .and change { PlaceVisit.count }.by(0)
     end
   end
 end

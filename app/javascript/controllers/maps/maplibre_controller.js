@@ -60,6 +60,7 @@ export default class extends Controller {
     "pointsToggle",
     "routesToggle",
     "heatmapToggle",
+    "hexagonsToggle",
     "visitsToggle",
     "photosToggle",
     "areasToggle",
@@ -81,6 +82,10 @@ export default class extends Controller {
     // Area selection
     "selectAreaButton",
     "selectionActions",
+    "deletePointsButton",
+    "deleteButtonText",
+    "deleteAnomaliesButton",
+    "deleteAnomaliesButtonText",
     "selectedVisitsContainer",
     "selectedVisitsBulkActions",
     // Info display
@@ -199,7 +204,12 @@ export default class extends Controller {
     this.initializeAPI()
 
     // Initialize managers
-    this.layerManager = new LayerManager(this.map, this.settings, this.api)
+    this.layerManager = new LayerManager(
+      this.map,
+      this.settings,
+      this.api,
+      this,
+    )
     this.dataLoader = new DataLoader(this.api, this.apiKeyValue, this.settings)
     this.eventHandlers = new EventHandlers(this.map, this)
     this.filterManager = new FilterManager(this.dataLoader)
@@ -314,6 +324,14 @@ export default class extends Controller {
     this.cleanup.addEventListener(
       document,
       "area:created",
+      this.boundHandleAreaCreated,
+    )
+
+    // Re-use the same refresh path for area edits — both create and update
+    // need the areas layer rebuilt from the API.
+    this.cleanup.addEventListener(
+      document,
+      "area:updated",
       this.boundHandleAreaCreated,
     )
 
@@ -769,6 +787,7 @@ export default class extends Controller {
     // Visit labels
     const labelExpr = this._dayRangeExpr("started_at", isoStart, isoEnd, 1, DIM)
     this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
 
     // Tracks: start_at is ISO 8601 string
     const trackExpr = this._dayRangeExpr("start_at", isoStart, isoEnd, 0.7, DIM)
@@ -793,6 +812,7 @@ export default class extends Controller {
     this._safeSetPaint("visits", "circle-opacity", 0.9)
     this._safeSetPaint("visits", "circle-stroke-opacity", 1)
     this._safeSetPaint("visits-labels", "text-opacity", 1)
+    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
     this._safeSetPaint("tracks", "line-opacity", 0.7)
   }
 
@@ -853,6 +873,17 @@ export default class extends Controller {
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
       this._safeSetPaint("visits-labels", "text-opacity", visitExpr)
+
+      // Labels collide-hide by default, so a neighbouring (dimmed) visit's
+      // label can win placement over the hovered one and the text under the
+      // bright dot fades out. Give the hovered visit the lowest sort key so
+      // its label is placed first and always survives collision.
+      this._safeSetLayout("visits-labels", "symbol-sort-key", [
+        "case",
+        ["==", ["get", "id"], Number(visitId)],
+        0,
+        1,
+      ])
     } else {
       const VISITS_NEARLY_INVISIBLE = 0.05
       this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
@@ -866,6 +897,7 @@ export default class extends Controller {
         "text-opacity",
         VISITS_NEARLY_INVISIBLE,
       )
+      this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
     }
 
     // Tracks: start_at is ISO 8601 string
@@ -1006,6 +1038,12 @@ export default class extends Controller {
   _safeSetPaint(layerId, property, value) {
     if (this.map.getLayer(layerId)) {
       this.map.setPaintProperty(layerId, property, value)
+    }
+  }
+
+  _safeSetLayout(layerId, property, value) {
+    if (this.map.getLayer(layerId)) {
+      this.map.setLayoutProperty(layerId, property, value)
     }
   }
 
@@ -1188,6 +1226,12 @@ export default class extends Controller {
   cancelAreaSelection() {
     return this.areaSelectionManager.cancelAreaSelection()
   }
+  deleteSelectedPoints() {
+    return this.areaSelectionManager.deleteSelectedPoints()
+  }
+  deleteSelectedAnomalies() {
+    return this.areaSelectionManager.deleteSelectedAnomalies()
+  }
 
   // Visits Manager methods
   toggleVisits(event) {
@@ -1219,13 +1263,6 @@ export default class extends Controller {
 
   // Area creation
   startCreateArea() {
-    if (
-      this.hasSettingsPanelTarget &&
-      this.settingsPanelTarget.classList.contains("open")
-    ) {
-      this.toggleSettings()
-    }
-
     // Find area drawer controller on the same element
     const drawerController =
       this.application.getControllerForElementAndIdentifier(
@@ -1281,6 +1318,10 @@ export default class extends Controller {
         }
       }
 
+      // If the area info card is open for an edited area, refresh its name
+      // in place so the side panel matches the map.
+      this.eventHandlers?.refreshActiveAreaInfo(areas)
+
       Toast.success("Area created successfully!")
     } catch (_error) {
       Toast.error("Failed to reload areas")
@@ -1296,6 +1337,9 @@ export default class extends Controller {
   }
   toggleHeatmap(event) {
     return this.routesManager.toggleHeatmap(event)
+  }
+  toggleHexagons(event) {
+    return this.routesManager.toggleHexagons(event)
   }
   toggleFog(event) {
     return this.routesManager.toggleFog(event)
@@ -1554,6 +1598,9 @@ export default class extends Controller {
   showInfo(title, content, actions = []) {
     if (!this.hasInfoDisplayTarget) return
 
+    // Reset the tracked entity; area clicks re-tag this after calling showInfo.
+    this._infoEntity = null
+
     // Set title
     this.infoTitleTarget.textContent = title
 
@@ -1721,8 +1768,37 @@ export default class extends Controller {
   }
 
   /**
+   * Fetch an area and dispatch `area:edit` so the area_creation_v2
+   * controller opens its modal in edit mode. Triggered from the area
+   * info card's Edit button.
+   */
+  async openAreaEditModal(event) {
+    const areaId = event.currentTarget?.dataset?.id
+    if (!areaId) return
+
+    try {
+      const response = await fetch(`/api/v1/areas/${areaId}`, {
+        headers: {
+          Authorization: `Bearer ${this.apiKeyValue}`,
+          "Content-Type": "application/json",
+        },
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to fetch area: ${response.status}`)
+      }
+      const area = await response.json()
+      document.dispatchEvent(
+        new CustomEvent("area:edit", { detail: { area }, bubbles: true }),
+      )
+    } catch (_error) {
+      Toast.error("Failed to load area details")
+    }
+  }
+
+  /**
    * Delete a single point with confirmation, then remove it from the points
-   * source so the map updates without a full reload.
+   * source and rebuild the connecting routes so the map updates without a
+   * full reload.
    */
   async deletePoint(pointId) {
     const confirmed = confirm(
@@ -1743,6 +1819,8 @@ export default class extends Controller {
           (f) => Number(f.properties?.id) !== numericId,
         )
         source.setData(data)
+        pointsLayer.data = data
+        await this.routesManager.reloadRoutes()
       }
 
       this.closeInfo()

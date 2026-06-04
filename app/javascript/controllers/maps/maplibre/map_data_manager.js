@@ -53,8 +53,24 @@ export class MapDataManager {
         placesGeoJSON: EMPTY_GEOJSON,
       })
 
+      // Visits load is windowed to the current map viewport. On first
+      // load `getBounds()` may not have settled yet — fall back to an
+      // unbounded fetch in that case so we don't drop visits silently.
+      const map = this.controller?.map
+      let viewportBounds
+      if (map?.getBounds) {
+        const b = map.getBounds()
+        viewportBounds = {
+          sw_lat: b.getSouth(),
+          sw_lng: b.getWest(),
+          ne_lat: b.getNorth(),
+          ne_lng: b.getEast(),
+        }
+      }
+
       // 2. Fetch data with incremental callbacks
       data = await this.dataLoader.fetchMapData(startDate, endDate, {
+        viewportBounds,
         onUpdate: showLoading
           ? (info) => this.controller.updateLoadingCounts(info)
           : null,
@@ -101,6 +117,18 @@ export class MapDataManager {
           data.routesGeoJSON,
           data.visitsGeoJSON,
         ])
+      }
+
+      // 7. Reload hexagons if currently visible — they own their own fetch
+      // pipeline (raw points + h3 aggregation), so they need a date-range
+      // reload separate from the main data flow.
+      const hexagonLayer = this.layerManager.getLayer("hexagons")
+      if (hexagonLayer?.visible) {
+        hexagonLayer
+          .reload({ start_at: startDate, end_at: endDate })
+          .catch((error) => {
+            console.error("[MapDataManager] Hexagon reload failed:", error)
+          })
       }
 
       return data

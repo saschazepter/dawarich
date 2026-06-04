@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_31_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -244,7 +244,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.bigint "user_id"
     t.text "note"
+    t.boolean "demo", default: false, null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
+    t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
   end
@@ -291,7 +293,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
     t.jsonb "motion_data", default: {}, null: false
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
-    t.index ["anomaly"], name: "index_points_on_not_anomaly", where: "(anomaly IS NOT TRUE)"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
@@ -302,7 +303,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
-    t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
     t.index ["user_id"], name: "index_points_on_user_id"
@@ -367,6 +367,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "privacy_radius_meters"
+    t.boolean "demo", default: false, null: false
+    t.index ["demo"], name: "index_tags_on_demo_true", where: "(demo = true)"
     t.index ["privacy_radius_meters"], name: "index_tags_on_privacy_radius_meters", where: "(privacy_radius_meters IS NOT NULL)"
     t.index ["user_id", "name"], name: "index_tags_on_user_id_and_name", unique: true
     t.index ["user_id"], name: "index_tags_on_user_id"
@@ -408,7 +410,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
     t.datetime "updated_at", null: false
     t.integer "dominant_mode", default: 0
     t.string "tracker_id"
+    t.boolean "demo", default: false, null: false
     t.index "user_id, COALESCE(tracker_id, ''::character varying), start_at, end_at", name: "index_tracks_on_user_tracker_start_end_unique", unique: true
+    t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
@@ -426,6 +430,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
     t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
     t.datetime "last_recalculated_at"
+    t.boolean "demo", default: false, null: false
+    t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -498,7 +504,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_111503) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "place_id"
+    t.boolean "demo", default: false, null: false
+    t.integer "confidence", limit: 2
+    t.jsonb "confidence_breakdown", default: {}, null: false
     t.index ["area_id"], name: "index_visits_on_area_id"
+    t.index ["demo"], name: "index_visits_on_demo_true", where: "(demo = true)"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
     t.index ["user_id"], name: "index_visits_on_user_id"

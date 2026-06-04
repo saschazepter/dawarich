@@ -18,8 +18,7 @@ module TransportationModes
     def perform(user_id, batch_size: DEFAULT_BATCH_SIZE)
       @user = find_user_or_skip(user_id) || return
 
-      # Extract user thresholds once for all tracks
-      @user_thresholds, @expert_thresholds = extract_user_thresholds
+      @user_thresholds, @expert_thresholds, @enabled_modes = extract_user_settings
 
       tracks_to_process.find_in_batches(batch_size: batch_size) do |tracks|
         tracks.each do |track|
@@ -32,9 +31,13 @@ module TransportationModes
 
     private
 
-    def extract_user_thresholds
+    def extract_user_settings
       safe_settings = Users::SafeSettings.new(@user.settings || {})
-      [safe_settings.transportation_thresholds, safe_settings.transportation_expert_thresholds]
+      [
+        safe_settings.transportation_thresholds,
+        safe_settings.transportation_expert_thresholds,
+        safe_settings.enabled_transportation_modes
+      ]
     end
 
     def tracks_to_process
@@ -60,7 +63,8 @@ module TransportationModes
         detector = TransportationModes::Detector.new(
           track, points,
           user_thresholds: @user_thresholds,
-          user_expert_thresholds: @expert_thresholds
+          user_expert_thresholds: @expert_thresholds,
+          enabled_modes: @enabled_modes
         )
         segment_data = detector.call
 
@@ -75,23 +79,16 @@ module TransportationModes
     def create_segments(track, segment_data)
       return if segment_data.empty?
 
-      segments = segment_data.map do |data|
-        track.track_segments.create(
-          transportation_mode: data[:mode],
-          start_index: data[:start_index],
-          end_index: data[:end_index],
-          distance: data[:distance],
-          duration: data[:duration],
-          avg_speed: data[:avg_speed],
-          max_speed: data[:max_speed],
-          avg_acceleration: data[:avg_acceleration],
-          confidence: data[:confidence],
-          source: data[:source]
-        )
-      end.select(&:persisted?)
+      TrackSegments::BulkInserter.call(track, segment_data)
 
-      dominant_segment = segments.max_by { |s| s.duration || 0 }
-      track.update_column(:dominant_mode, dominant_segment&.transportation_mode || :unknown)
+      segments = segment_data.map do |d|
+        TrackSegment.new(
+          transportation_mode: d[:mode],
+          distance: d[:distance],
+          duration: d[:duration]
+        )
+      end
+      track.update_column(:dominant_mode, Track.pick_dominant_mode(segments) || :unknown)
     end
   end
 end

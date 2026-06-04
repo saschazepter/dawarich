@@ -43,4 +43,10 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       end
     end
   end
+
+  describe 'sidekiq options' do
+    it 'caps Sidekiq retries at 3 to bound the retry set' do
+      expect(described_class.get_sidekiq_options['retry']).to eq(3)
+    end
+  end
 end

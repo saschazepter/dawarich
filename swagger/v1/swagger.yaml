@@ -1033,7 +1033,7 @@ paths:
                   sharing_enabled:
                     type: boolean
                     description: Whether the current user has sharing enabled
-        '403':
+        '404':
           description: user not in a family
         '401':
           description: unauthorized
@@ -1086,7 +1086,7 @@ paths:
                 properties:
                   error:
                     type: string
-        '403':
+        '404':
           description: user not in a family
         '401':
           description: unauthorized
@@ -4761,6 +4761,9 @@ paths:
                       type: string
                     place_id:
                       type: integer
+                    area_id:
+                      type: integer
+                      nullable: true
                     status:
                       type: string
                       enum:
@@ -4820,17 +4823,44 @@ paths:
                   type: object
                   properties:
                     id:
-                      type: integer
+                      type:
+                      - integer
+                      - 'null'
                     name:
                       type: string
                     latitude:
                       type: number
                     longitude:
                       type: number
+                    osm_id:
+                      type:
+                      - integer
+                      - string
+                      - 'null'
+                    osm_type:
+                      type:
+                      - string
+                      - 'null'
+                    osm_key:
+                      type:
+                      - string
+                      - 'null'
+                    osm_value:
+                      type:
+                      - string
+                      - 'null'
                     city:
-                      type: string
+                      type:
+                      - string
+                      - 'null'
                     country:
+                      type:
+                      - string
+                      - 'null'
+                    source:
                       type: string
+                    geodata:
+                      type: object
         '404':
           description: visit not found
         '401':

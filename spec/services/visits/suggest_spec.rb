@@ -89,10 +89,12 @@ RSpec.describe Visits::Suggest do
         described_class.new(user, start_at: reverse_geocoding_start_at, end_at: reverse_geocoding_end_at).call
 
         # Since both visits are at the same location, they share the same place.
-        # So only 1 reverse geocoding job should be enqueued.
-        expect(enqueued_jobs.count).to eq(1)
-        expect(enqueued_jobs).to all(have_job_class('ReverseGeocodingJob'))
-        expect(enqueued_jobs).to all(have_arguments_starting_with('place'))
+        # So only 1 ReverseGeocodingJob should be enqueued. (Places::NameFetchingJob
+        # is also enqueued by PlaceFinder when reverse geocoding is enabled, but
+        # that's a separate concern and not what this test is asserting.)
+        reverse_geocoding_jobs = enqueued_jobs.select { |job| job['job_class'] == 'ReverseGeocodingJob' }
+        expect(reverse_geocoding_jobs.count).to eq(1)
+        expect(reverse_geocoding_jobs).to all(have_arguments_starting_with('place'))
       end
     end
 

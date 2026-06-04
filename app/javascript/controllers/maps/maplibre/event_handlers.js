@@ -218,8 +218,14 @@ export class EventHandlers {
    */
   handleAreaClick(e) {
     const feature = e.features[0]
-    const properties = feature.properties
+    this._renderAreaInfo(feature.properties)
+  }
 
+  /**
+   * Render the area info card into the side panel and remember which area it
+   * shows, so an `area:updated` refresh can re-render it with the new name.
+   */
+  _renderAreaInfo(properties) {
     const content = `
       <div class="space-y-2">
         ${properties.radius ? `<div><span class="font-semibold">Radius:</span> ${Math.round(properties.radius)}m</div>` : ""}
@@ -229,6 +235,13 @@ export class EventHandlers {
 
     const actions = properties.id
       ? [
+          {
+            type: "button",
+            handler: "openAreaEditModal",
+            id: properties.id,
+            entityType: "area",
+            label: "Edit",
+          },
           {
             type: "button",
             handler: "handleDelete",
@@ -244,6 +257,31 @@ export class EventHandlers {
       content,
       actions,
     )
+    // showInfo clears _infoEntity; tag the panel as showing this area so it
+    // can be refreshed in place after an edit.
+    this.controller._infoEntity = { type: "area", id: properties.id }
+  }
+
+  /**
+   * Re-render the open area info card from a fresh list of areas. No-op unless
+   * the panel is currently open and showing one of those areas. Called after
+   * `area:updated` so the side panel name matches the map.
+   */
+  refreshActiveAreaInfo(areas) {
+    const entity = this.controller._infoEntity
+    if (!entity || entity.type !== "area") return
+    if (!this.controller.hasInfoDisplayTarget) return
+    if (this.controller.infoDisplayTarget.classList.contains("hidden")) return
+
+    const area = (areas || []).find((a) => a.id === entity.id)
+    if (!area) return
+
+    this._renderAreaInfo({
+      id: area.id,
+      name: area.name,
+      color: area.color || "#ef4444",
+      radius: area.radius,
+    })
   }
 
   /**
@@ -479,38 +517,59 @@ export class EventHandlers {
     // Create markers for selected route
     this._createRouteMarkers(fullFeature)
 
-    // Calculate duration
-    const durationSeconds = properties.endTime - properties.startTime
-    const durationMinutes = Math.floor(durationSeconds / 60)
-    const durationFormatted = minutesToDaysHoursMinutes(durationMinutes)
+    // Open the Timeline tab and focus the journey this route belongs to —
+    // the same UX as clicking a visit or a track. Routes are point-derived and
+    // carry no track id, so we pass the route's time window and let the
+    // timeline resolve the matching journey by overlap. That works even when
+    // the tracks layer is hidden. A spatially-resolved id (when the tracks
+    // layer happens to be rendered under the click) is an exact fast path.
+    document.dispatchEvent(
+      new CustomEvent("timeline:open-track", {
+        detail: {
+          trackId: this._trackIdUnderPoint(e.point),
+          date: this._routeDate(properties.startTime),
+          startAtMs: properties.startTime ? properties.startTime * 1000 : null,
+          endAtMs: properties.endTime ? properties.endTime * 1000 : null,
+        },
+      }),
+    )
+  }
 
-    // Calculate average speed
-    let avgSpeed = properties.speed
-    if (!avgSpeed && properties.distance > 0 && durationSeconds > 0) {
-      avgSpeed = (properties.distance / durationSeconds) * 3600 // km/h
+  /**
+   * Find the id of a persisted track rendered under a click point, if any.
+   * Uses a small pixel box so thin lines are still hit. Returns null when the
+   * tracks layer is absent/hidden or nothing is under the click.
+   * @private
+   */
+  _trackIdUnderPoint(point) {
+    if (!this.map.getLayer("tracks")) return null
+
+    const pad = 6
+    const features = this.map.queryRenderedFeatures(
+      [
+        [point.x - pad, point.y - pad],
+        [point.x + pad, point.y + pad],
+      ],
+      { layers: ["tracks"] },
+    )
+    const id = features[0]?.properties?.id
+    return id == null ? null : Number(id)
+  }
+
+  /**
+   * Derive the timeline day ("YYYY-MM-DD") for a route from its start time
+   * (Unix seconds), in the user's timezone so it matches the journey rows.
+   * @private
+   */
+  _routeDate(startTimeSeconds) {
+    if (!startTimeSeconds) return null
+    const tz = this.controller.timezoneValue
+    const date = new Date(startTimeSeconds * 1000)
+    try {
+      return date.toLocaleDateString("en-CA", tz ? { timeZone: tz } : undefined)
+    } catch {
+      return date.toLocaleDateString("en-CA")
     }
-
-    // Get user preferences
-    const distanceUnit = this.controller.settings.distance_unit || "km"
-
-    // Prepare route data object
-    const routeData = {
-      startTime: formatTimestamp(
-        properties.startTime,
-        this.controller.timezoneValue,
-      ),
-      endTime: formatTimestamp(
-        properties.endTime,
-        this.controller.timezoneValue,
-      ),
-      duration: durationFormatted,
-      distance: formatDistance(properties.distance, distanceUnit),
-      speed: avgSpeed ? formatSpeed(avgSpeed, distanceUnit) : null,
-      pointCount: properties.pointCount,
-    }
-
-    // Call controller method to display route info
-    this.controller.showRouteInfo(routeData)
   }
 
   /**

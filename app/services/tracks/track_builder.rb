@@ -199,38 +199,35 @@ module Tracks::TrackBuilder
   end
 
   def detect_and_create_segments(track, points)
-    detector = TransportationModes::Detector.new(track, points)
+    safe_settings = Users::SafeSettings.new(user.settings || {})
+    detector = TransportationModes::Detector.new(
+      track, points,
+      user_thresholds:        safe_settings.transportation_thresholds,
+      user_expert_thresholds: safe_settings.transportation_expert_thresholds,
+      enabled_modes:          safe_settings.enabled_transportation_modes
+    )
     segment_data = detector.call
 
     return if segment_data.empty?
 
-    segments = segment_data.map do |data|
-      track.track_segments.create(
-        transportation_mode: data[:mode],
-        start_index: data[:start_index],
-        end_index: data[:end_index],
-        distance: data[:distance],
-        duration: data[:duration],
-        avg_speed: data[:avg_speed],
-        max_speed: data[:max_speed],
-        avg_acceleration: data[:avg_acceleration],
-        confidence: data[:confidence],
-        source: data[:source]
-      )
-    end.select(&:persisted?)
-
-    update_dominant_mode(track, segments)
+    TrackSegments::BulkInserter.call(track, segment_data)
+    update_dominant_mode(track, segment_data)
   rescue StandardError => e
     Rails.logger.error "Failed to detect transportation modes for track #{track.id}: #{e.message}"
   end
 
-  def update_dominant_mode(track, segments)
-    return if segments.empty?
+  def update_dominant_mode(track, segment_data)
+    return if segment_data.empty?
 
-    dominant_segment = segments.max_by { |s| s.duration || 0 }
-    return unless dominant_segment
-
-    track.update_column(:dominant_mode, dominant_segment.transportation_mode)
+    segments = segment_data.map do |d|
+      TrackSegment.new(
+        transportation_mode: d[:mode],
+        distance: d[:distance],
+        duration: d[:duration]
+      )
+    end
+    mode = Track.pick_dominant_mode(segments)
+    track.update_column(:dominant_mode, mode) if mode
   end
 
   private

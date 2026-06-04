@@ -31,7 +31,6 @@ class Tracks::IncrementalGenerator
   def call
     Tracks::PerUserLock.with_user_lock(user.id) do
       segments = fetch_untracked_segments
-      return if segments.empty?
 
       segments.each do |segment|
         next if segment[:points].size < 2
@@ -44,6 +43,8 @@ class Tracks::IncrementalGenerator
 
         merge_with_recent_track(track) if track
       end
+
+      Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
     end
   end
 

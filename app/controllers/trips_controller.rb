@@ -5,7 +5,7 @@ class TripsController < ApplicationController
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
-  before_action :set_trip, only: %i[show edit update destroy recalculate]
+  before_action :set_trip, only: %i[show edit update destroy recalculate export]
   before_action :set_coordinates, only: %i[show edit]
 
   def index
@@ -40,6 +40,7 @@ class TripsController < ApplicationController
 
   def update
     if @trip.update(trip_params)
+      @trip.adopt!
       redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
     else
       render :edit, status: :unprocessable_content
@@ -89,6 +90,40 @@ class TripsController < ApplicationController
                     notice: 'Recalculating — the page will update automatically when it\'s ready.'
       end
     end
+  end
+
+  EXPORTABLE_FORMATS = %w[gpx json].freeze
+
+  def export
+    file_format = params[:file_format].to_s
+
+    unless EXPORTABLE_FORMATS.include?(file_format)
+      redirect_to trip_path(@trip),
+                  alert: 'Unsupported export format. Choose GPX or GeoJSON.',
+                  status: :unprocessable_content
+      return
+    end
+
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    start_date = @trip.started_at.in_time_zone(tz).to_date
+    export_name = "trip_#{@trip.name.to_s.parameterize.presence || @trip.id}_#{start_date}.#{file_format}"
+
+    current_user.exports.create!(
+      name: export_name,
+      status: :created,
+      file_format: file_format,
+      file_type: :points,
+      start_at: @trip.started_at,
+      end_at: @trip.ended_at
+    )
+
+    redirect_to exports_url,
+                notice: "Trip export initiated. Check the Exports page when it's ready."
+  rescue StandardError => e
+    ExceptionReporter.call(e)
+    redirect_to trip_path(@trip),
+                alert: 'Export failed to initiate. Please try again.',
+                status: :unprocessable_content
   end
 
   private
