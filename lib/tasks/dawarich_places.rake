@@ -3,11 +3,16 @@
 namespace :dawarich do
   desc 'One-time orphan suggested-place cleanup for all users'
   task cleanup_suggested_places: :environment do
+    enqueued = 0
     User.in_batches(of: 100).each_with_index do |batch, i|
       batch.pluck(:id).each_with_index do |uid, j|
         Places::OrphanCleanupJob.set(wait: ((i * 100 + j) * 0.1).seconds).perform_later(uid)
+        enqueued += 1
       end
     end
+    # Ownerless (user_id IS NULL) orphan suggested places aren't reached by the
+    # per-user passes above, so drain them in a dedicated pass after the rest.
+    Places::OrphanCleanupJob.set(wait: (enqueued * 0.1).seconds).perform_later(nil)
     Rails.logger.info('[dawarich:cleanup_suggested_places] enqueued')
     Rails.logger.info(<<~MSG)
       [dawarich:cleanup_suggested_places] To verify the drain is complete, run:

@@ -264,6 +264,7 @@ Rails.application.routes.draw do
       resources :places,    only: %i[index show create update destroy] do
         collection do
           get 'nearby'
+          get 'search'
         end
       end
       resources :locations, only: %i[index] do

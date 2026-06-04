@@ -95,56 +95,6 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
-    context 'when email_type is a transitional trial-reminder' do
-      # The four trial-reminder types below were enqueued by Dawarich pre-billing
-      # extraction. They're kept in MAILER_REGISTRY through the queue-drain
-      # window so stale Sidekiq jobs fire normally instead of crashing.
-      # Earliest removal: 2026-05-17 (deploy + 21 days). When you delete them,
-      # also delete the registry entries, the mailer methods, and the templates.
-      let(:active_user) { create(:user, skip_auto_trial: true, status: :active, active_until: 1.year.from_now) }
-      let(:auto_converting_user) do
-        create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
-      end
-
-      %w[trial_expires_soon trial_expired].each do |type|
-        it "skips #{type} when the user is already active (no stale 'trial expires soon' to a paying user)" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(active_user.id, type)
-        end
-
-        it "skips #{type} for an auto-converting trial (card on file — Paddle owns the lifecycle)" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(auto_converting_user.id, type)
-        end
-
-        it "still delivers #{type} to a legacy trial user (drain path)" do
-          expect(UsersMailer).to receive(:with).with({ user: user })
-          expect(UsersMailer).to receive(type).and_return(mailer_double)
-          expect(mailer_double).to receive(:deliver_later)
-          described_class.perform_now(user.id, type)
-        end
-      end
-
-      %w[post_trial_reminder_early post_trial_reminder_late].each do |type|
-        it "skips #{type} when the user has converted to active" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(active_user.id, type)
-        end
-
-        it "skips #{type} for an auto-converting trial (card on file)" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(auto_converting_user.id, type)
-        end
-
-        it "still delivers #{type} to a legacy trial user (drain path)" do
-          expect(UsersMailer).to receive(:with).with({ user: user })
-          expect(UsersMailer).to receive(type).and_return(mailer_double)
-          expect(mailer_double).to receive(:deliver_later)
-          described_class.perform_now(user.id, type)
-        end
-      end
-    end
-
     context 'registry coverage' do
       # Prove every entry in MAILER_REGISTRY actually resolves to a real mailer
       # action. A typo in the registry would otherwise silently break production.

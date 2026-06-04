@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Place < ApplicationRecord
+  include Demoable
   include Nearable
   include Distanceable
   include Taggable
@@ -14,7 +15,7 @@ class Place < ApplicationRecord
 
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
 
-  validates :name, presence: true
+  validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
 
   enum :source, { manual: 0, photon: 1 }

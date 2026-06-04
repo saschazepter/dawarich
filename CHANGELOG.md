@@ -4,22 +4,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-
-## [1.7.11] - Unreleased
+## [1.8.0] - Unreleased
 
 ### Added
 
-- Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
+- Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
+
+  Enable it (Rails console):
+  - One user: `Flipper.enable_actor(:stay_point_detection, user)`
+  - Everyone: `Flipper.enable(:stay_point_detection)`
+  - Or toggle in `/admin/flipper`
+  - Re-detect past history: `Visits::FullHistoryRedetectJob.perform_later(user.id)`
+
+- Map v2 Timeline: every visit now has a search icon. Click it to find the actual place by name — a type-as-you-go lookup against your configured geocoder (Photon), biased to the visit's location, with each result showing its category and distance, plus any of your saved Areas nearby. Pick a result to label the visit, or create a new place on the spot when nothing matches. Choosing a place far from the visit asks before relocating it, and the map marker updates immediately.
 - `bin/rails dawarich:resweep_default_named_places` — re-enqueues `Places::NameFetchingJob` for places stuck at `Place::DEFAULT_NAME` past `STUCK_AFTER_HOURS` (default 24).
+
+### Changed
+
+- Declining a visit is now **deleting** a visit. The Decline action — per-visit, "Delete all" for a day, the bulk selection bar, and the Map v2 area-selection card — is replaced by **Delete**, which asks for confirmation and removes the visit entirely. Your underlying location points are always kept. The "Declined" filter and the Restore action have been removed.
 
 ### Fixed
 
-- Cloud only: PostHog exception capture is enabled to help diagnose production errors. Disabled on self-hosted instances and skipped unless `POSTHOG_API_KEY` is configured. The payload includes `user.id`, controller/action, and parameter-filtered request data — email, name, phone, credentials, and coordinates are redacted before send.
-- Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. (#2579)
-- `POST /api/v1/visits/:id/select_place` returns a coordinate-specific message ("latitude out of range [-90, 90]") instead of a generic "param is missing" for out-of-bounds coordinates.
-- Concurrent `POST /api/v1/visits/:id/select_place` calls on the same visit are serialized via a row-level lock on the visit (PgBouncer transaction-pool compatible), preventing duplicate Place rows from rapid double-clicks.
-- `Places::OrphanCleanupJob` only deletes Photon-source places still bearing `Place::DEFAULT_NAME`, so user-named Photon places without visits or tags are preserved.
-- `POST /api/v1/visits/:id/select_place` no longer fires extra `tags`/`visits` queries when serializing a freshly-created place.
+- Deleting a single point on the map (via its info card) now redraws the connecting route immediately, instead of leaving a stale line through the removed point until a page reload. (#2844)
+- The official Traccar client app is now supported directly, as the docs describe. Its location payload nests coordinates, battery and activity one level deeper than Dawarich's own mobile client, so points sent by the Traccar client were silently dropped instead of ingested. Both payload shapes are now accepted. #2741
+- Deleting an import now also removes any tracks left with no points, instead of leaving empty "ghost" tracks visible on the map and timeline. #2825
+- Mobile menu items at the bottom of the list (such as "Family members") are no longer hidden behind the browser's address bar. The map layout now sizes to the dynamic viewport height so content stays reachable when mobile browser chrome is visible. (#2249)
+- Date and time picker icons (and other native form controls) are now legible on the dark theme. The dark theme now declares a dark `color-scheme`, so the browser renders calendar/clock indicators in light-on-dark instead of a near-invisible dark glyph. (#2765)
+- Reverse geocoding (and other background work) no longer stalls behind GPS anomaly detection. Every incoming location used to trigger an anomaly check that re-scanned the whole current month of points — up to ~30 seconds late in a busy tracking month — and those jobs monopolized the worker pool, starving the reverse-geocoding queue. The check now inspects only the newly-received points plus their immediate neighbours, so it runs in milliseconds regardless of how full the month is.
+- Renaming a suggested visit no longer auto-confirms it. Editing the name — or just opening the inline rename and clicking away — used to silently mark the visit confirmed and create a place from the typed text. Renaming now only changes the name; confirming happens solely through the suggested-place picker.
+- Map v2 Timeline calendar: the per-day "suggested visits" dot now clears as soon as you confirm or delete the last suggestion for that day, instead of lingering until a full page reload.
+- `POST /api/v1/visits/:id/select_place` now returns a coordinate-specific message ("latitude out of range [-90, 90]") instead of a generic "param is missing" for out-of-range coordinates.
+- `Places::OrphanCleanupJob` only deletes Photon-source places still bearing the default suggested name, so a Photon place you renamed is preserved even when it has no visits or tags.
+
+## [1.7.11] - 2026-05-31
+
+### Added
+
+- Onboarding "Load demo data" now seeds a fully populated `/map/v2` instantly: 30 days of Berlin + a Prague-weekend trip, ~80 visits with tags and places, and stats anchored to the current calendar month. "Remove demo data" wipes everything in one click while preserving anything you've confirmed, edited, or built on top of (visits, trips, places, tags adopted by user action stay).
+- Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. #2577
+
+### Changed
+
+- Two unused indexes on the `points` table are dropped on upgrade; on large self-hosted instances this frees several GB of disk.
+- Areas now validate their geometry: radius must be greater than 0, latitude must be within -90…90, and longitude within -180…180. Invalid values are rejected instead of silently saved.
+- Bumped bundled gems (aws-sdk, devise, jwt, httparty, and others) to close 9 known CVEs. Self-hosters get the security fixes by upgrading.
+
+### Fixed
+
+- Cloud only: PostHog exception capture is enabled to help diagnose production errors.
+- Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. #2579
+- Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly sweep bypasses (and clears) the dedup so points whose retries were exhausted — or whose key still lingers — are picked up on the next run.
+- Map v2 visits layer now honours the selected date range. Since 1.7.10 the viewport-bounded visits fetch silently dropped the `start_at`/`end_at` filter on the backend, so all visits inside the viewport were rendered regardless of the date filter. #2817
+- `POST /api/v1/visits` no longer links a new visit to a place owned by another user. Passing a foreign `place_id` is ignored — the visit gets a place owned by the requester at the requested coordinates, and the response no longer echoes the other user's place id or coordinates.
+- Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
+- The app no longer trips firewall blocks by repeatedly checking family status when you're not part of a family.
 
 
 ## [1.7.10] - 2026-05-26
@@ -103,11 +141,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `RemoveUnusedIndexes` migration drops invalid `points` indexes left by failed `REINDEX CONCURRENTLY` before removing unused ones. #2124
 - Vendored `h3-js` retains its upstream Apache-2.0 license header.
 - Insights "Top Visited Locations" no longer underreports days for multi-month totals (e.g. 133 days rendered as "4 days"). #2743
-
-
-### Fixed
-
-- Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 
 ## [1.7.8] - 2026-05-16
 

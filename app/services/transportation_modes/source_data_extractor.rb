@@ -357,7 +357,7 @@ module TransportationModes
       total = 0
       points.each_cons(2) do |p1, p2|
         total += begin
-          p1.distance_to(p2, :m)
+          p1.distance_to_geocoder(p2, :m)
         rescue StandardError
           0
         end

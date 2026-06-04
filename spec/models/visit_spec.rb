@@ -29,6 +29,46 @@ RSpec.describe Visit, type: :model do
     it { expect(build(:visit)).to be_valid }
   end
 
+  describe 'confidence' do
+    it 'is valid when nil' do
+      expect(build(:visit, confidence: nil)).to be_valid
+    end
+
+    it 'is valid at the 0 and 100 bounds' do
+      expect(build(:visit, confidence: 0)).to be_valid
+      expect(build(:visit, confidence: 100)).to be_valid
+    end
+
+    it 'is invalid above 100' do
+      expect(build(:visit, confidence: 120)).not_to be_valid
+    end
+
+    it 'is invalid below 0' do
+      expect(build(:visit, confidence: -1)).not_to be_valid
+    end
+
+    describe '#confidence_band' do
+      it 'returns nil when confidence is nil' do
+        expect(build(:visit, confidence: nil).confidence_band).to be_nil
+      end
+
+      it 'returns :high for 70 and above' do
+        expect(build(:visit, confidence: 70).confidence_band).to eq(:high)
+        expect(build(:visit, confidence: 92).confidence_band).to eq(:high)
+      end
+
+      it 'returns :medium for 40..69' do
+        expect(build(:visit, confidence: 40).confidence_band).to eq(:medium)
+        expect(build(:visit, confidence: 69).confidence_band).to eq(:medium)
+      end
+
+      it 'returns :low for 0..39' do
+        expect(build(:visit, confidence: 0).confidence_band).to eq(:low)
+        expect(build(:visit, confidence: 39).confidence_band).to eq(:low)
+      end
+    end
+  end
+
   describe 'self-cleanup callbacks' do
     include ActiveJob::TestHelper
 
@@ -80,6 +120,50 @@ RSpec.describe Visit, type: :model do
 
         expect { orphan_visit.destroy! }.not_to raise_error
       end
+    end
+  end
+
+  describe 'timeline month-summary cache invalidation' do
+    let(:user)     { create(:user) }
+    let(:month)    { Time.current.strftime('%Y-%m') }
+    let(:in_month) { Time.current.beginning_of_month.change(hour: 10) }
+
+    def summary_status_counts
+      Timeline::MonthSummary.new(user: user, month: month).call[:status_counts]
+    end
+
+    it 'reflects a newly created visit instead of serving stale cached counts' do
+      expect(summary_status_counts).to eq({}) # warms the 5-minute cache with zero visits
+
+      create(:visit, user: user, area: nil, place: nil, status: :suggested,
+                     started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+
+      expect(summary_status_counts).to include('suggested' => 1)
+    end
+
+    it 'reflects a status change after the cache is warm' do
+      visit = create(:visit, user: user, area: nil, place: nil, status: :suggested,
+                             started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+      expect(summary_status_counts).to include('suggested' => 1) # warm cache
+
+      visit.update!(status: :confirmed)
+
+      counts = summary_status_counts
+      expect(counts).to include('confirmed' => 1)
+      expect(counts).not_to include('suggested')
+    end
+
+    it 'does not bust the cache for demo visits (the demo importer busts once at the end)' do
+      create(:visit, user: user, area: nil, place: nil, status: :confirmed,
+                     started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+      expect(summary_status_counts).to include('confirmed' => 1) # warm cache
+
+      create(:visit, user: user, area: nil, place: nil, status: :suggested, demo: true,
+                     started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+
+      counts = summary_status_counts
+      expect(counts).to include('confirmed' => 1)
+      expect(counts).not_to include('suggested')
     end
   end
 end
