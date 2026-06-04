@@ -83,6 +83,7 @@ Rails.application.routes.draw do
 
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
+  patch 'settings/changelog_consent', to: 'settings#changelog_consent', as: :changelog_consent
 
   get  'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
   get  'auth/account_link/challenge', to: 'auth/account_links#challenge', as: :auth_account_link_challenge

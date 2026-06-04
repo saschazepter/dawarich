@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_31_000000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_02_125716) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -478,6 +478,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000000) do
     t.datetime "visits_redetected_at"
     t.string "first_name"
     t.string "last_name"
+    t.integer "changelog_consent"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true

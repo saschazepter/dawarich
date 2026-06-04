@@ -1,0 +1,26 @@
+<% state = changelog_indicator_state %>
+<div id="version-indicator" class="relative">
+  <% if state == :widget %>
+    <%# chibichange "What's New" pill mounts here; native badge suppressed. %>
+    <div id="chgtool-mount" class="mx-4 inline-flex items-center"></div>
+    <%= javascript_include_tag chibichange_widget_src,
+          async: true,
+          data: { slug: CHIBICHANGE_SLUG, version: APP_VERSION, consent: "granted", mount: "#chgtool-mount" } %>
+  <% else %>
+    <%# Native GitHub-release badge (existing behavior). %>
+    <div class="badge mx-4 <%= 'badge-outline' if new_version_available? %>">
+      <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
+        <% if new_version_available? %>
+          <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
+            <span class="hidden sm:inline"><%= APP_VERSION %>&nbsp;!</span>
+          </span>
+        <% else %>
+          <span class="hidden sm:inline"><%= APP_VERSION %></span>
+        <% end %>
+      </a>
+    </div>
+    <% if state == :prompt %>
+      <%= render "shared/navbar/changelog_prompt" %>
+    <% end %>
+  <% end %>
+</div>
