@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- "What's New" changelog notices in the navbar. On self-hosted instances each user is asked once before any external request is made, and the widget script loads only after they opt in; on Cloud signed-in users see it automatically. You can turn notices on or off anytime from Settings → General. Self-hosters can point the widget at their own instance with `CHIBICHANGE_WIDGET_HOST` and `CHIBICHANGE_SLUG`. #2849
+- Sign in with Apple on the web (Dawarich Cloud only). The button appears on the sign-in/sign-up pages when configured, and is hidden on self-hosted instances and inside mobile in-app browsers.
 - Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
 
   Enable it (Rails console):
@@ -25,6 +27,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - The map's Places layer no longer floods with a marker for every suggested visit. It now shows only places you actually care about — ones you created manually, ones attached to a confirmed visit, or any place you've tagged. Suggested-only places stay hidden until you confirm them. `GET /api/v1/places` applies the same default and accepts a `filter` parameter to override it: `all` (everything, including suggested-only), `manual`, `confirmed`, or `tagged`.
+- Deleting a single point on the map (via its info card) now redraws the connecting route immediately, instead of leaving a stale line through the removed point until a page reload. (#2844)
+- The official Traccar client app is now supported directly, as the docs describe. Its location payload nests coordinates, battery and activity one level deeper than Dawarich's own mobile client, so points sent by the Traccar client were silently dropped instead of ingested. Both payload shapes are now accepted. #2741
+- Deleting an import now also removes any tracks left with no points, instead of leaving empty "ghost" tracks visible on the map and timeline. #2825
+- Mobile menu items at the bottom of the list (such as "Family members") are no longer hidden behind the browser's address bar. The map layout now sizes to the dynamic viewport height so content stays reachable when mobile browser chrome is visible. (#2249)
+- Date and time picker icons (and other native form controls) are now legible on the dark theme. The dark theme now declares a dark `color-scheme`, so the browser renders calendar/clock indicators in light-on-dark instead of a near-invisible dark glyph. (#2765)
 - Reverse geocoding (and other background work) no longer stalls behind GPS anomaly detection. Every incoming location used to trigger an anomaly check that re-scanned the whole current month of points — up to ~30 seconds late in a busy tracking month — and those jobs monopolized the worker pool, starving the reverse-geocoding queue. The check now inspects only the newly-received points plus their immediate neighbours, so it runs in milliseconds regardless of how full the month is.
 - Renaming a suggested visit no longer auto-confirms it. Editing the name — or just opening the inline rename and clicking away — used to silently mark the visit confirmed and create a place from the typed text. Renaming now only changes the name; confirming happens solely through the suggested-place picker.
 - Map v2 Timeline calendar: the per-day "suggested visits" dot now clears as soon as you confirm or delete the last suggestion for that day, instead of lingering until a full page reload.

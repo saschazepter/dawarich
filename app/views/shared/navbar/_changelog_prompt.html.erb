@@ -1,0 +1,24 @@
+<%# Polite, non-blocking opt-in. Shown only while consent is pending. %>
+<div class="dropdown dropdown-end dropdown-open">
+  <div class="card card-compact w-72 bg-base-100 shadow-lg border border-base-300 absolute right-0 mt-2 z-[60]">
+    <div class="card-body">
+      <h3 class="font-semibold text-sm">Stay up to date?</h3>
+      <p class="text-xs opacity-80">
+        Show a "What's New" notice when a new Dawarich version ships, including
+        security fixes. This checks for updates about once a day and sends only
+        your version, app name, and site origin — no IP, no tracking. You can
+        change this anytime.
+      </p>
+      <div class="card-actions justify-end mt-1">
+        <%= button_to "No thanks", changelog_consent_path,
+              method: :patch, params: { decision: "declined" },
+              class: "btn btn-ghost btn-xs",
+              form: { data: { turbo_stream: true } } %>
+        <%= button_to "Yes, notify me", changelog_consent_path,
+              method: :patch, params: { decision: "granted" },
+              class: "btn btn-primary btn-xs",
+              form: { data: { turbo_stream: true } } %>
+      </div>
+    </div>
+  </div>
+</div>
