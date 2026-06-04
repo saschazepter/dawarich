@@ -23,12 +23,12 @@ class Users::AppleOauthController < ApplicationController
     cookies.delete(:apple_oauth_state)
     cookies.delete(:apple_oauth_nonce)
 
+    return handle_apple_error if params[:error].present?
+
     return reject_with(state_mismatch_message) if expected_state.blank?
 
     submitted_state = params[:state].to_s
     return reject_with(state_mismatch_message) unless states_equal?(expected_state, submitted_state)
-
-    return handle_apple_error if params[:error].present?
 
     claims = Auth::VerifyAppleToken
              .new(params[:id_token], nonce: expected_nonce, client_id: ENV['APPLE_WEB_SERVICES_ID'])

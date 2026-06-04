@@ -175,6 +175,14 @@ RSpec.describe 'Users::AppleOauth', type: :request do
 
         post '/users/auth/apple/callback', params: { state: state, error: 'user_cancelled_authorize' }
       end
+
+      it 'shows the cancellation message even when the state cookie has expired' do
+        post '/users/auth/apple/callback', params: { state: 'anything', error: 'user_cancelled_authorize' }
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:notice]).to match(/cancelled/i)
+        expect(flash[:alert]).to be_blank
+      end
     end
 
     context 'malformed user payloads' do
