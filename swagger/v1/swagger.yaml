@@ -2373,6 +2373,19 @@ paths:
         description: Filter places by tag IDs
         schema:
           type: array
+      - name: filter
+        in: query
+        required: false
+        enum:
+        - all
+        - manual
+        - confirmed
+        - tagged
+        description: "Visibility filter. Defaults to manual + confirmed-visit + tagged
+          places. Use \"all\" for every place (including suggested-only), or \"manual\"/\"confirmed\"/\"tagged\".:\n
+          * `all` \n * `manual` \n * `confirmed` \n * `tagged` \n "
+        schema:
+          type: string
       responses:
         '200':
           description: places found

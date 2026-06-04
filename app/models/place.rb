@@ -22,6 +22,13 @@ class Place < ApplicationRecord
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
+  scope :linked_to_confirmed_visits, lambda { |user|
+    where(id: user.visits.confirmed.where.not(place_id: nil).select(:place_id))
+  }
+  scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
+  scope :map_visible, lambda { |user|
+    manual.or(linked_to_confirmed_visits(user)).or(tagged)
+  }
 
   def lon
     lonlat.x

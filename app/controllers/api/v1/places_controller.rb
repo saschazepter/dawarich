@@ -30,6 +30,15 @@ module Api
           end
         end
 
+        @places =
+          case params[:filter]
+          when 'all'       then @places
+          when 'manual'    then @places.manual
+          when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user)
+          when 'tagged'    then @places.tagged
+          else                  @places.map_visible(current_api_user)
+          end
+
         # Support pagination (defaults to page 1 with all results if no page param)
         page = params[:page].presence || 1
         per_page = [params[:per_page]&.to_i || 100, 500].min
