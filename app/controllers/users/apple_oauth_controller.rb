@@ -28,6 +28,8 @@ class Users::AppleOauthController < ApplicationController
     submitted_state = params[:state].to_s
     return reject_with(state_mismatch_message) unless states_equal?(expected_state, submitted_state)
 
+    return handle_apple_error if params[:error].present?
+
     claims = Auth::VerifyAppleToken
              .new(params[:id_token], nonce: expected_nonce, client_id: ENV['APPLE_WEB_SERVICES_ID'])
              .call
@@ -44,6 +46,7 @@ class Users::AppleOauthController < ApplicationController
     sign_in_and_redirect user, event: :authentication
   rescue Auth::VerifyAppleToken::InvalidToken => e
     reject_with("Apple sign-in failed: #{e.message}")
+    capture_apple_breadcrumb('invalid_token', extra: { message: e.message })
   rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
     session[:pending_oauth_link] = {
       'user_id' => e.user.id,
@@ -53,13 +56,16 @@ class Users::AppleOauthController < ApplicationController
       'expires_at' => 15.minutes.from_now.to_i
     }
     redirect_to auth_account_link_challenge_path
+    capture_apple_breadcrumb('link_verification_sent', extra: { user_id: e.user.id, uid: e.uid })
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     reject_with('Your Apple ID email is not verified. Verify it with Apple, then try again.')
-  rescue Auth::FindOrCreateOauthUser::MissingOauthEmail
+    capture_apple_breadcrumb('unverified_email')
+  rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
     reject_with(
       "Apple didn't share your email this time and we couldn't find your existing account. " \
       'Visit appleid.apple.com → Sign in with Apple → Dawarich → Stop using Sign in with Apple, then try again.'
     )
+    capture_apple_breadcrumb('missing_email', level: :warning, extra: { uid: e.uid })
   end
 
   private
@@ -99,6 +105,15 @@ class Users::AppleOauthController < ApplicationController
     {}
   end
 
+  def handle_apple_error
+    if params[:error].to_s == 'user_cancelled_authorize'
+      redirect_to new_user_session_path, notice: 'Sign in with Apple was cancelled.'
+    else
+      capture_apple_breadcrumb('authorize_error', extra: { error: params[:error].to_s })
+      reject_with('Sign in with Apple did not complete. Please try again.')
+    end
+  end
+
   def reject_with(message)
     redirect_to new_user_session_path, alert: message
   end
@@ -111,5 +126,17 @@ class Users::AppleOauthController < ApplicationController
     return false unless expected.bytesize == submitted.bytesize
 
     ActiveSupport::SecurityUtils.secure_compare(expected, submitted)
+  end
+
+  def capture_apple_breadcrumb(reason, level: :info, extra: {})
+    return unless defined?(Sentry)
+
+    Sentry.capture_message(
+      "apple_web_sign_in.#{reason}",
+      level: level,
+      extra: extra
+    )
+  rescue StandardError
+    nil
   end
 end

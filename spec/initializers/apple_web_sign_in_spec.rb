@@ -34,4 +34,42 @@ RSpec.describe 'Apple web sign-in initializer' do
     expect { load Rails.root.join('config/initializers/04_apple_web_sign_in.rb') }
       .to raise_error(OpenSSL::PKey::ECError)
   end
+
+  describe 'APPLE_WEB_SIGN_IN_ENABLED self-hosted gating' do
+    around do |example|
+      example.run
+    ensure
+      # ENV stub is reverted by this point; reload to restore the real boot values.
+      load Rails.root.join('config/initializers/01_constants.rb')
+    end
+
+    let(:full_apple_env) do
+      {
+        'APPLE_WEB_SERVICES_ID' => 'app.dawarich.web',
+        'APPLE_WEB_TEAM_ID' => 'TEAMID1234',
+        'APPLE_WEB_KEY_ID' => 'KEYID12345',
+        'APPLE_WEB_P8_BASE64' => 'base64data'
+      }
+    end
+
+    def reload_constants_with(env)
+      stub_const('ENV', ENV.to_hash.merge(env))
+      load Rails.root.join('config/initializers/01_constants.rb')
+    end
+
+    it 'is false on self-hosted even when all Apple env vars are present' do
+      reload_constants_with(full_apple_env.merge('SELF_HOSTED' => 'true'))
+      expect(APPLE_WEB_SIGN_IN_ENABLED).to be false
+    end
+
+    it 'is true on cloud when all Apple env vars are present' do
+      reload_constants_with(full_apple_env.merge('SELF_HOSTED' => 'false'))
+      expect(APPLE_WEB_SIGN_IN_ENABLED).to be true
+    end
+
+    it 'is false on cloud when an Apple env var is missing' do
+      reload_constants_with(full_apple_env.except('APPLE_WEB_KEY_ID').merge('SELF_HOSTED' => 'false'))
+      expect(APPLE_WEB_SIGN_IN_ENABLED).to be false
+    end
+  end
 end

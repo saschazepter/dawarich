@@ -30,7 +30,8 @@ module Auth
 
     PROVIDERS_REQUIRING_EMAIL = %w[apple].freeze
 
-    def initialize(provider:, provider_label:, claims:, email_verified:, name_attrs: nil, on_email_collision: :send_email)
+    def initialize(provider:, provider_label:, claims:, email_verified:, name_attrs: nil,
+                   on_email_collision: :send_email)
       @provider = provider
       @provider_label = provider_label
       @claims = claims

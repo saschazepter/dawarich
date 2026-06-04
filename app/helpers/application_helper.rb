@@ -142,6 +142,12 @@ module ApplicationHelper
     providers
   end
 
+  def apple_web_sign_in_available?
+    return false unless defined?(APPLE_WEB_SIGN_IN_ENABLED) && APPLE_WEB_SIGN_IN_ENABLED
+
+    !mobile_browser?
+  end
+
   def oauth_button_config(provider)
     config = OAUTH_PROVIDERS[provider.to_sym]
 

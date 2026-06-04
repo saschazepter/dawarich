@@ -162,7 +162,7 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     end
 
     it 'is a no-op when name_attrs is empty or nil' do
-      user, _ = described_class.new(
+      user, = described_class.new(
         provider: 'apple',
         provider_label: 'Sign in with Apple',
         claims: claims,

@@ -146,5 +146,88 @@ RSpec.describe 'Users::AppleOauth', type: :request do
       expect(response).to redirect_to(new_user_session_path)
       expect(flash[:alert]).to match(/Apple/i)
     end
+
+    context 'when Apple returns an error instead of a token' do
+      it 'treats user_cancelled_authorize as a gentle cancellation (notice, not alert)' do
+        state = perform_request_phase
+
+        expect do
+          post '/users/auth/apple/callback', params: { state: state, error: 'user_cancelled_authorize' }
+        end.not_to change(User, :count)
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:notice]).to match(/cancelled/i)
+        expect(flash[:alert]).to be_blank
+      end
+
+      it 'shows a retry alert for any other authorize error' do
+        state = perform_request_phase
+
+        post '/users/auth/apple/callback', params: { state: state, error: 'invalid_request' }
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to match(/did not complete/i)
+      end
+
+      it 'does not call the token verifier when an error is present' do
+        expect(Auth::VerifyAppleToken).not_to receive(:new)
+        state = perform_request_phase
+
+        post '/users/auth/apple/callback', params: { state: state, error: 'user_cancelled_authorize' }
+      end
+    end
+
+    context 'malformed user payloads' do
+      it 'ignores user param when it is not valid JSON' do
+        state = perform_request_phase
+        post '/users/auth/apple/callback', params: {
+          id_token: 'fake-jwt',
+          state: state,
+          user: 'not-json-at-all'
+        }
+        user = User.find_by(uid: '000777.web.apple')
+        expect(user).to be_present
+        expect(user.first_name).to be_nil
+        expect(user.last_name).to be_nil
+      end
+
+      it 'ignores user param when it parses to a non-Hash' do
+        state = perform_request_phase
+        post '/users/auth/apple/callback', params: {
+          id_token: 'fake-jwt',
+          state: state,
+          user: '[1, 2, 3]'
+        }
+        user = User.find_by(uid: '000777.web.apple')
+        expect(user).to be_present
+        expect(user.first_name).to be_nil
+        expect(user.last_name).to be_nil
+      end
+
+      it 'ignores name field when it is not a Hash' do
+        state = perform_request_phase
+        post '/users/auth/apple/callback', params: {
+          id_token: 'fake-jwt',
+          state: state,
+          user: { name: 'just-a-string' }.to_json
+        }
+        user = User.find_by(uid: '000777.web.apple')
+        expect(user).to be_present
+        expect(user.first_name).to be_nil
+        expect(user.last_name).to be_nil
+      end
+
+      it 'accepts partial name (firstName only)' do
+        state = perform_request_phase
+        post '/users/auth/apple/callback', params: {
+          id_token: 'fake-jwt',
+          state: state,
+          user: { name: { firstName: 'Cher' } }.to_json
+        }
+        user = User.find_by(uid: '000777.web.apple')
+        expect(user.first_name).to eq('Cher')
+        expect(user.last_name).to be_nil
+      end
+    end
   end
 end
