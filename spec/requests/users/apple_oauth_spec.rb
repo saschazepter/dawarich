@@ -13,7 +13,8 @@ RSpec.describe 'Users::AppleOauth', type: :request do
     stub_const('ENV', ENV.to_hash.merge(
                         'APPLE_WEB_SERVICES_ID' => services_id,
                         'APPLE_WEB_TEAM_ID' => team_id,
-                        'APPLE_WEB_KEY_ID' => key_id
+                        'APPLE_WEB_KEY_ID' => key_id,
+                        'APPLE_WEB_REDIRECT_URI' => redirect_uri
                       ))
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     https!
@@ -235,6 +236,42 @@ RSpec.describe 'Users::AppleOauth', type: :request do
         user = User.find_by(uid: '000777.web.apple')
         expect(user.first_name).to eq('Cher')
         expect(user.last_name).to be_nil
+      end
+    end
+
+    context 'when the email collides with an existing account but is unverified' do
+      let!(:existing) { create(:user, email: 'web-user@example.com', provider: nil, uid: nil) }
+      let(:unverified_claims) { valid_claims.merge(email_verified: false) }
+
+      before { allow(verifier_double).to receive(:call).and_return(unverified_claims) }
+
+      it 'does not link the account and shows the unverified-email alert' do
+        state = perform_request_phase
+
+        expect do
+          post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: state }
+        end.not_to change(User, :count)
+
+        expect(existing.reload.provider).to be_nil
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to match(/not verified/i)
+      end
+    end
+
+    context 'when Apple shares no email and no account exists' do
+      let(:no_email_claims) { { sub: '000888.web.apple', email_verified: true, is_private_email: false } }
+
+      before { allow(verifier_double).to receive(:call).and_return(no_email_claims) }
+
+      it 'shows the "Stop using Sign in with Apple" recovery message' do
+        state = perform_request_phase
+
+        expect do
+          post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: state }
+        end.not_to change(User, :count)
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to match(/Stop using Sign in with Apple/i)
       end
     end
   end

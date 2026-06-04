@@ -88,7 +88,7 @@ class Users::AppleOauthController < ApplicationController
   end
 
   def callback_redirect_uri
-    ENV.fetch('APPLE_WEB_REDIRECT_URI') { apple_oauth_callback_url }
+    ENV.fetch('APPLE_WEB_REDIRECT_URI')
   end
 
   def extract_name_from_params
