@@ -307,7 +307,7 @@ RSpec.describe '/visits', type: :request do
 
       expect_turbo_stream_action('replace', 'filter-count-confirmed')
       expect_turbo_stream_action('replace', 'filter-count-suggested')
-      expect_turbo_stream_action('replace', 'filter-count-declined')
+      expect(response.body).not_to include('filter-count-declined')
     end
 
     it 'includes the calendar frame stream' do
@@ -665,6 +665,22 @@ RSpec.describe '/visits', type: :request do
         delete bulk_destroy_visits_url(format: :turbo_stream), params: {}
 
         expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it 'returns unprocessable for an unknown source_status without raising' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'bogus' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(Visit.where(id: suggested_today.id)).to exist
+      end
+
+      it 'rejects source_status=confirmed so confirmed visits cannot be bulk-deleted by date' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'confirmed' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(Visit.where(id: confirmed_today.id)).to exist
       end
     end
   end

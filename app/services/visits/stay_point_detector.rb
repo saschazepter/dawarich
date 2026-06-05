@@ -200,13 +200,13 @@ module Visits
       )
 
       conn = ActiveRecord::Base.connection
-      conn.execute("SET statement_timeout = #{QUERY_TIMEOUT_MS}")
-      begin
+      # SET LOCAL binds the timeout to this transaction's backend so it survives PgBouncer
+      # transaction pooling — a bare SET + query can otherwise land on different servers.
+      conn.transaction do
+        conn.exec_query("SET LOCAL statement_timeout = #{QUERY_TIMEOUT_MS}", 'StayPointDetector Timeout')
         conn.exec_query(sql, 'StayPointDetector Load').map do |row|
           Pt.new(row['id'].to_i, row['lat'].to_f, row['lon'].to_f, row['timestamp'].to_i, row['accuracy']&.to_i)
         end
-      ensure
-        conn.execute('RESET statement_timeout')
       end
     end
 

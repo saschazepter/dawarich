@@ -4,9 +4,11 @@ class VisitsController < ApplicationController
   include FlashStreamable
 
   MAX_BULK_VISIT_IDS = Visits::BulkDestroy::MAX_VISIT_IDS
+  ALLOWED_SOURCE_STATUSES = %w[suggested].freeze
 
   before_action :authenticate_user!
   before_action :set_visit, only: %i[update destroy]
+  before_action :reject_unknown_source_status, only: %i[bulk_update bulk_destroy]
   after_action :bust_timeline_month_cache, only: %i[update bulk_update bulk_destroy destroy merge]
 
   def bulk_update
@@ -198,6 +200,13 @@ class VisitsController < ApplicationController
 
   private
 
+  def reject_unknown_source_status
+    return if params[:source_status].blank?
+    return if ALLOWED_SOURCE_STATUSES.include?(params[:source_status].to_s)
+
+    render_unprocessable('Unsupported source status.')
+  end
+
   def set_visit
     @visit = current_user.scoped_visits.find(params[:id])
   end
@@ -258,9 +267,6 @@ class VisitsController < ApplicationController
     streams << turbo_stream.replace('filter-count-suggested',
                                     partial: 'map/timeline_feeds/filter_count',
                                     locals: { status: 'suggested', count: status_counts['suggested'].to_i })
-    streams << turbo_stream.replace('filter-count-declined',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'declined', count: status_counts['declined'].to_i })
     streams << calendar_frame_stream(date_str)
     streams << suggestions_badge_stream
     streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} #{status}.")
@@ -304,9 +310,6 @@ class VisitsController < ApplicationController
       turbo_stream.replace('filter-count-suggested',
                            partial: 'map/timeline_feeds/filter_count',
                            locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
-      turbo_stream.replace('filter-count-declined',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'declined', count: status_counts['declined'].to_i }),
       calendar_frame_stream(day_date),
       suggestions_badge_stream,
       stream_flash(:notice, "Visit #{@visit.status}.")
@@ -402,9 +405,6 @@ class VisitsController < ApplicationController
     streams << turbo_stream.replace('filter-count-suggested',
                                     partial: 'map/timeline_feeds/filter_count',
                                     locals: { status: 'suggested', count: status_counts['suggested'].to_i })
-    streams << turbo_stream.replace('filter-count-declined',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'declined', count: status_counts['declined'].to_i })
     streams << suggestions_badge_stream
     streams << stream_flash(:notice, 'Visits merged.')
     streams
@@ -429,9 +429,6 @@ class VisitsController < ApplicationController
       turbo_stream.replace('filter-count-suggested',
                            partial: 'map/timeline_feeds/filter_count',
                            locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
-      turbo_stream.replace('filter-count-declined',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'declined', count: status_counts['declined'].to_i }),
       calendar_frame_stream(day_date),
       suggestions_badge_stream,
       stream_flash(:notice, 'Visit removed. Your location points are still here.')
@@ -482,7 +479,7 @@ class VisitsController < ApplicationController
 
   def filter_count_streams(date_str)
     status_counts = month_status_counts(date_str)
-    %w[confirmed suggested declined].map do |status|
+    %w[confirmed suggested].map do |status|
       turbo_stream.replace("filter-count-#{status}",
                            partial: 'map/timeline_feeds/filter_count',
                            locals: { status: status, count: status_counts[status].to_i })

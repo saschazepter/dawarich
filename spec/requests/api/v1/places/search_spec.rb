@@ -63,4 +63,13 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
     expect(response).to have_http_status(:success)
     expect(JSON.parse(response.body)['places']).to eq([])
   end
+
+  it 'treats a non-positive limit as at least one result' do
+    allow(Geocoder).to receive(:search).and_return([photon(name: 'Café Bravo', plat: lat, plon: lon)])
+
+    get '/api/v1/places/search', params: { q: 'caf', lat: lat, lon: lon, limit: 0 }, headers: headers
+
+    expect(response).to have_http_status(:success)
+    expect(JSON.parse(response.body)['places']).not_to be_empty
+  end
 end

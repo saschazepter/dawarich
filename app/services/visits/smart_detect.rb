@@ -58,7 +58,7 @@ module Visits
       ranges = batch_ranges
 
       ranges.each do |batch_start, batch_end|
-        clusters = clusterer_for(batch_start, batch_end).call
+        clusters = detect_clusters(batch_start, batch_end)
         next if clusters.empty?
 
         total_points_in += clusters.sum { |c| c[:point_count] }
@@ -76,6 +76,19 @@ module Visits
 
       log_summary(ranges.size, total_points_in, total_clusters, created.size, started_at)
       created
+    end
+
+    def detect_clusters(batch_start, batch_end)
+      clusterer_for(batch_start, batch_end).call
+    rescue StandardError => e
+      # Flag off → DBSCAN is the source of truth; let its errors surface unchanged.
+      raise unless stay_point_detection_enabled?
+
+      Rails.logger.warn(
+        "[Visits::SmartDetect] StayPointDetector failed, falling back to DbscanClusterer: #{e.class}: #{e.message}"
+      )
+      ExceptionReporter.call(e, '[Visits::SmartDetect] StayPointDetector failed, falling back to DbscanClusterer')
+      Visits::DbscanClusterer.new(user, start_at: batch_start, end_at: batch_end).call
     end
 
     def clusterer_for(batch_start, batch_end)

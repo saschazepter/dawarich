@@ -124,7 +124,7 @@ module Api
         end
 
         radius = [[params[:radius]&.to_f || 1.0, 0.01].max, 5.0].min
-        limit = params[:limit]&.to_i || 10
+        limit = [[params[:limit]&.to_i || 10, 1].max, 50].min
         query = params[:q].to_s.strip
 
         places =

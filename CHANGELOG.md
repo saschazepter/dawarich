@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - Everyone: `Flipper.enable(:stay_point_detection)`
   - Or toggle in `/admin/flipper`
   - Re-detect past history: `Visits::FullHistoryRedetectJob.perform_later(user.id)`
+  - Optional: tune the longest gap that still counts as one stay with `stay_max_gap_minutes` (default 60, clamped 5–720), e.g. `user.update!(settings: user.settings.merge('stay_max_gap_minutes' => 90))`
 
 - Map v2 Timeline: every visit now has a search icon. Click it to find the actual place by name — a type-as-you-go lookup against your configured geocoder (Photon), biased to the visit's location, with each result showing its category and distance, plus any of your saved Areas nearby. Pick a result to label the visit, or create a new place on the spot when nothing matches. Choosing a place far from the visit asks before relocating it, and the map marker updates immediately.
 

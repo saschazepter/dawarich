@@ -98,6 +98,19 @@ RSpec.describe Visits::SmartDetect do
 
       expect(visits).not_to be_empty
     end
+
+    it 'falls back to DbscanClusterer when StayPointDetector raises and the flag is on' do
+      allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_return(true)
+      allow_any_instance_of(Visits::StayPointDetector).to receive(:call)
+        .and_raise(ActiveRecord::StatementInvalid, 'statement timeout')
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+      allow(Rails.logger).to receive(:info)
+
+      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+
+      expect(visits).not_to be_empty
+    end
   end
 
   describe 'failure handling' do
