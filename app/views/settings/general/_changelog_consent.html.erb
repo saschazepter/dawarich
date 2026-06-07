@@ -7,8 +7,10 @@
       <% if current_user.changelog_consent_granted? %>
         <p class="text-sm text-base-content/70">
           A "What's New" notice is shown when a new Dawarich version ships,
-          including security fixes. It checks for updates about once a day and
-          sends only your version, app name, and site origin — no IP, no tracking.
+          including security fixes. It loads a small widget from
+          <%= changelog_widget_host %>, which — like any web request — sees your
+          IP address, browser, and the page URL, plus your Dawarich version.
+          It never receives your account, email, or location.
         </p>
         <%= button_to "Turn off notices", changelog_consent_path,
               method: :patch, params: { decision: "declined" },
@@ -17,8 +19,10 @@
       <% else %>
         <p class="text-sm text-base-content/70">
           Get a "What's New" notice when a new Dawarich version ships, including
-          security fixes. It checks for updates about once a day and sends only
-          your version, app name, and site origin — no IP, no tracking.
+          security fixes. The notice loads a small widget from
+          <%= changelog_widget_host %>, which — like any web request — sees your
+          IP address, browser, and the page URL, plus your Dawarich version.
+          It never receives your account, email, or location.
         </p>
         <%= button_to "Turn on notices", changelog_consent_path,
               method: :patch, params: { decision: "granted" },

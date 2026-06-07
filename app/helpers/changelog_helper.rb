@@ -5,6 +5,10 @@ module ChangelogHelper
     "#{CHIBICHANGE_WIDGET_HOST}/w/v1/loader.js"
   end
 
+  def changelog_widget_host
+    URI.parse(CHIBICHANGE_WIDGET_HOST).host || CHIBICHANGE_WIDGET_HOST
+  end
+
   # Which navbar version indicator to render:
   #   :widget — chibichange "What's New" pill
   #   :prompt — native badge + opt-in card
