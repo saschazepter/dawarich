@@ -23,14 +23,24 @@ RSpec.describe 'Navbar changelog indicator', type: :request do
   end
 
   context 'when consent is granted' do
-    it 'renders the chibichange widget script and no prompt' do
+    it 'mounts the chibichange widget and shows no prompt' do
       user.update!(changelog_consent: :granted)
 
       get '/settings/users'
 
+      expect(response.body).to include('data-controller="changelog-widget"')
       expect(response.body).to include('/w/v1/loader.js')
-      expect(response.body).to include('data-consent="granted"')
       expect(response.body).not_to include('Stay up to date?')
+    end
+
+    it 'still renders the visible Dawarich version number in the navbar' do
+      user.update!(changelog_consent: :granted)
+
+      get '/settings/users'
+
+      indicator = Nokogiri::HTML(response.body).at_css('#version-indicator')
+      expect(indicator).to be_present
+      expect(indicator.text).to include(APP_VERSION)
     end
   end
 

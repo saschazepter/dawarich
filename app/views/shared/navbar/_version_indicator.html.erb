@@ -1,26 +1,26 @@
 <% state = changelog_indicator_state %>
-<div id="version-indicator" class="relative">
+<% github_update = state != :widget && new_version_available? %>
+<div id="version-indicator" class="relative inline-flex items-center">
+  <div class="badge mx-4 <%= 'badge-outline' if github_update %>">
+    <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
+      <% if github_update %>
+        <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
+          <span class="hidden sm:inline"><%= APP_VERSION %>&nbsp;!</span>
+        </span>
+      <% else %>
+        <span class="hidden sm:inline"><%= APP_VERSION %></span>
+      <% end %>
+    </a>
+  </div>
+
   <% if state == :widget %>
-    <%# chibichange "What's New" pill mounts here; native badge suppressed. %>
-    <div id="chgtool-mount" class="mx-4 inline-flex items-center"></div>
-    <%= javascript_include_tag chibichange_widget_src,
-          async: true,
-          data: { slug: CHIBICHANGE_SLUG, version: APP_VERSION, consent: "granted", mount: "#chgtool-mount" } %>
-  <% else %>
-    <%# Native GitHub-release badge (existing behavior). %>
-    <div class="badge mx-4 <%= 'badge-outline' if new_version_available? %>">
-      <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
-        <% if new_version_available? %>
-          <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
-            <span class="hidden sm:inline"><%= APP_VERSION %>&nbsp;!</span>
-          </span>
-        <% else %>
-          <span class="hidden sm:inline"><%= APP_VERSION %></span>
-        <% end %>
-      </a>
-    </div>
-    <% if state == :prompt %>
-      <%= render "shared/navbar/changelog_prompt" %>
-    <% end %>
+    <div id="chgtool-mount"
+         class="inline-flex items-center"
+         data-controller="changelog-widget"
+         data-changelog-widget-src-value="<%= chibichange_widget_src %>"
+         data-changelog-widget-slug-value="<%= CHIBICHANGE_SLUG %>"
+         data-changelog-widget-version-value="<%= APP_VERSION %>"></div>
+  <% elsif state == :prompt %>
+    <%= render "shared/navbar/changelog_prompt" %>
   <% end %>
 </div>
