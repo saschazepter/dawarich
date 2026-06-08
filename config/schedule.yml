@@ -92,3 +92,13 @@ yearly_digest_scheduling_job:
   cron: "0 6 2 1 *" # January 2nd at 06:00 UTC
   class: "Users::Digests::Yearly::SchedulingJob"
   queue: digests
+
+points_archival_sweep_job:
+  cron: "0 4 * * 0" # every Sunday at 04:00
+  class: "Points::Archival::SweepJob"
+  queue: archival
+
+points_archival_delete_sweep_job:
+  cron: "0 4 * * 3" # every Wednesday at 04:00
+  class: "Points::Archival::DeleteSweepJob"
+  queue: archival
