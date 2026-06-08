@@ -32,7 +32,7 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
             enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
-            globe_projection: false,
+            globe_projection: true,
             transportation_thresholds: {
               'walking_max_speed' => 7,
               'cycling_max_speed' => 45,
@@ -114,7 +114,7 @@ RSpec.describe Users::SafeSettings do
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
             'news_emails_enabled' => true,
-            'globe_projection' => false,
+            'globe_projection' => true,
             'supporter_email' => nil,
             'show_supporter_badge' => true,
             'transportation_thresholds' => {
@@ -171,7 +171,7 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
-            globe_projection: false,
+            globe_projection: true,
             transportation_thresholds: {
               'walking_max_speed' => 7,
               'cycling_max_speed' => 45,
@@ -436,6 +436,32 @@ RSpec.describe Users::SafeSettings do
 
         it 'returns the stored value' do
           expect(safe_settings.globe_projection).to be true
+        end
+      end
+
+      context 'when no value is stored' do
+        context 'and plan is pro' do
+          let(:safe_settings) { described_class.new({}, plan: :pro) }
+
+          it 'defaults to true' do
+            expect(safe_settings.globe_projection).to be true
+          end
+        end
+
+        context 'and plan is lite' do
+          let(:safe_settings) { described_class.new({}, plan: :lite) }
+
+          it 'stays false' do
+            expect(safe_settings.globe_projection).to be false
+          end
+        end
+      end
+
+      context 'when a pro user explicitly opted out' do
+        let(:safe_settings) { described_class.new({ 'globe_projection' => false }, plan: :pro) }
+
+        it 'preserves the stored false' do
+          expect(safe_settings.globe_projection).to be false
         end
       end
     end

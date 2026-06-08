@@ -28,7 +28,7 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
     'news_emails_enabled' => true,
-    'globe_projection' => false,
+    'globe_projection' => true,
     'supporter_email' => nil,
     'show_supporter_badge' => true,
     # Transportation mode thresholds (speeds in km/h, distances in km)
