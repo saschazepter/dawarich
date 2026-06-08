@@ -11,28 +11,14 @@
 
   <%# Controls row: Day nav | Time display | Replay + Cycle controls %>
   <div class="replay-controls-row">
-    <%# Left: Day navigation %>
+    <%# Left: Current day %>
     <div class="replay-day-nav">
-      <button type="button"
-              data-action="click->maps--maplibre#replayPrevDay"
-              data-maps--maplibre-target="replayPrevDayButton"
-              title="Previous day"
-              aria-label="Previous day">
-        &larr;
-      </button>
       <div class="replay-day-info">
         <span class="replay-day-display" data-maps--maplibre-target="replayDayDisplay">
           No data loaded
         </span>
         <span class="replay-day-count" data-maps--maplibre-target="replayDayCount"></span>
       </div>
-      <button type="button"
-              data-action="click->maps--maplibre#replayNextDay"
-              data-maps--maplibre-target="replayNextDayButton"
-              title="Next day"
-              aria-label="Next day">
-        &rarr;
-      </button>
     </div>
 
     <%# Center: Time display %>

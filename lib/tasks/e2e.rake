@@ -107,6 +107,9 @@ namespace :e2e do
 
     puts "\n🛤️  Seeding fixture tracks (timeline-replay + journey-leg specs)..."
     Rake::Task['e2e:seed_fixture_tracks'].invoke
+
+    puts "\n🔕 Suppressing the \"What's New\" changelog prompt for e2e users..."
+    User.where(email: E2E_USER_EMAILS).update_all(changelog_consent: User.changelog_consents[:declined])
   end
 
   desc 'Plant a deterministic set of anomaly points on the demo user (idempotent).'

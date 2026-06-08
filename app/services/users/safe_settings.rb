@@ -28,7 +28,7 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
     'news_emails_enabled' => true,
-    'globe_projection' => false,
+    'globe_projection' => true,
     'supporter_email' => nil,
     'show_supporter_badge' => true,
     # Transportation mode thresholds (speeds in km/h, distances in km)
@@ -57,7 +57,8 @@ class Users::SafeSettings
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
-    'visit_density_fill_enabled' => true
+    'visit_density_fill_enabled' => true,
+    'stay_max_gap_minutes' => 60
   }.freeze
 
   GPS_ACCURACY_THRESHOLD_MIN = 50
@@ -104,7 +105,8 @@ class Users::SafeSettings
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      visit_density_fill_enabled: visit_density_fill_enabled?
+      visit_density_fill_enabled: visit_density_fill_enabled?,
+      stay_max_gap_minutes: stay_max_gap_minutes
     }
   end
 
@@ -301,6 +303,10 @@ class Users::SafeSettings
 
   def visit_density_fill_enabled?
     ActiveModel::Type::Boolean.new.cast(settings['visit_density_fill_enabled'])
+  end
+
+  def stay_max_gap_minutes
+    settings['stay_max_gap_minutes'].to_i.clamp(5, 720)
   end
 
   private

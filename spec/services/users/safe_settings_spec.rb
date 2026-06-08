@@ -32,7 +32,7 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
             enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
-            globe_projection: false,
+            globe_projection: true,
             transportation_thresholds: {
               'walking_max_speed' => 7,
               'cycling_max_speed' => 45,
@@ -58,7 +58,8 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            visit_density_fill_enabled: true
+            visit_density_fill_enabled: true,
+            stay_max_gap_minutes: 60
           }
         )
       end
@@ -113,7 +114,7 @@ RSpec.describe Users::SafeSettings do
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
             'news_emails_enabled' => true,
-            'globe_projection' => false,
+            'globe_projection' => true,
             'supporter_email' => nil,
             'show_supporter_badge' => true,
             'transportation_thresholds' => {
@@ -140,7 +141,8 @@ RSpec.describe Users::SafeSettings do
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
-            'visit_density_fill_enabled' => true
+            'visit_density_fill_enabled' => true,
+            'stay_max_gap_minutes' => 60
           }
         )
       end
@@ -169,7 +171,7 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
-            globe_projection: false,
+            globe_projection: true,
             transportation_thresholds: {
               'walking_max_speed' => 7,
               'cycling_max_speed' => 45,
@@ -195,7 +197,8 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            visit_density_fill_enabled: true
+            visit_density_fill_enabled: true,
+            stay_max_gap_minutes: 60
           }
         )
       end
@@ -433,6 +436,32 @@ RSpec.describe Users::SafeSettings do
 
         it 'returns the stored value' do
           expect(safe_settings.globe_projection).to be true
+        end
+      end
+
+      context 'when no value is stored' do
+        context 'and plan is pro' do
+          let(:safe_settings) { described_class.new({}, plan: :pro) }
+
+          it 'defaults to true' do
+            expect(safe_settings.globe_projection).to be true
+          end
+        end
+
+        context 'and plan is lite' do
+          let(:safe_settings) { described_class.new({}, plan: :lite) }
+
+          it 'stays false' do
+            expect(safe_settings.globe_projection).to be false
+          end
+        end
+      end
+
+      context 'when a pro user explicitly opted out' do
+        let(:safe_settings) { described_class.new({ 'globe_projection' => false }, plan: :pro) }
+
+        it 'preserves the stored false' do
+          expect(safe_settings.globe_projection).to be false
         end
       end
     end
@@ -744,6 +773,28 @@ RSpec.describe Users::SafeSettings do
 
     it 'returns the user value within range' do
       expect(described_class.new({ 'visit_min_points' => 4 }).visit_min_points).to eq(4)
+    end
+  end
+
+  describe '#stay_max_gap_minutes' do
+    it 'returns 60 when missing' do
+      expect(described_class.new({}).stay_max_gap_minutes).to eq(60)
+    end
+
+    it 'clamps below the minimum to 5' do
+      expect(described_class.new({ 'stay_max_gap_minutes' => 1 }).stay_max_gap_minutes).to eq(5)
+    end
+
+    it 'clamps above the maximum to 720' do
+      expect(described_class.new({ 'stay_max_gap_minutes' => 1000 }).stay_max_gap_minutes).to eq(720)
+    end
+
+    it 'returns the user value within range' do
+      expect(described_class.new({ 'stay_max_gap_minutes' => 90 }).stay_max_gap_minutes).to eq(90)
+    end
+
+    it 'is included in #config' do
+      expect(described_class.new({}).config).to include(stay_max_gap_minutes: 60)
     end
   end
 

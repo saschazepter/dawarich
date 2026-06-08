@@ -56,6 +56,9 @@ class User < ApplicationRecord
   # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
+  # No default: nil means the user has not yet been prompted about the
+  # changelog widget. prefix avoids `granted?`/`declined?` collisions.
+  enum :changelog_consent, { declined: 0, granted: 1 }, prefix: :changelog_consent
 
   MAX_FAILED_OTP_ATTEMPTS = 10
   OTP_LOCK_DURATION = 30.minutes
@@ -107,6 +110,11 @@ class User < ApplicationRecord
 
   def safe_settings
     Users::SafeSettings.new(settings, plan: plan)
+  end
+
+  # nil changelog_consent => user has not been shown the opt-in prompt yet.
+  def changelog_prompt_pending?
+    changelog_consent.nil?
   end
 
   def countries_visited
