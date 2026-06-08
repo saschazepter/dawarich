@@ -7,6 +7,7 @@ class ApplicationController < ActionController::Base
 
   before_action :sign_out_deleted_users
   before_action :configure_permitted_parameters, if: :devise_controller?
+  before_action :trigger_points_restore_if_archived
   around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
@@ -120,6 +121,13 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def trigger_points_restore_if_archived
+    return unless current_user&.points_archive_state_archived?
+
+    current_user.update!(points_archive_state: :restoring)
+    Points::Archival::RestoreUserJob.perform_later(current_user.id)
+  end
 
   def sign_out_deleted_users
     return unless current_user&.deleted?
