@@ -416,7 +416,7 @@ GEM
       pry (>= 0.13, < 0.16)
     pry-rails (0.3.11)
       pry (>= 0.13.0)
-    psych (5.3.1)
+    psych (5.4.0)
       date
       stringio
     public_suffix (6.0.2)
@@ -626,15 +626,14 @@ GEM
       attr_required (>= 0.0.5)
       faraday (~> 2.0)
       faraday-follow_redirects
-    tailwindcss-rails (3.3.2)
+    tailwindcss-rails (4.4.0)
       railties (>= 7.0.0)
-      tailwindcss-ruby (~> 3.0)
-    tailwindcss-ruby (3.4.17)
-    tailwindcss-ruby (3.4.17-aarch64-linux)
-    tailwindcss-ruby (3.4.17-arm-linux)
-    tailwindcss-ruby (3.4.17-arm64-darwin)
-    tailwindcss-ruby (3.4.17-x86_64-darwin)
-    tailwindcss-ruby (3.4.17-x86_64-linux)
+      tailwindcss-ruby (~> 4.0)
+    tailwindcss-ruby (4.3.0)
+    tailwindcss-ruby (4.3.0-aarch64-linux-gnu)
+    tailwindcss-ruby (4.3.0-arm64-darwin)
+    tailwindcss-ruby (4.3.0-x86_64-darwin)
+    tailwindcss-ruby (4.3.0-x86_64-linux-gnu)
     thor (1.5.0)
     timeout (0.6.0)
     tsort (0.2.0)
@@ -699,7 +698,7 @@ GEM
       anyway_config (>= 1.3, < 3)
       sidekiq
       yabeda (~> 0.6)
-    zeitwerk (2.7.5)
+    zeitwerk (2.8.2)
     zlib (3.2.3)
 
 PLATFORMS
@@ -793,7 +792,7 @@ DEPENDENCIES
   stackprof
   stimulus-rails
   super_diff
-  tailwindcss-rails (= 3.3.2)
+  tailwindcss-rails (= 4.4.0)
   turbo-rails (>= 2.0.17)
   tzinfo-data
   webmock
