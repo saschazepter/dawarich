@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_08_205143) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_08_205403) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -498,11 +498,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_08_205143) do
     t.integer "changelog_consent"
     t.string "first_name"
     t.string "last_name"
+    t.integer "points_archive_state", default: 0, null: false
+    t.datetime "points_archived_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["otp_locked_at"], name: "index_users_on_otp_locked_at_not_null", where: "(otp_locked_at IS NOT NULL)"
     t.index ["plan"], name: "index_users_on_plan"
+    t.index ["points_archive_state"], name: "index_users_on_points_archive_state"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid_present", unique: true, where: "((provider IS NOT NULL) AND (uid IS NOT NULL))"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"

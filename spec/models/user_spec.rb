@@ -998,4 +998,19 @@ subscription_source: :none)
       expect(user.reload.last_name).to eq('Lovelace')
     end
   end
+
+  describe 'points archival' do
+    it 'defaults to points_active' do
+      user = create(:user)
+      expect(user.points_archive_state_active?).to be(true)
+    end
+
+    it 'scopes points_active to active state only' do
+      active = create(:user)
+      archived = create(:user, points_archive_state: :archived)
+
+      expect(User.points_active).to include(active)
+      expect(User.points_active).not_to include(archived)
+    end
+  end
 end
