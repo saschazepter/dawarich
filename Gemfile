@@ -13,7 +13,7 @@ gem 'aws-sdk-kms', '~> 1.96', require: false
 gem 'aws-sdk-s3', '~> 1.208', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
-gem 'connection_pool', '< 3' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
+gem 'connection_pool', '< 4' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
 gem 'devise', '>= 5.0.4'
 gem 'devise-two-factor'
