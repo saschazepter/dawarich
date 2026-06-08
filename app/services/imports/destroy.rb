@@ -30,7 +30,8 @@ class Imports::Destroy
   def destroy_orphaned_tracks(track_ids)
     return if track_ids.empty?
 
-    Track.where(id: track_ids).where.missing(:points).find_each(&:destroy)
+    orphaned_ids = Track.where(id: track_ids).where.missing(:points).pluck(:id)
+    Track.delete_orphaned(orphaned_ids)
   end
 
   def delete_points_in_batches
