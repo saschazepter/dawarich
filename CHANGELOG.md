@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)
+
 ### Changed
 
 - The suggested-visit card no longer promises alternative suggestions that never arrive; it now points to the visit's search button for picking a different place (#2852)
