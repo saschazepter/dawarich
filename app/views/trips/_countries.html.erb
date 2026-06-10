@@ -7,7 +7,7 @@
     <% if trip.visited_countries.any? %>
       <%= pluralize(trip.visited_countries.count, 'country', 'countries') %>
     <% else %>
-      <span class="loading loading-dots loading-xs"></span>
+      <span class="text-base-content/40">&mdash;</span>
     <% end %>
   </p>
   <% if trip.visited_countries.any? %>
