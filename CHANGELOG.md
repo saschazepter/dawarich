@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - The suggested-visit card no longer promises alternative suggestions that never arrive; it now points to the visit's search button for picking a different place (#2852)
+
 ### Fixed
 
 - Deleting an import no longer gets stuck on an endless spinner: failed deletions revert to a retriable state, and imports stalled in "Deleting" for over an hour show a retry button (#2835)
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Deleting points or anomaly points via the map's "Select Area" tool now removes them from the anomalies layer immediately, without requiring a page reload (#2790)
 - Months with very small distances on the Stats page now render a visible bar and show their tooltip; months without data no longer render a bar at all (#2864)
 - Weekday labels in the Insights "Activity Overview" heatmap now line up with their grid rows (#2896)
+- OIDC login no longer fails with "undefined method 'with_indifferent_access'" when OIDC_ISSUER is set to the full discovery URL — the trailing /.well-known/openid-configuration is now stripped automatically (#2056)
 
 ## [1.8.0] - 2026-06-08
 
