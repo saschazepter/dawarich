@@ -2201,6 +2201,10 @@ export default class extends Controller {
       : this.replayCurrentCoords
 
     // Reset timing so interpolation starts fresh from this point
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      currentPoint,
+      nextPoint,
+    )
     this.replayLastTime = performance.now()
   }
 
@@ -2422,6 +2426,34 @@ export default class extends Controller {
     if (this.hasReplaySpeedLabelTarget) {
       this.replaySpeedLabelTarget.textContent = `${this.replaySpeed}x`
     }
+
+    this._rescaleReplaySegment()
+  }
+
+  /**
+   * Apply the current speed to the in-flight segment, keeping the marker's
+   * progress within the segment so it doesn't jump
+   * @private
+   */
+  _rescaleReplaySegment() {
+    if (!this.replayActive || !this.replayPoints) return
+
+    const previousDuration = this.replaySegmentDurationMs
+    const currentPoint = this.replayPoints[this.replayPointIndex]
+    const nextPoint = this.replayPoints[this.replayPointIndex + 1]
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      currentPoint,
+      nextPoint,
+    )
+
+    if (previousDuration > 0) {
+      const now = performance.now()
+      const progress = Math.min(
+        (now - this.replayLastTime) / previousDuration,
+        1,
+      )
+      this.replayLastTime = now - progress * this.replaySegmentDurationMs
+    }
   }
 
   /**
@@ -2468,6 +2500,10 @@ export default class extends Controller {
     this.replayNextCoords = nextPoint
       ? this.replayManager.getCoordinates(nextPoint)
       : this.replayCurrentCoords
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      startPoint,
+      nextPoint,
+    )
 
     // Show marker at starting point immediately
     if (startPoint) {
@@ -2547,6 +2583,33 @@ export default class extends Controller {
   }
 
   /**
+   * Playback duration for the segment between two points, proportional to
+   * the real time elapsed between them so a 20-minute slow drive and a
+   * 20-minute motorway drive take the same playback time. At 1x one real
+   * minute plays in one second; the speed multiplier compresses further.
+   * Clamped so dense bursts stay visible and huge gaps (overnight pauses)
+   * don't stall playback.
+   * @private
+   */
+  _replaySegmentDurationMs(currentPoint, nextPoint) {
+    const fallback = 500 / this.replaySpeed
+    if (!currentPoint || !nextPoint || !this.replayManager) return fallback
+
+    const startTime = this._parseReplayTimestamp(
+      this.replayManager._getTimestamp(currentPoint),
+    )
+    const endTime = this._parseReplayTimestamp(
+      this.replayManager._getTimestamp(nextPoint),
+    )
+    if (!startTime || !endTime || endTime <= startTime) return fallback
+
+    const realGapMs = endTime - startTime
+    const playbackMs = realGapMs / (60 * this.replaySpeed)
+
+    return Math.min(Math.max(playbackMs, 50), 4000)
+  }
+
+  /**
    * Replay animation frame - iterates over points with smooth interpolation
    * @private
    */
@@ -2556,9 +2619,9 @@ export default class extends Controller {
     const now = performance.now()
     const elapsed = now - this.replayLastTime
 
-    // Calculate interval between points based on speed
-    // Speed 1x = 1 point per 500ms, Speed 10x = 1 point per 50ms
-    const intervalMs = 500 / this.replaySpeed
+    // Playback duration of the current segment, proportional to the real
+    // time gap between the two points (see _replaySegmentDurationMs)
+    const intervalMs = this.replaySegmentDurationMs || 500 / this.replaySpeed
 
     // Calculate interpolation progress (0 to 1) - use linear for smooth constant speed
     const progress = Math.min(elapsed / intervalMs, 1)
@@ -2626,6 +2689,10 @@ export default class extends Controller {
       this.replayNextCoords = nextPoint
         ? this.replayManager.getCoordinates(nextPoint)
         : this.replayCurrentCoords
+      this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+        currentPoint,
+        nextPoint,
+      )
 
       // Update speed display for current point
       this._updateReplaySpeedDisplay(this._getPointVelocity(currentPoint))
