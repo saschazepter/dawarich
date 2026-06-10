@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Months with very small distances on the Stats page now render a visible bar and show their tooltip; months without data no longer render a bar at all (#2864)
 - Weekday labels in the Insights "Activity Overview" heatmap now line up with their grid rows (#2896)
 - OIDC login no longer fails with "undefined method 'with_indifferent_access'" when OIDC_ISSUER is set to the full discovery URL — the trailing /.well-known/openid-configuration is now stripped automatically (#2056)
+- Moving a point on Map v2 no longer drags unrelated route lines along with it; routes are rebuilt from the updated points instead of patching nearby line vertices (#2150)
 - An import that finished successfully could still be marked "Failed" — with a failure notification — when a post-import step (stats scheduling, anomaly filtering) raised after all points were already written; post-import steps no longer affect the import's status (#2915)
 - Cloud only: the Lite plan's 12-month data window now applies to the Points page as well, and the "points outside your window" hint no longer caps the visible-points count at the page size (#2915)
 
