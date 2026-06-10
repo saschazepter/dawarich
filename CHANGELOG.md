@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The Anomalies map layer now remembers being enabled across page reloads and day changes, like other layers (#2791)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:

@@ -63,6 +63,7 @@ const LAYER_NAME_MAP = {
   "Scratch map": "scratchEnabled",
   "Family Members": "familyEnabled",
   Places: "placesEnabled",
+  Anomalies: "anomaliesEnabled",
 }
 
 const BACKEND_SETTINGS_MAP = {
