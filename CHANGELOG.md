@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - An import that finished successfully could still be marked "Failed" — with a failure notification — when a post-import step (stats scheduling, anomaly filtering) raised after all points were already written; post-import steps no longer affect the import's status (#2915)
 - Cloud only: the Lite plan's 12-month data window now applies to the Points page as well, and the "points outside your window" hint no longer caps the visible-points count at the page size (#2915)
 - Data recalculation no longer fails with "Year has already been taken" when duplicate year-end digests exist; duplicates are cleaned up automatically and can no longer be created (#2866)
+- The Anomalies map layer now remembers being enabled across page reloads and day changes, like other layers (#2791)
 
 ## [1.8.0] - 2026-06-08
 
