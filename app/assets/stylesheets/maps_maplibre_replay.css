@@ -55,6 +55,33 @@
   flex-shrink: 0;
 }
 
+/* Day navigation buttons (multi-day contexts, e.g. trip replay) */
+.replay-day-nav button {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  background: oklch(var(--b2));
+  color: oklch(var(--bc));
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.replay-day-nav button:hover:not(:disabled) {
+  background: oklch(var(--b3));
+  border-color: oklch(var(--bc) / 0.3);
+}
+
+.replay-day-nav button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .replay-day-info {
   display: flex;
   align-items: center;

@@ -9,22 +9,22 @@
      data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
      data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
 
-  <%# Side-by-side layout: map left, content right %>
-  <div class="flex flex-col lg:flex-row gap-6">
-    <%# Left: Map (sticky on desktop) %>
-    <div class="w-full lg:w-3/5 lg:sticky lg:top-4 lg:self-start">
+  <%# Side-by-side layout: map card left (capped to viewport), scrollable content right %>
+  <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
+    <%# Left: Map card (static, fits between navbar and footer) %>
+    <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0">
       <% if @trip.path.present? %>
-        <div class="w-full h-[50vh] lg:h-[calc(100vh-3rem)] rounded-lg overflow-hidden relative"
+        <div class="w-full h-full rounded-lg overflow-hidden relative"
              data-trip-maplibre-target="map">
           <div data-trip-maplibre-target="loadingIndicator"
                class="absolute bottom-4 left-4 z-10 bg-base-100/80 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 hidden">
             <span class="loading loading-spinner loading-sm"></span>
             <span class="text-sm">Loading route data...</span>
           </div>
-          <%= render "trips/timeline_panel" %>
+          <%= render "shared/replay_panel", stimulus: "trip-maplibre", show_day_nav: true %>
         </div>
       <% else %>
-        <div class="flex items-center justify-center h-[50vh] lg:h-[calc(100vh-3rem)] rounded-lg bg-base-200">
+        <div class="flex items-center justify-center h-full rounded-lg bg-base-200">
           <div class="text-center">
             <p class="text-base-content/60">Trip path is being calculated...</p>
             <div class="loading loading-spinner loading-lg mt-4"></div>
@@ -34,7 +34,7 @@
     </div>
 
     <%# Right: Scrollable content panel %>
-    <div class="w-full lg:w-2/5">
+    <div class="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto">
       <%# Trip header %>
       <div class="mb-6">
         <div class="flex items-start justify-between gap-3 mb-1">
@@ -42,7 +42,7 @@
           <div class="flex items-center gap-1 shrink-0">
             <div class="dropdown dropdown-end">
               <label tabindex="0" class="btn btn-sm btn-ghost" title="Download trip">
-                <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
+                <%= icon 'download', class: 'w-4 h-4' %>
               </label>
               <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44 z-10">
                 <li>
@@ -93,11 +93,11 @@
 
         <button type="button"
                 class="btn btn-sm btn-outline gap-1"
-                data-trip-maplibre-target="timelineToggleBtn"
-                data-action="click->trip-maplibre#toggleTimeline"
-                title="Replay the trip along the timeline">
-          <%= icon 'clock', class: 'w-4 h-4' %>
-          <span class="hidden sm:inline">Timeline</span>
+                data-trip-maplibre-target="replayToggleBtn"
+                data-action="click->trip-maplibre#toggleReplay"
+                title="Replay the trip">
+          <%= icon 'play', class: 'w-4 h-4' %>
+          <span class="hidden sm:inline">Replay</span>
         </button>
 
         <button type="button"
@@ -130,6 +130,7 @@
                   <%= stats[:first_time].strftime('%H:%M') %> – <%= stats[:last_time].strftime('%H:%M') %>
                 </span>
                 <span class="text-base-content/50 ml-auto mr-6 text-xs">
+                  &middot;
                   <% day_distance = Trip.convert_distance(stats[:distance_m], @distance_unit) %>
                   <% if day_distance < 1 %>
                     &lt; 1 <%= @distance_unit %>
