@@ -86,15 +86,16 @@ export default class extends Controller {
     // Re-apply filter + search visibility after any turbo_stream update
     // (e.g., VisitsController#update replaces the row with fresh state, and
     // without this the newly-rendered row wouldn't honor the active filters).
-    // Also fire `visit:updated` whenever a visit row or the day frame is
-    // replaced — VisitsController emits these streams on confirm / decline /
-    // rename / bulk_update, and the map's visits layer needs to refetch so
-    // its dot color reflects the new status.
+    // Also fire `visit:updated` whenever a visit row is replaced or removed
+    // or the day frame is replaced — VisitsController emits these streams on
+    // confirm / rename / destroy / bulk actions, and the map's visits layer
+    // needs to refetch so its dots reflect the new state.
     this.boundStreamRender = (event) => {
       const target = event?.detail?.newStream?.getAttribute?.("target") || ""
       const action = event?.detail?.newStream?.getAttribute?.("action") || ""
       const visitRowReplaced =
-        action === "replace" && target.startsWith("visit_entry_")
+        (action === "replace" || action === "remove") &&
+        target.startsWith("visit_entry_")
       const dayFrameUpdated =
         action === "update" && target === "timeline-feed-frame"
 
