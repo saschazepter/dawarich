@@ -65,6 +65,23 @@ RSpec.describe Imports::Create do
         end
       end
 
+      context 'when an early post-import step raises' do
+        before do
+          allow(Points::AnomalyFilter).to receive(:new).and_raise(StandardError, 'boom')
+        end
+
+        it 'still schedules the later steps' do
+          Sidekiq::Testing.inline! do
+            expect { service.call }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
+          end
+        end
+
+        it 'still completes the import' do
+          service.call
+          expect(import.reload.status).to eq('completed')
+        end
+      end
+
       context 'when import fails' do
         before do
           allow(OwnTracks::Importer).to receive(:new).with(import, user.id, kind_of(String)).and_raise(StandardError)

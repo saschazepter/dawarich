@@ -22,11 +22,27 @@ class DedupeYearlyDigestsAndAddUniqueIndex < ActiveRecord::Migration[8.0]
       Rails.logger.info("Removed #{duplicate_ids.size} duplicate yearly digests")
     end
 
+    drop_invalid_index
+
     execute(<<~SQL)
       CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS index_digests_on_user_year_period_type_monthless
       ON digests (user_id, year, period_type)
       WHERE month IS NULL
     SQL
+  end
+
+  def drop_invalid_index
+    invalid = execute(<<~SQL).any?
+      SELECT 1 FROM pg_class c
+      JOIN pg_index i ON i.indexrelid = c.oid
+      WHERE c.relname = 'index_digests_on_user_year_period_type_monthless'
+        AND i.indisvalid = false
+    SQL
+
+    return unless invalid
+
+    Rails.logger.info('Dropping invalid index_digests_on_user_year_period_type_monthless before rebuild')
+    execute('DROP INDEX CONCURRENTLY IF EXISTS index_digests_on_user_year_period_type_monthless')
   end
 
   def down
