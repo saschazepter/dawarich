@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_11_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -513,6 +513,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.index ["demo"], name: "index_visits_on_demo_true", where: "(demo = true)"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
+    t.index ["user_id", "place_id", "started_at"], name: "idx_visits_user_place_started_unique", unique: true, where: "(place_id IS NOT NULL)"
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
