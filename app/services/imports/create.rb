@@ -53,16 +53,19 @@ class Imports::Create
   private
 
   def post_import_processing
-    User.where(id: user.id).update_all(points_count: user.points.count)
+    run_post_import_step('points_count') { User.where(id: user.id).update_all(points_count: user.points.count) }
+    run_post_import_step('filter_anomalies') { filter_anomalies(user, import) }
+    run_post_import_step('schedule_stats') { schedule_stats_creating(user.id) }
+    run_post_import_step('schedule_visit_suggesting') { schedule_visit_suggesting(user.id, import) }
+    run_post_import_step('schedule_track_generation') { schedule_track_generation(user.id, import) }
+    run_post_import_step('update_points_count') { update_import_points_count(import) }
+    run_post_import_step('notify_if_all_skipped') { notify_if_all_skipped(import) }
+  end
 
-    filter_anomalies(user, import)
-    schedule_stats_creating(user.id)
-    schedule_visit_suggesting(user.id, import)
-    schedule_track_generation(user.id, import)
-    update_import_points_count(import)
-    notify_if_all_skipped(import)
+  def run_post_import_step(step)
+    yield
   rescue StandardError => e
-    ExceptionReporter.call(e, 'Post-import processing failed')
+    ExceptionReporter.call(e, "Post-import processing failed: #{step}")
   end
 
   def run_importer(path)
