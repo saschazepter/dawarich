@@ -19,8 +19,9 @@ RSpec.describe Visits::Create do
       subject(:service) { described_class.new(user, valid_params) }
 
       it 'creates a visit successfully' do
-        expect { service.call }.to change { user.visits.count }.by(1)
-        expect(service.call).to be_truthy
+        result = nil
+        expect { result = service.call }.to change { user.visits.count }.by(1)
+        expect(result).to be_truthy
         expect(service.visit).to be_persisted
       end
 

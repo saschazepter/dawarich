@@ -76,22 +76,30 @@ class Places::Visits::Create
   def create_or_update_visit(place, time_range, visit_points)
     Rails.logger.info("Visit from #{time_range}, Points: #{visit_points.size}")
 
-    ActiveRecord::Base.transaction do
+    started_at = Time.zone.at(visit_points.first.timestamp)
+
+    ActiveRecord::Base.transaction(requires_new: true) do
       visit = find_or_initialize_visit(place.id, visit_points.first.timestamp)
 
-      visit.tap do |v|
-        v.ended_at = Time.zone.at(visit_points.last.timestamp)
-        v.duration = (visit_points.last.timestamp - visit_points.first.timestamp) / 60
-        if v.new_record?
-          v.name = "#{place.name}, #{time_range}"
-          v.status = :suggested
-        end
-      end
-
+      apply_visit_attributes(visit, place, time_range, visit_points)
       visit.save!
 
       Point.where(id: visit_points.map(&:id)).update_all(visit_id: visit.id)
     end
+  rescue ActiveRecord::RecordNotUnique
+    winner = Visit.find_by!(place_id: place.id, user_id: user.id, started_at: started_at)
+    apply_visit_attributes(winner, place, time_range, visit_points)
+    winner.save!
+    Point.where(id: visit_points.map(&:id)).update_all(visit_id: winner.id)
+  end
+
+  def apply_visit_attributes(visit, place, time_range, visit_points)
+    visit.ended_at = Time.zone.at(visit_points.last.timestamp)
+    visit.duration = (visit_points.last.timestamp - visit_points.first.timestamp) / 60
+    return unless visit.new_record?
+
+    visit.name   = "#{place.name}, #{time_range}"
+    visit.status = :suggested
   end
 
   def find_or_initialize_visit(place_id, timestamp)
