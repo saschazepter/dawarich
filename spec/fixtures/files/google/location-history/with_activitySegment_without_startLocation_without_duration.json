@@ -1,0 +1,17 @@
+{
+  "timelineObjects": [
+    {
+      "activitySegment": {
+        "waypointPath": {
+          "waypoints": [{ "latE7": 526000000, "lngE7": 134000000 }]
+        }
+      }
+    },
+    {
+      "placeVisit": {
+        "location": { "latitudeE7": 123477777, "longitudeE7": 123477777 },
+        "duration": { "startTimestamp": "1742844232" }
+      }
+    }
+  ]
+}

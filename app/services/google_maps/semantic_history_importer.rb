@@ -86,7 +86,7 @@ class GoogleMaps::SemanticHistoryImporter
       build_point_from_location(
         longitude: activity['startLocation']['longitudeE7'],
         latitude: activity['startLocation']['latitudeE7'],
-        timestamp: activity['duration']['startTimestamp'] || activity['duration']['startTimestampMs'],
+        timestamp: duration_timestamp(activity),
         accuracy: activity.dig('startLocation', 'accuracyMetres'),
         raw_data: activity
       )
@@ -100,7 +100,7 @@ class GoogleMaps::SemanticHistoryImporter
       build_point_from_location(
         longitude: waypoint['lngE7'],
         latitude: waypoint['latE7'],
-        timestamp: activity['duration']['startTimestamp'] || activity['duration']['startTimestampMs'],
+        timestamp: duration_timestamp(activity),
         raw_data: activity
       )
     end
@@ -112,7 +112,7 @@ class GoogleMaps::SemanticHistoryImporter
       build_point_from_location(
         longitude: place_visit['location']['longitudeE7'],
         latitude: place_visit['location']['latitudeE7'],
-        timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+        timestamp: duration_timestamp(place_visit),
         accuracy: place_visit.dig('location', 'accuracyMetres'),
         raw_data: place_visit
       )
@@ -127,13 +127,15 @@ class GoogleMaps::SemanticHistoryImporter
     build_point_from_location(
       longitude: candidate['longitudeE7'],
       latitude: candidate['latitudeE7'],
-      timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+      timestamp: duration_timestamp(place_visit),
       accuracy: candidate['accuracyMetres'],
       raw_data: place_visit
     )
   end
 
   def build_point_from_location(longitude:, latitude:, timestamp:, raw_data:, accuracy: nil)
+    return nil if timestamp.blank?
+
     {
       lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
       timestamp: Timestamps.parse_timestamp(timestamp),
@@ -141,5 +143,9 @@ class GoogleMaps::SemanticHistoryImporter
       motion_data: Points::MotionDataExtractor.from_google_semantic_history(raw_data),
       raw_data: raw_data
     }
+  end
+
+  def duration_timestamp(record)
+    record.dig('duration', 'startTimestamp') || record.dig('duration', 'startTimestampMs')
   end
 end

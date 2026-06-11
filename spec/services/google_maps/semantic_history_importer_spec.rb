@@ -149,5 +149,56 @@ RSpec.describe GoogleMaps::SemanticHistoryImporter do
         end
       end
     end
+
+    context 'when duration is missing' do
+      context 'when placeVisit has no duration key' do
+        let(:file_name) { 'with_placeVisit_without_duration' }
+
+        it 'does not raise and skips the record without duration' do
+          expect { parser }.not_to raise_error
+        end
+
+        it 'imports the sibling record that has a valid duration' do
+          expect { parser }.to change(Point, :count).by(1)
+        end
+      end
+
+      context 'when activitySegment has startLocation but no duration key' do
+        let(:file_name) { 'with_activitySegment_with_startLocation_without_duration' }
+
+        it 'does not raise and skips the record without duration' do
+          expect { parser }.not_to raise_error
+        end
+
+        it 'imports the sibling record that has a valid duration' do
+          expect { parser }.to change(Point, :count).by(1)
+        end
+      end
+
+      context 'when activitySegment has waypointPath but no duration key' do
+        let(:file_name) { 'with_activitySegment_without_startLocation_without_duration' }
+
+        it 'does not raise and skips the record without duration' do
+          expect { parser }.not_to raise_error
+        end
+
+        it 'imports the sibling record that has a valid duration' do
+          expect { parser }.to change(Point, :count).by(1)
+        end
+      end
+
+      context 'when placeVisit duration exists but has no startTimestamp or startTimestampMs' do
+        let(:file_name) { 'with_placeVisit_with_duration_without_timestamps' }
+
+        it 'does not create a point' do
+          expect { parser }.not_to change(Point, :count)
+        end
+
+        it 'does not create a point at epoch 0' do
+          parser
+          expect(Point.where(timestamp: Time.zone.at(0))).to be_empty
+        end
+      end
+    end
   end
 end
