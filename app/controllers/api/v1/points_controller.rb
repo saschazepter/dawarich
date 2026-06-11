@@ -40,10 +40,12 @@ class Api::V1::PointsController < ApiController
       )
     end
 
+    per_page = (params[:per_page].presence&.to_i || 100).clamp(1, 1000)
+
     points = points
              .order(timestamp: order)
              .page(params[:page])
-             .per(params[:per_page] || 100)
+             .per(per_page)
 
     serialized_points = points.map { |point| point_serializer.new(point).call }
 

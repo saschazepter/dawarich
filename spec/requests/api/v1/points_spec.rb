@@ -129,6 +129,66 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
 
+    context 'with per_page bounds' do
+      let(:window_base) { 30.days.ago.to_i }
+      let!(:two_points) do
+        [
+          create(:point, user:, timestamp: window_base + 10),
+          create(:point, user:, timestamp: window_base + 20)
+        ]
+      end
+      let(:bounds_start) { window_base }
+      let(:bounds_end)   { window_base + 100 }
+
+      it 'clamps per_page=0 up to 1' do
+        get api_v1_points_url(api_key: user.api_key, per_page: 0,
+                              start_at: bounds_start, end_at: bounds_end)
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body).size).to eq(1)
+        expect(response.headers['X-Total-Pages']).to eq('2')
+      end
+
+      it 'clamps per_page=-5 up to 1' do
+        get api_v1_points_url(api_key: user.api_key, per_page: -5,
+                              start_at: bounds_start, end_at: bounds_end)
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body).size).to eq(1)
+        expect(response.headers['X-Total-Pages']).to eq('2')
+      end
+
+      it 'treats garbage per_page as 0 and clamps to 1' do
+        get api_v1_points_url(api_key: user.api_key, per_page: 'garbage',
+                              start_at: bounds_start, end_at: bounds_end)
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body).size).to eq(1)
+        expect(response.headers['X-Total-Pages']).to eq('2')
+      end
+
+      it 'clamps per_page=5000 down to 1000' do
+        base = 60.days.ago.to_i
+        rows = Array.new(1001) do |i|
+          {
+            lonlat: 'POINT(13.4 52.5)',
+            timestamp: base + i,
+            user_id: user.id,
+            created_at: Time.current,
+            updated_at: Time.current
+          }
+        end
+        Point.insert_all(rows)
+
+        get api_v1_points_url(api_key: user.api_key, per_page: 5000,
+                              start_at: base - 1, end_at: base + 1002)
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body).size).to eq(1000)
+        expect(response.headers['X-Total-Pages']).to eq('2')
+      end
+    end
+
     context 'when user is on lite plan and result spans multiple pages' do
       let!(:lite_user) do
         u = create(:user)
