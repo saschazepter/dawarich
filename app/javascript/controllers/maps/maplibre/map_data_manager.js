@@ -283,15 +283,16 @@ export class MapDataManager {
     const routesLayer = this.layerManager?.getLayer("routes")
     const tracksLayer = this.layerManager?.getLayer("tracks")
 
-    if (!flightsLayer?.visible) {
+    const windows = flightsLayer?.visible
+      ? flightWindows(data.flightsGeoJSON)
+      : []
+
+    if (windows.length === 0) {
       pointsLayer?.update(data.pointsGeoJSON || EMPTY_GEOJSON)
       routesLayer?.update(data.routesGeoJSON || EMPTY_GEOJSON)
       if (data.tracksGeoJSON) tracksLayer?.update(data.tracksGeoJSON)
       return
     }
-
-    const windows = flightWindows(data.flightsGeoJSON)
-    if (windows.length === 0) return
 
     pointsLayer?.update(
       maskPoints(data.pointsGeoJSON || EMPTY_GEOJSON, windows),

@@ -1,4 +1,6 @@
 import maplibregl from "maplibre-gl"
+import { arcifyFlights } from "../utils/flight_arcs"
+import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -47,10 +49,14 @@ export class FlightsLayer extends BaseLayer {
   }
 
   add(data) {
-    super.add(data)
+    super.add(arcifyFlights(data))
     this.map.on("click", this.id, this._onClick)
     this.map.on("mouseenter", this.id, this._setPointer)
     this.map.on("mouseleave", this.id, this._unsetPointer)
+  }
+
+  update(data) {
+    super.update(arcifyFlights(data))
   }
 
   remove() {
@@ -73,11 +79,16 @@ export class FlightsLayer extends BaseLayer {
     if (!feature) return
 
     const p = feature.properties || {}
-    const route = [p.from_code, p.to_code].filter(Boolean).join(" → ")
-    const airline = p.airline_name ? `<div>${p.airline_name}</div>` : ""
-    const number = p.flight_number ? ` ${p.flight_number}` : ""
-    const date = p.flight_date ? `<div>${p.flight_date}</div>` : ""
-    const seat = p.seat ? `<div>Seat: ${p.seat}</div>` : ""
+    const route = [p.from_code, p.to_code]
+      .filter(Boolean)
+      .map(escapeHtml)
+      .join(" → ")
+    const airline = p.airline_name
+      ? `<div>${escapeHtml(p.airline_name)}</div>`
+      : ""
+    const number = p.flight_number ? ` ${escapeHtml(p.flight_number)}` : ""
+    const date = p.flight_date ? `<div>${escapeHtml(p.flight_date)}</div>` : ""
+    const seat = p.seat ? `<div>Seat: ${escapeHtml(p.seat)}</div>` : ""
 
     const html = `
       <div class="text-sm">

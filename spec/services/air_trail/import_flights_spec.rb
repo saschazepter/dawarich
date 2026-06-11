@@ -69,4 +69,34 @@ RSpec.describe AirTrail::ImportFlights do
     described_class.new(user).call
     expect(user.reload.settings['airtrail_last_synced_at']).to be_present
   end
+
+  it 'continues the import when a concurrent sync inserts the same flight first' do
+    allow_any_instance_of(AirTrail::Client).to receive(:flights)
+      .and_return([airtrail_flight(id: 1), airtrail_flight(id: 2)])
+
+    raised = false
+    allow_any_instance_of(Flight).to receive(:update!).and_wrap_original do |original, *args|
+      if original.receiver.external_id == 1 && !raised
+        raised = true
+        raise ActiveRecord::RecordNotUnique, 'duplicate key value violates unique constraint'
+      end
+      original.call(*args)
+    end
+
+    result = described_class.new(user).call
+
+    expect(user.flights.pluck(:external_id)).to contain_exactly(2)
+    expect(result[:created]).to eq(1)
+  end
+
+  it 'does not clobber settings keys written while syncing' do
+    allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([])
+    service = described_class.new(user)
+    User.find(user.id).tap { |u| u.update!(settings: u.settings.merge('other_key' => 'x')) }
+
+    service.call
+
+    expect(user.reload.settings['other_key']).to eq('x')
+    expect(user.settings['airtrail_last_synced_at']).to be_present
+  end
 end

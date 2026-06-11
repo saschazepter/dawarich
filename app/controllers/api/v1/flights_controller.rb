@@ -16,8 +16,14 @@ class Api::V1::FlightsController < ApiController
   def apply_date_filter(flights)
     return flights if params[:start_at].blank? && params[:end_at].blank?
 
-    start_at = params[:start_at].present? ? Time.zone.parse(params[:start_at].to_s) : Time.zone.at(0)
-    end_at = params[:end_at].present? ? Time.zone.parse(params[:end_at].to_s) : Time.zone.now
+    start_at = parse_time(params[:start_at]) || Time.zone.at(0)
+    end_at = parse_time(params[:end_at]) || Time.zone.now
     flights.where(departure_time: start_at..end_at)
+  end
+
+  def parse_time(value)
+    Time.zone.parse(value.to_s) if value.present?
+  rescue ArgumentError
+    nil
   end
 end

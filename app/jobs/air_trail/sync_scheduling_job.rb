@@ -5,12 +5,8 @@ module AirTrail
     queue_as :imports
 
     def perform
-      User.find_each do |user|
-        settings = user.safe_settings
-        next if settings.airtrail_url.blank? || settings.airtrail_api_key.blank?
-
-        AirTrail::ImportFlightsJob.perform_later(user.id)
-      end
+      User.where("settings->>'airtrail_url' <> '' AND settings->>'airtrail_api_key' <> ''")
+          .find_each { |user| AirTrail::ImportFlightsJob.perform_later(user.id) }
     end
   end
 end

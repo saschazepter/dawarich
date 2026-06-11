@@ -30,4 +30,13 @@ RSpec.describe 'Api::V1::Flights', type: :request do
 
     expect(response.parsed_body['features'].size).to eq(1)
   end
+
+  it 'falls back to default range on unparseable date params' do
+    create(:flight, user: user, departure_time: Time.utc(2026, 1, 1, 10))
+
+    get '/api/v1/flights', params: { api_key: user.api_key, start_at: '25:99:99', end_at: 'garbage' }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body['features'].size).to eq(1)
+  end
 end
