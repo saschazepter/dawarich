@@ -2,6 +2,7 @@
 
 class Visit < ApplicationRecord
   include Demoable
+  include Notable
 
   belongs_to :area, optional: true
   belongs_to :place, optional: true
