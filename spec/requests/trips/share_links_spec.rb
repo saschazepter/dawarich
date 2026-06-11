@@ -12,7 +12,7 @@ RSpec.describe 'Trips::ShareLinks', type: :request do
     it 'renders the modal frame' do
       get new_trip_share_link_path(trip)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('trip-share-modal')
+      expect(response.body).to include('share-link-modal')
     end
   end
 

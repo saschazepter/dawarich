@@ -2,28 +2,46 @@
 
 module ShareLinks
   class TimelinesController < ApplicationController
-    before_action :authenticate_user!
-    before_action :load_active_share
+    include ShareLinks::Managable
 
-    def new
-      unless @share
-        @shared_link = SharedLink.new(
-          user: current_user,
-          resource_type: :timeline,
-          name: default_name_from_params,
-          settings: SharedLink.default_settings_for(:timeline).merge(
-            'start_date' => params[:start_date].presence,
-            'end_date'   => params[:end_date].presence
-          ).compact
-        )
-      end
-      render layout: false if turbo_frame_request?
+    private
+
+    def active_share_scope
+      current_user.shared_links.where(resource_type: :timeline)
     end
 
-    def create
-      revoke_existing_active_shares!
+    def redirect_after_action_path
+      new_share_links_timeline_path
+    end
 
-      @shared_link = current_user.shared_links.build(
+    def fallback_path
+      map_v2_path
+    end
+
+    def build_attributes_for_new
+      start_date = sanitize_date(params[:start_date]) || 7.days.ago.to_date
+      end_date   = sanitize_date(params[:end_date])   || Date.current
+      {
+        user: current_user,
+        resource_type: :timeline,
+        name: "Timeline: #{start_date.iso8601} → #{end_date.iso8601}",
+        settings: SharedLink.default_settings_for(:timeline).merge(
+          'start_date' => start_date.iso8601,
+          'end_date'   => end_date.iso8601
+        )
+      }
+    end
+
+    def sanitize_date(value)
+      return nil if value.blank?
+
+      Date.iso8601(value.to_s)
+    rescue ArgumentError, Date::Error
+      nil
+    end
+
+    def build_attributes_for_create
+      {
         resource_type: :timeline,
         resource_id:   nil,
         name:          create_params[:name].presence || default_name_for(create_params),
@@ -32,66 +50,11 @@ module ShareLinks
           'start_date' => create_params[:start_date],
           'end_date'   => create_params[:end_date]
         ).merge(extracted_settings)
-      )
-
-      if @shared_link.save
-        SharedLinks::OgImageJob.perform_later(@shared_link.id)
-        redirect_to new_share_links_timeline_path, notice: 'Share link created.'
-      else
-        @share = nil
-        render :new, status: :unprocessable_content, layout: !turbo_frame_request?
-      end
+      }
     end
 
-    def destroy
-      return ensure_share! unless @share
-
-      @share.destroy!
-      redirect_to new_share_links_timeline_path, notice: 'Share link deleted.'
-    end
-
-    def revoke
-      return ensure_share! unless @share
-
-      @share.update!(revoked_at: Time.current)
-      redirect_to new_share_links_timeline_path, notice: 'Share link revoked.'
-    end
-
-    def regenerate
-      return ensure_share! unless @share
-
-      transferred = current_user.shared_links.create!(
-        resource_type: @share.resource_type,
-        resource_id:   @share.resource_id,
-        name:          @share.name,
-        magic_phrase:  @share.magic_phrase,
-        settings:      @share.settings,
-        expires_at:    @share.expires_at
-      )
-      @share.destroy!
-      SharedLinks::OgImageJob.perform_later(transferred.id)
-      redirect_to new_share_links_timeline_path, notice: 'URL regenerated.'
-    end
-
-    def regenerate_phrase
-      return ensure_share! unless @share
-
-      @share.update!(magic_phrase: SharedLink::PhraseGenerator.call)
-      redirect_to new_share_links_timeline_path, notice: 'Magic phrase regenerated.'
-    end
-
-    private
-
-    def load_active_share
-      @share = current_user.shared_links.where(resource_type: :timeline).active.first
-    end
-
-    def ensure_share!
-      redirect_to map_v2_path, alert: 'No active timeline share.'
-    end
-
-    def revoke_existing_active_shares!
-      current_user.shared_links.where(resource_type: :timeline).active.update_all(revoked_at: Time.current)
+    def create_params
+      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :start_date, :end_date)
     end
 
     def default_name_from_params
@@ -102,19 +65,6 @@ module ShareLinks
 
     def default_name_for(attrs)
       "Timeline: #{attrs[:start_date]} → #{attrs[:end_date]}"
-    end
-
-    def create_params
-      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :start_date, :end_date)
-    end
-
-    def extracted_settings
-      raw = params.fetch(:shared_link, {})[:settings]
-      return {} if raw.blank?
-
-      keys = %i[show_photos show_places show_addresses show_stats]
-      permitted = raw.respond_to?(:permit) ? raw.permit(*keys) : raw.slice(*keys.map(&:to_s))
-      permitted.to_h.transform_values { |v| ActiveModel::Type::Boolean.new.cast(v) }
     end
   end
 end

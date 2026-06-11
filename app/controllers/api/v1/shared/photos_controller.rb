@@ -17,7 +17,12 @@ module Api
         def thumbnail
           return head(:not_found) unless ctx.show_photos?
 
-          upstream = Photos::Thumbnail.new(link.user, params[:source], params[:photo_id]).call
+          photo = fetch_trip_photos.find do |p|
+            p[:id].to_s == params[:photo_id].to_s && p[:source].to_s == params[:source].to_s
+          end
+          return head(:not_found) if photo.nil?
+
+          upstream = Photos::Thumbnail.new(link.user, photo[:source], photo[:id]).call
           return head(:not_found) unless upstream.success?
 
           send_data upstream.body, type: 'image/jpeg', disposition: 'inline'

@@ -90,6 +90,14 @@ RSpec.describe SharedLink, type: :model do
       expect(link.view_count).to eq(1)
       expect(link.last_accessed_at).to be >= before_call
     end
+
+    it 'does not lose increments from stale instances' do
+      link = create(:shared_link, view_count: 0)
+      stale = SharedLink.find(link.id)
+      link.touch_access!
+      stale.touch_access!
+      expect(link.reload.view_count).to eq(2)
+    end
   end
 
   describe 'timeline validations' do
@@ -120,9 +128,9 @@ RSpec.describe SharedLink, type: :model do
 
   describe 'DEFAULT_SETTINGS' do
     it 'provides settings for each resource type' do
-      expect(SharedLink::DEFAULT_SETTINGS[:trip]).to include('show_photos' => false, 'show_places' => true)
+      expect(SharedLink::DEFAULT_SETTINGS[:trip]).to include('show_photos' => false, 'show_stats' => true)
       expect(SharedLink::DEFAULT_SETTINGS[:track]).to include('show_stats' => true)
-      expect(SharedLink::DEFAULT_SETTINGS[:timeline]).to include('show_places' => true)
+      expect(SharedLink::DEFAULT_SETTINGS[:timeline]).to include('show_photos' => false)
       expect(SharedLink::DEFAULT_SETTINGS[:live]).to include('history_hours' => 6)
     end
 

@@ -30,13 +30,13 @@
       <% trip_share = @trip.shared_links.active.first %>
       <%= link_to new_trip_share_link_path(@trip),
                   class: "btn btn-outline btn-sm relative",
-                  data: { turbo_frame: "trip-share-modal" } do %>
+                  data: { turbo_frame: "share-link-modal" } do %>
         <%= icon 'share', class: 'w-4 h-4' %> Sharing
         <% if trip_share %>
           <span class="badge badge-success badge-xs ml-1" aria-label="Currently shared">Public</span>
         <% end %>
       <% end %>
-      <turbo-frame id="trip-share-modal"></turbo-frame>
+      <turbo-frame id="share-link-modal"></turbo-frame>
       <%= link_to trip_path(@trip),
           data: { turbo_confirm: "Are you sure?", turbo_method: :delete },
           class: "btn btn-ghost btn-sm text-error hover:bg-error/10" do %>

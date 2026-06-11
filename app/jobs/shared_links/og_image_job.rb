@@ -10,6 +10,11 @@ module SharedLinks
       link = SharedLink.find_by(id: link_id)
       return if link.nil?
 
+      if ENV['OG_RENDER_TOKEN'].blank?
+        link.update!(og_image_state: :failed)
+        return
+      end
+
       bytes = OgImageRenderer.new(link).call
       link.og_image.attach(
         io: StringIO.new(bytes),

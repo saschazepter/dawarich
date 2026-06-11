@@ -37,7 +37,7 @@ class Shared::LinksController < ApplicationController
     return if @link.magic_phrase.blank?
     return if cookies.encrypted[unlock_cookie_key] == '1'
 
-    render :phrase_prompt
+    render :phrase_prompt, status: :unauthorized
   end
 
   def set_unlock_cookie

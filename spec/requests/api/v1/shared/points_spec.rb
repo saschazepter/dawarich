@@ -48,6 +48,27 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       get "/api/v1/shared/#{link.id}/points"
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it 'excludes points inside the owner privacy zones' do
+      create(:point, user: owner, timestamp: Time.utc(2026, 4, 6).to_i, latitude: 52.0, longitude: 13.0)
+      home = create(:place, user: owner, latitude: 52.0, longitude: 13.0)
+      tag = create(:tag, user: owner, privacy_radius_meters: 500)
+      create(:tagging, tag: tag, taggable: home)
+
+      get "/api/v1/shared/#{link.id}/points"
+      body = JSON.parse(response.body)
+      expect(body.size).to eq(1)
+      expect(body.first[1]).to eq(60.0)
+    end
+
+    it 'downsamples payloads above MAX_POINTS' do
+      stub_const('Api::V1::Shared::PointsController::MAX_POINTS', 2)
+      create(:point, user: owner, timestamp: Time.utc(2026, 4, 6).to_i, latitude: 60.0, longitude: 10.0)
+      create(:point, user: owner, timestamp: Time.utc(2026, 4, 7).to_i, latitude: 60.0, longitude: 10.0)
+
+      get "/api/v1/shared/#{link.id}/points"
+      expect(JSON.parse(response.body).size).to eq(2)
+    end
   end
 
   context 'for a timeline share' do

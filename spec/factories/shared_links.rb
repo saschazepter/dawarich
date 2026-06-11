@@ -5,7 +5,7 @@ FactoryBot.define do
     user
     resource_type { :trip }
     sequence(:name) { |n| "Shared link #{n}" }
-    settings { { 'show_photos' => false, 'show_places' => true, 'show_addresses' => false, 'show_stats' => true } }
+    settings { { 'show_photos' => false, 'show_stats' => true } }
 
     transient do
       trip { nil }

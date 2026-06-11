@@ -1,6 +1,6 @@
 <%# Timeline create form. Locals: resource (nil), paths, close_path %>
 <%= form_with model: SharedLink.new, url: paths[:create], method: :post,
-              data: { turbo_frame: "trip-share-modal" } do |f| %>
+              data: { turbo_frame: "share-link-modal" } do |f| %>
   <div class="grid grid-cols-2 gap-3">
     <div class="form-control">
       <label class="label"><span class="label-text">Start date</span></label>
@@ -25,14 +25,6 @@
   </div>
 
   <div class="form-control mt-4">
-    <label class="label cursor-pointer">
-      <span class="label-text">Show places</span>
-      <%= f.check_box 'settings[show_places]', { checked: true, class: 'checkbox' }, '1', '0' %>
-    </label>
-    <label class="label cursor-pointer">
-      <span class="label-text">Show addresses</span>
-      <%= f.check_box 'settings[show_addresses]', class: 'checkbox' %>
-    </label>
     <label class="label cursor-pointer">
       <span class="label-text">Show photos</span>
       <%= f.check_box 'settings[show_photos]', class: 'checkbox' %>

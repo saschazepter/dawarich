@@ -59,20 +59,20 @@
   <div class="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-base-300">
     <div class="flex flex-wrap gap-2">
       <%= button_to paths[:regenerate], method: :post,
-                    form: { data: { turbo_frame: "trip-share-modal" } },
+                    form: { data: { turbo_frame: "share-link-modal" } },
                     class: "btn btn-outline btn-sm",
                     data: { turbo_confirm: "Generate a new URL? The current URL will stop working." } do %>
         <%= icon 'refresh-ccw', class: 'w-4 h-4' %> Regenerate URL
       <% end %>
       <%= button_to paths[:regenerate_phrase], method: :post,
-                    form: { data: { turbo_frame: "trip-share-modal" } },
+                    form: { data: { turbo_frame: "share-link-modal" } },
                     class: "btn btn-outline btn-sm",
                     data: { turbo_confirm: "Generate a new phrase?" } do %>
         <%= icon 'refresh-ccw', class: 'w-4 h-4' %> Regenerate phrase
       <% end %>
     </div>
     <%= button_to paths[:revoke], method: :patch,
-                  form: { data: { turbo_frame: "trip-share-modal" } },
+                  form: { data: { turbo_frame: "share-link-modal" } },
                   class: "btn btn-warning btn-sm",
                   data: { turbo_confirm: "Revoke this link? It will stop working immediately." } do %>
       <%= icon 'shield', class: 'w-4 h-4' %> Revoke

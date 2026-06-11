@@ -10,7 +10,7 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
     it 'renders the modal frame' do
       get new_share_links_timeline_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('trip-share-modal')
+      expect(response.body).to include('share-link-modal')
     end
 
     it 'pre-fills dates from query params when provided' do

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Public location sharing — share a trip or a timeline date range via a revocable public link, with optional magic-phrase protection, expiry, and OG preview images. Shared routes respect privacy zones. #2804
 - Map v2 **Hexagons** layer (Pro) — H3 cell heatmap, zoom-adaptive resolution. #2568
 - Download a trip's points as GPX or GeoJSON from the trip page. #2400
 - OIDC PKCE support via `OIDC_PKCE_ENABLED=true` (off by default). #2282

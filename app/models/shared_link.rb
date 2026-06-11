@@ -11,16 +11,16 @@ class SharedLink < ApplicationRecord
 
   DEFAULT_SETTINGS = {
     trip: {
-      'show_photos' => false, 'show_places' => true, 'show_addresses' => false, 'show_stats' => true
+      'show_photos' => false, 'show_stats' => true
     }.freeze,
     track: {
-      'show_photos' => false, 'show_places' => false, 'show_addresses' => false, 'show_stats' => true
+      'show_photos' => false, 'show_stats' => true
     }.freeze,
     timeline: {
-      'show_photos' => false, 'show_places' => true, 'show_addresses' => false
+      'show_photos' => false
     }.freeze,
     live: {
-      'show_photos' => false, 'show_places' => false, 'show_addresses' => false, 'history_hours' => 6
+      'show_photos' => false, 'history_hours' => 6
     }.freeze
   }.freeze
 
@@ -52,7 +52,7 @@ class SharedLink < ApplicationRecord
   end
 
   def touch_access!
-    update!(view_count: view_count + 1, last_accessed_at: Time.current)
+    self.class.where(id: id).update_all(['view_count = view_count + 1, last_accessed_at = ?', Time.current])
   end
 
   private

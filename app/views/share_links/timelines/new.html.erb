@@ -2,7 +2,7 @@
            resource: nil,
            share: @share,
            title: "Share a date range",
-           subtitle: (@share ? "#{@share.settings['start_date']} → #{@share.settings['end_date']} is shared via a public link." : nil),
+           subtitle: timeline_share_subtitle(@share),
            close_path: map_v2_path,
            paths: {
              create:            share_links_timeline_path,

@@ -62,7 +62,7 @@ RSpec.describe 'Shared::Links', type: :request do
 
     it 'shows the phrase prompt when no cookie is set' do
       get "/s/#{link.id}"
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:unauthorized)
       expect(response.body).to include('magic phrase')
     end
 

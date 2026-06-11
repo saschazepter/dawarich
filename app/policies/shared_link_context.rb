@@ -19,14 +19,6 @@ class SharedLinkContext
     settings['show_photos'] == true
   end
 
-  def show_places?
-    settings['show_places'] != false
-  end
-
-  def show_addresses?
-    settings['show_addresses'] == true
-  end
-
   def show_stats?
     settings['show_stats'] != false
   end

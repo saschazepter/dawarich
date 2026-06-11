@@ -19,18 +19,6 @@ RSpec.describe SharedLinkContext do
     expect(ctx.show_photos?).to be true
   end
 
-  it 'reports show_places based on settings' do
-    link.update!(settings: { 'show_places' => false })
-    ctx = described_class.new(link)
-    expect(ctx.show_places?).to be false
-  end
-
-  it 'reports show_addresses based on settings' do
-    link.update!(settings: { 'show_addresses' => true })
-    ctx = described_class.new(link)
-    expect(ctx.show_addresses?).to be true
-  end
-
   it 'reports show_stats true by default' do
     link.update!(settings: {})
     ctx = described_class.new(link)

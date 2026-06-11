@@ -10,7 +10,24 @@ RSpec.describe SharedLinks::OgImageJob do
     clear_performed_jobs
   end
 
+  around do |example|
+    original = ENV['OG_RENDER_TOKEN']
+    ENV['OG_RENDER_TOKEN'] = 'spec-token-here'
+    example.run
+  ensure
+    ENV['OG_RENDER_TOKEN'] = original
+  end
+
   describe '#perform' do
+    it 'marks state failed without rendering when OG_RENDER_TOKEN is unset' do
+      ENV['OG_RENDER_TOKEN'] = nil
+      expect(SharedLinks::OgImageRenderer).not_to receive(:new)
+
+      described_class.perform_now(link.id)
+
+      expect(link.reload.og_image_state).to eq('failed')
+    end
+
     it 'attaches the rendered PNG and marks state ready' do
       fake_renderer = instance_double(SharedLinks::OgImageRenderer, call: "\x89PNG\r\n\x1a\nFAKEDATA".b)
       allow(SharedLinks::OgImageRenderer).to receive(:new).and_return(fake_renderer)

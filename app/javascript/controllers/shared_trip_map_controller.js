@@ -5,7 +5,6 @@ export default class extends Controller {
   static values = {
     linkId: String,
     showPhotos: Boolean,
-    showPlaces: Boolean,
   }
 
   connect() {

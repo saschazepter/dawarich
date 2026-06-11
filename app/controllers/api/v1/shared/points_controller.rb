@@ -4,6 +4,8 @@ module Api
   module V1
     module Shared
       class PointsController < BaseController
+        MAX_POINTS = 10_000
+
         def index
           render json: serialize(scoped_points)
         end
@@ -16,14 +18,31 @@ module Api
             trip = link.resource
             return [] if trip.nil?
 
-            trip.points
+            outside_privacy_zones(trip.points)
           when :timeline
             range = timeline_epoch_range
             return [] if range.nil?
 
-            link.user.points.not_anomaly.where(timestamp: range).order(:timestamp)
+            outside_privacy_zones(link.user.points.not_anomaly.where(timestamp: range).order(:timestamp))
           else
             []
+          end
+        end
+
+        def outside_privacy_zones(points)
+          zones = privacy_zones
+          return points if zones.empty?
+
+          condition = zones.map { 'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
+                           .join(' OR ')
+          points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
+        end
+
+        def privacy_zones
+          link.user.tags.privacy_zones.includes(:places).flat_map do |tag|
+            tag.places.map do |place|
+              { lon: place.longitude.to_f, lat: place.latitude.to_f, radius: tag.privacy_radius_meters }
+            end
           end
         end
 
@@ -40,11 +59,19 @@ module Api
         def serialize(points)
           return [] if points.respond_to?(:empty?) && points.empty?
 
-          points.pluck(
+          rows = points.pluck(
             Arel.sql('ST_X(lonlat::geometry)'),
             Arel.sql('ST_Y(lonlat::geometry)'),
             :timestamp
-          ).map { |lon, lat, ts| [lon, lat, ts.to_i] }
+          )
+          downsample(rows).map { |lon, lat, ts| [lon, lat, ts.to_i] }
+        end
+
+        def downsample(rows)
+          return rows if rows.size <= MAX_POINTS
+
+          step = (rows.size.to_f / MAX_POINTS).ceil
+          rows.each_slice(step).map(&:first)
         end
       end
     end
