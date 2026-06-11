@@ -43,5 +43,26 @@ RSpec.describe 'Api::V1::Recalculations', type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        post "/api/v1/recalculations?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+      end
+
+      it 'does not enqueue a recalculation job' do
+        expect do
+          post "/api/v1/recalculations?api_key=#{user.api_key}"
+        end.not_to have_enqueued_job(Users::RecalculateDataJob)
+      end
+    end
   end
 end

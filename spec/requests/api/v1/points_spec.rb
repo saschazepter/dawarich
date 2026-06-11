@@ -408,6 +408,13 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response).to have_http_status(:forbidden)
         expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
       end
+
+      it 'does not delete the point' do
+        point_id = points.first.id
+        delete "/api/v1/points/#{point_id}?api_key=#{user.api_key}"
+
+        expect(Point.exists?(point_id)).to be true
+      end
     end
   end
 
@@ -793,6 +800,27 @@ RSpec.describe 'Api::V1::Points', type: :request do
       post '/api/v1/points/reapply_anomaly_filter'
 
       expect(response).to have_http_status(:unauthorized)
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        post "/api/v1/points/reapply_anomaly_filter?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+      end
+
+      it 'does not enqueue the backfill job' do
+        expect do
+          post "/api/v1/points/reapply_anomaly_filter?api_key=#{user.api_key}"
+        end.not_to have_enqueued_job(Points::AnomalyBackfillUserJob)
+      end
     end
   end
 

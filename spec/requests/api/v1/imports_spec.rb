@@ -178,5 +178,28 @@ RSpec.describe 'Api::V1::Imports', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when user is on lite plan' do
+      let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        post api_v1_imports_url(api_key: api_key), params: { file: file }
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+      end
+
+      it 'does not create an import' do
+        expect do
+          post api_v1_imports_url(api_key: api_key), params: { file: file }
+        end.not_to change(Import, :count)
+      end
+    end
   end
 end
