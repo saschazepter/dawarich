@@ -115,7 +115,11 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
       end
 
       track
-    rescue StandardError
+    rescue StandardError => e
+      Rails.logger.error(
+        "Failed to create track from #{points.size} points in chunk #{chunk_data[:chunk_id]}: #{e.class}: #{e.message}"
+      )
+      ExceptionReporter.call(e, "Track creation failed for chunk #{chunk_data[:chunk_id]}")
       nil
     end
   end
