@@ -99,6 +99,80 @@ RSpec.describe 'Api::V1::Digests', type: :request do
 
       expect(response).to have_http_status(:not_modified)
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 200 with partial digest and fullDigest: false' do
+        get api_v1_digest_url(year: 2024), headers: headers
+
+        expect(response).to have_http_status(:ok)
+
+        json = JSON.parse(response.body)
+        expect(json['year']).to eq(2024)
+        expect(json['distance']).to be_a(Hash)
+        expect(json['toponyms']['countriesCount']).to eq(3)
+        expect(json['toponyms']['citiesCount']).to eq(5)
+        expect(json['fullDigest']).to eq(false)
+
+        expect(json).not_to have_key('firstTimeVisits')
+        expect(json).not_to have_key('monthlyDistances')
+        expect(json).not_to have_key('timeSpentByLocation')
+        expect(json).not_to have_key('yearOverYear')
+        expect(json).not_to have_key('allTimeStats')
+        expect(json).not_to have_key('travelPatterns')
+        expect(json['toponyms']).not_to have_key('countries')
+      end
+
+      context 'when self_hosted? is true' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        end
+
+        it 'returns full digest even for lite plan user' do
+          get api_v1_digest_url(year: 2024), headers: headers
+
+          expect(response).to have_http_status(:ok)
+
+          json = JSON.parse(response.body)
+          expect(json['fullDigest']).to eq(true)
+          expect(json).to have_key('firstTimeVisits')
+          expect(json).to have_key('monthlyDistances')
+          expect(json).to have_key('timeSpentByLocation')
+          expect(json).to have_key('yearOverYear')
+          expect(json).to have_key('allTimeStats')
+          expect(json).to have_key('travelPatterns')
+          expect(json['toponyms']).to have_key('countries')
+        end
+      end
+    end
+
+    context 'when user is on pro plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:pro])
+      end
+
+      it 'returns full digest with fullDigest: true' do
+        get api_v1_digest_url(year: 2024), headers: headers
+
+        expect(response).to have_http_status(:ok)
+
+        json = JSON.parse(response.body)
+        expect(json['fullDigest']).to eq(true)
+        expect(json).to have_key('firstTimeVisits')
+        expect(json).to have_key('monthlyDistances')
+        expect(json).to have_key('timeSpentByLocation')
+        expect(json).to have_key('yearOverYear')
+        expect(json).to have_key('allTimeStats')
+        expect(json).to have_key('travelPatterns')
+        expect(json['toponyms']).to have_key('countries')
+      end
+    end
   end
 
   describe 'POST /api/v1/digests' do

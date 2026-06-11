@@ -15,8 +15,9 @@ class Api::V1::DigestsController < ApiController
 
     return unless stale?(last_modified: digest.updated_at.utc)
 
+    full_digest = DawarichSettings.self_hosted? || current_api_user.pro?
     expires_in 1.hour, public: false
-    render json: Api::DigestDetailSerializer.new(digest, distance_unit: distance_unit).call
+    render json: Api::DigestDetailSerializer.new(digest, distance_unit: distance_unit, full: full_digest).call
   end
 
   def create

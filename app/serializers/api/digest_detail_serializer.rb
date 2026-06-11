@@ -1,25 +1,32 @@
 # frozen_string_literal: true
 
 class Api::DigestDetailSerializer
-  def initialize(digest, distance_unit:)
+  def initialize(digest, distance_unit:, full: true)
     @digest = digest
     @distance_unit = distance_unit
+    @full = full
   end
 
   def call
-    {
+    base = {
       year: digest.year,
       distance: serialize_distance,
       toponyms: serialize_toponyms,
+      fullDigest: @full,
+      createdAt: digest.created_at.iso8601,
+      updatedAt: digest.updated_at.iso8601
+    }
+
+    return base unless @full
+
+    base.merge!(
       monthlyDistances: serialize_monthly_distances,
       timeSpentByLocation: digest.time_spent_by_location,
       firstTimeVisits: digest.first_time_visits,
       yearOverYear: serialize_year_over_year,
       allTimeStats: serialize_all_time_stats,
-      travelPatterns: serialize_travel_patterns,
-      createdAt: digest.created_at.iso8601,
-      updatedAt: digest.updated_at.iso8601
-    }
+      travelPatterns: serialize_travel_patterns
+    )
   end
 
   private
@@ -46,6 +53,13 @@ class Api::DigestDetailSerializer
   end
 
   def serialize_toponyms
+    result = {
+      countriesCount: digest.countries_count,
+      citiesCount: digest.cities_count
+    }
+
+    return result unless @full
+
     countries = (digest.toponyms || []).select { |t| t['country'].present? }.map do |toponym|
       {
         country: toponym['country'],
@@ -53,11 +67,7 @@ class Api::DigestDetailSerializer
       }
     end
 
-    {
-      countriesCount: digest.countries_count,
-      citiesCount: digest.cities_count,
-      countries: countries
-    }
+    result.merge(countries: countries)
   end
 
   def serialize_year_over_year
