@@ -25,6 +25,7 @@ Upgrade notes:
 ### Fixed
 
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- New `SMTP_OPENSSL_VERIFY_MODE` environment variable (`none` or `peer`) lets self-hosters send mail through a LAN SMTP server that presents a self-signed certificate by skipping TLS certificate verification; leaving it unset keeps the default verifying behavior. #2681
 
 ## [1.8.1] - 2026-06-11
 
