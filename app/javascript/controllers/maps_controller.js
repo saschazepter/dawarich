@@ -2357,7 +2357,7 @@ export default class extends BaseController {
             const lastDay = new Date(selectedYear, index + 1, 0).getDate()
             const endDate = `${selectedYear}-${monthNum}-${lastDay}T23:59`
 
-            const href = `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`
+            const href = `/map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`
             monthLink.setAttribute("href", href)
           } else {
             monthLink.classList.add("disabled")
@@ -2390,7 +2390,7 @@ export default class extends BaseController {
         const wholeYearLink = document.getElementById("whole-year-link")
         const startDate = `${selectedYear}-01-01T00:00`
         const endDate = `${selectedYear}-12-31T23:59`
-        const href = `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`
+        const href = `/map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`
         wholeYearLink.setAttribute("href", href)
 
         updateMonthLinks(selectedYear, availableMonths)
@@ -2429,7 +2429,7 @@ export default class extends BaseController {
 
     const startDate = `${year}-01-01T00:00`
     const endDate = `${year}-12-31T23:59`
-    return `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`
+    return `/map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`
   }
 
   async fetchAndDisplayVisitedCities() {

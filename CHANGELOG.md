@@ -25,6 +25,7 @@ Upgrade notes:
 ### Fixed
 
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- Leaflet map datepicker month selection no longer 404s when the app is served from a path with a trailing slash (#2869)
 
 ## [1.8.1] - 2026-06-11
 
