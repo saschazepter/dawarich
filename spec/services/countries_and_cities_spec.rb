@@ -50,7 +50,25 @@ RSpec.describe CountriesAndCities do
       end
     end
 
-    context 'when only geodata holds the country and city' do
+    context 'when the country_name column is nil but country_id is set' do
+      let(:kwargs) { { min_minutes_spent_in_city: 5 } }
+
+      let(:points) do
+        (0..3).map do |i|
+          create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + (i * 10).minutes)
+            .tap { |point| point.update_columns(country_name: nil) }
+        end
+      end
+
+      it 'resolves the country from country_id and the city from the column, without geodata' do
+        result = countries_and_cities
+
+        expect(result.map(&:country)).to eq(['Germany'])
+        expect(result.first.cities.map(&:city)).to eq(['Berlin'])
+      end
+    end
+
+    context 'when only the geodata blob holds the toponyms (columns and country_id nil)' do
       let(:kwargs) { { min_minutes_spent_in_city: 5 } }
 
       let(:points) do
@@ -66,11 +84,8 @@ RSpec.describe CountriesAndCities do
         end
       end
 
-      it 'falls back to the geodata country and city' do
-        result = countries_and_cities
-
-        expect(result.map(&:country)).to eq(['France'])
-        expect(result.first.cities.map(&:city)).to eq(['Paris'])
+      it 'ignores the geodata blob and excludes the points' do
+        expect(countries_and_cities).to eq([])
       end
     end
 

@@ -15,8 +15,8 @@ class CountriesAndCities
 
   def call
     points
-      .reject { |point| resolved_country_name(point).nil? || resolved_city(point).nil? || flyover?(point) }
-      .group_by { |point| canonical_country_name(point) }
+      .reject { |point| resolved_country(point).nil? || resolved_city(point).nil? || flyover?(point) }
+      .group_by { |point| resolved_country(point) }
       .transform_values { |country_points| process_country_points(country_points) }
       .map { |country, cities| CountryData.new(country: country, cities: cities) }
   end
@@ -29,28 +29,17 @@ class CountriesAndCities
     (point[:velocity].to_f * MS_TO_KMH) > FLYOVER_VELOCITY_THRESHOLD_KMH
   end
 
-  def resolved_country_name(point)
-    point[:country_name].presence || geodata_property(point, 'country')
+  # Resolve the country from the denormalized columns only — never from the
+  # geodata blob, which is empty whenever STORE_GEODATA is disabled (cloud
+  # production). country_id is the spatial source backfilled for every point;
+  # the country_name column is the fallback.
+  def resolved_country(point)
+    by_id = country_names_by_id[point[:country_id]] if point[:country_id].present?
+    by_id.presence || point[:country_name].presence
   end
 
   def resolved_city(point)
-    point[:city].presence || geodata_property(point, 'city')
-  end
-
-  def geodata_property(point, key)
-    return nil unless point.respond_to?(:[])
-
-    geodata = point[:geodata]
-    return nil unless geodata.is_a?(Hash)
-
-    geodata.dig('properties', key).presence
-  end
-
-  def canonical_country_name(point)
-    country_id = point[:country_id]
-    return resolved_country_name(point) if country_id.blank?
-
-    country_names_by_id[country_id] || resolved_country_name(point)
+    point[:city].presence
   end
 
   def country_names_by_id
