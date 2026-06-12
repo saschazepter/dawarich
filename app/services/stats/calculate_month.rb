@@ -55,7 +55,7 @@ class Stats::CalculateMonth
               .not_anomaly
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:lonlat, :timestamp, :city, :country_name, :country_id, :velocity)
+              .select(:lonlat, :timestamp, :city, :country_name, :country_id, :velocity, :geodata)
               .order(timestamp: :asc)
   end
 

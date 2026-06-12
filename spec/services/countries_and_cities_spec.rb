@@ -50,6 +50,30 @@ RSpec.describe CountriesAndCities do
       end
     end
 
+    context 'when only geodata holds the country and city' do
+      let(:kwargs) { { min_minutes_spent_in_city: 5 } }
+
+      let(:points) do
+        (0..3).map do |i|
+          create(:point, timestamp: timestamp + (i * 10).minutes).tap do |point|
+            point.update_columns(
+              city: nil,
+              country_name: nil,
+              country_id: nil,
+              geodata: { 'properties' => { 'country' => 'France', 'city' => 'Paris' } }
+            )
+          end
+        end
+      end
+
+      it 'falls back to the geodata country and city' do
+        result = countries_and_cities
+
+        expect(result.map(&:country)).to eq(['France'])
+        expect(result.first.cities.map(&:city)).to eq(['Paris'])
+      end
+    end
+
     context 'when min_minutes_spent_in_city is 60 (default)' do
       let(:kwargs) { { min_minutes_spent_in_city: 60 } }
 

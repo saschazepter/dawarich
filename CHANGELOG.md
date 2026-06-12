@@ -25,6 +25,7 @@ Upgrade notes:
 ### Fixed
 
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- Country and city statistics for previous years no longer show zero when older points have empty `country_name`/`city` columns but still carry reverse-geocoding data in `geodata`; the stats calculation now falls back to the stored `geodata` toponyms. #2732
 
 ## [1.8.1] - 2026-06-11
 
