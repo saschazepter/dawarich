@@ -25,6 +25,7 @@ Upgrade notes:
 
 ### Fixed
 
+- Family Members map layer no longer draws a stray line to the map center when a member location update lacks coordinates (#2863)
 - Insights and statistics now report the same number of countries visited, excluding fly-over countries without a qualifying city. (#2929)
 - OIDC login no longer fails with an "Issuer mismatch" error when the provider's issuer ends in a trailing slash (e.g. Authentik); the trailing slash is now preserved instead of being stripped. (#2925)
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
