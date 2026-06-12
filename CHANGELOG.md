@@ -29,6 +29,7 @@ Upgrade notes:
 - Insights and statistics now report the same number of countries visited, excluding fly-over countries without a qualifying city. (#2929)
 - OIDC login no longer fails with an "Issuer mismatch" error when the provider's issuer ends in a trailing slash (e.g. Authentik); the trailing slash is now preserved instead of being stripped. (#2925)
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
 
 ## [1.8.1] - 2026-06-11
