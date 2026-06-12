@@ -25,6 +25,7 @@ Upgrade notes:
 
 ### Fixed
 
+- OIDC login no longer fails with an "Issuer mismatch" error when the provider's issuer ends in a trailing slash (e.g. Authentik); the trailing slash is now preserved instead of being stripped. (#2925)
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
 
