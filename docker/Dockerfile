@@ -1,4 +1,4 @@
-FROM ruby:3.4.6-slim
+FROM ruby:3.4.9-slim
 
 ARG RAILS_ENV=production
 
