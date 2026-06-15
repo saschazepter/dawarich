@@ -59,7 +59,7 @@ jobs:
       # QEMU only needed for arm/v7 (armv7 emulated on aarch64 runner)
       - name: Set up QEMU
         if: matrix.platform == 'linux/arm/v7'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: linux/arm/v7
 
