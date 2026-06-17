@@ -174,6 +174,37 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
   end
 
+  create_table "flights", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "external_id", null: false
+    t.date "flight_date"
+    t.string "date_precision", default: "day", null: false
+    t.datetime "departure_time"
+    t.datetime "arrival_time"
+    t.string "from_code"
+    t.string "from_name"
+    t.float "from_lat"
+    t.float "from_lon"
+    t.string "to_code"
+    t.string "to_name"
+    t.float "to_lat"
+    t.float "to_lon"
+    t.string "airline_name"
+    t.string "airline_iata"
+    t.string "aircraft_name"
+    t.string "aircraft_reg"
+    t.string "flight_number"
+    t.string "seat"
+    t.string "seat_class"
+    t.text "note"
+    t.float "distance_km"
+    t.jsonb "raw", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "departure_time"], name: "index_flights_on_user_id_and_departure_time"
+    t.index ["user_id", "external_id"], name: "index_flights_on_user_id_and_external_id", unique: true
+    t.index ["user_id"], name: "index_flights_on_user_id"
+  end
   create_table "flipper_features", force: :cascade do |t|
     t.string "key", null: false
     t.datetime "created_at", null: false
@@ -545,6 +576,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   add_foreign_key "family_location_requests", "users", column: "target_user_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
+  add_foreign_key "flights", "users"
   add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"

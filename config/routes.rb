@@ -341,6 +341,8 @@ Rails.application.routes.draw do
 
       resources :timeline, only: [:index]
 
+      resources :flights, only: %i[index]
+
       namespace :maps do
         resources :hexagons, only: [:index] do
           collection do

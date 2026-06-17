@@ -12,6 +12,7 @@ Upgrade notes:
 
 ### Added
 
+- AirTrail integration: Dawarich can pull your flight history from a self-hosted [AirTrail](https://github.com/johanohly/AirTrail) instance and draw the flights as arcs on Map v2. Configure it on the Integrations page (with "Test connection" and "Sync now"); flights also re-sync daily, and the Flights map layer hides overlapping GPS points while enabled.
 - Run the app and Sidekiq containers under a custom user via `PUID`/`PGID` environment variables: the container starts as root, fixes ownership of the mounted volumes, then drops privileges. Use this instead of Compose `user:`, which cannot write to root-owned volumes (#1159).
 - Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
 - Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.

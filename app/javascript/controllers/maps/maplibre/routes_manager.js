@@ -567,6 +567,45 @@ export class RoutesManager {
   }
 
   /**
+   * Toggle AirTrail flights layer visibility (lazy-loads on first enable).
+   */
+  async toggleFlights(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting("flightsEnabled", enabled)
+
+    try {
+      const flightsLayer = this.layerManager.getLayer("flights")
+
+      if (enabled) {
+        if (flightsLayer && flightsLayer.data?.features?.length > 0) {
+          flightsLayer.show()
+        } else {
+          const api = this.controller.api
+          const flightsGeoJSON = await api.fetchFlights({
+            start_at: this.controller.startDateValue,
+            end_at: this.controller.endDateValue,
+          })
+
+          if (flightsLayer) {
+            flightsLayer.update(flightsGeoJSON)
+            flightsLayer.show()
+          }
+
+          const data = this.controller.mapDataManager?.lastLoadedData
+          if (data) data.flightsGeoJSON = flightsGeoJSON
+        }
+      } else if (flightsLayer) {
+        flightsLayer.hide()
+      }
+
+      this.controller.mapDataManager?.applyFlightMask()
+    } catch (error) {
+      console.error("Failed to toggle flights layer:", error)
+      Toast.error("Failed to load flights")
+    }
+  }
+
+  /**
    * Toggle points layer visibility
    */
   async togglePoints(event) {

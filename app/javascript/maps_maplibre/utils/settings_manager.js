@@ -60,6 +60,7 @@ const LAYER_NAME_MAP = {
   Photos: "photosEnabled",
   Areas: "areasEnabled",
   Tracks: "tracksEnabled",
+  Flights: "flightsEnabled",
   "Fog of War": "fogEnabled",
   "Scratch map": "scratchEnabled",
   "Family Members": "familyEnabled",

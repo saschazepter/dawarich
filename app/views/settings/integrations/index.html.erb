@@ -113,6 +113,49 @@
               </div>
             </div>
 
+            <div class="lg:col-span-2">
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'plane', class: 'mr-2 text-primary' %> AirTrail Integration
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control w-full">
+                  <%= f.label :airtrail_url, class: 'label' do %>
+                    <span class="label-text font-medium">AirTrail URL</span>
+                  <% end %>
+                  <%= f.url_field :airtrail_url, value: current_user.safe_settings.airtrail_url, class: "input input-bordered w-full pr-10", placeholder: 'https://airtrail.example.com' %>
+                  <span class="label-text-alt mt-1">The base URL of your AirTrail instance. Your flights are shown as arcs on the map.</span>
+                </div>
+                <div class="form-control w-full">
+                  <%= f.label :airtrail_api_key, class: 'label' do %>
+                    <span class="label-text font-medium">AirTrail API Key</span>
+                  <% end %>
+                  <div class="relative">
+                    <%= f.password_field :airtrail_api_key, value: current_user.safe_settings.airtrail_api_key, class: "input input-bordered w-full pr-10", placeholder: 'xxxxxxxxxxxxxx' %>
+                  </div>
+                  <span class="label-text-alt mt-1">Create an API key in AirTrail under Settings &rarr; Security.</span>
+                </div>
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-3">
+                    <%= f.check_box :airtrail_skip_ssl_verification,
+                        checked: current_user.safe_settings.airtrail_skip_ssl_verification,
+                        class: "toggle toggle-warning",
+                        onchange: "document.getElementById('airtrail-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+                    <span class="label-text">Skip SSL certificate verification (self-signed certificates)</span>
+                  </label>
+                  <div id="airtrail-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.airtrail_skip_ssl_verification %>">
+                    <%= icon 'triangle-alert'%>
+                    <span>
+                      <strong>Security Warning:</strong> Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks.
+                      Only enable this for self-signed certificates you trust on your local network.
+                    </span>
+                  </div>
+                </div>
+                <% if current_user.safe_settings.settings['airtrail_last_synced_at'].present? %>
+                  <p class="label-text-alt">Last synced: <%= current_user.safe_settings.settings['airtrail_last_synced_at'] %></p>
+                <% end %>
+              </div>
+            </div>
+
             <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
               <div class="lg:col-span-2">
                 <h2 class="text-2xl font-bold mb-4 flex items-center">
@@ -133,5 +176,20 @@
         </div>
       <% end %>
     </div>
+
+    <% if current_user.safe_settings.airtrail_url.present? %>
+      <div class="card bg-base-200 shadow-xl mt-6">
+        <div class="card-body flex-row items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 class="text-lg font-bold flex items-center">
+              <%= icon 'plane', class: 'mr-2 text-primary' %> Sync AirTrail flights
+            </h2>
+            <span class="label-text-alt">Flights also sync automatically once a day.</span>
+          </div>
+          <%= button_to 'Sync now', settings_background_jobs_path(job_name: 'start_airtrail_import'),
+              method: :post, class: 'btn btn-primary btn-sm' %>
+        </div>
+      </div>
+    <% end %>
   <% end %>
 </div>

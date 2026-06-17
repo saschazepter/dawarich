@@ -65,6 +65,7 @@ export class SettingsController {
       familyToggle: "familyEnabled",
       speedColoredToggle: "speedColoredRoutes",
       tracksToggle: "tracksEnabled",
+      flightsToggle: "flightsEnabled",
       anomaliesToggle: "anomaliesEnabled",
     }
 
