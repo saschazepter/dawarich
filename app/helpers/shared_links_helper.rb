@@ -26,4 +26,12 @@ module SharedLinksHelper
   def trip_share_subtitle(trip)
     "#{trip.name} is shared via a public link."
   end
+
+  def track_share_label(track, unit)
+    mode = track.dominant_mode&.titleize.presence || 'Track'
+    zone = track.user.timezone_iana.presence || 'UTC'
+    date = track.start_at.in_time_zone(zone).strftime('%-d %b %Y')
+    distance = track.distance_in_unit(unit).round
+    "#{mode} · #{date} · #{distance} #{unit}"
+  end
 end

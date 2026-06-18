@@ -20,7 +20,7 @@ class SharedLink < ApplicationRecord
       'show_photos' => false
     }.freeze,
     live: {
-      'show_photos' => false, 'history_hours' => 6
+      'show_photos' => false
     }.freeze
   }.freeze
 

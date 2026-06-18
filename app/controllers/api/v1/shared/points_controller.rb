@@ -5,12 +5,37 @@ module Api
     module Shared
       class PointsController < BaseController
         MAX_POINTS = 10_000
+        LIVE_FRESHNESS_SECONDS = 15 * 60
 
         def index
-          render json: serialize(scoped_points)
+          if link.resource_type.to_sym == :live
+            render json: live_points
+          else
+            render json: serialize(scoped_points)
+          end
         end
 
         private
+
+        # Current-position-only: the user's latest fresh point, privacy-masked.
+        # Returns [] when there is no point, it is stale (user offline), or it
+        # falls inside a privacy zone.
+        def live_points
+          row = link.user.points.not_anomaly.order(timestamp: :desc).limit(1).pick(
+            Arel.sql('ST_X(lonlat::geometry)'),
+            Arel.sql('ST_Y(lonlat::geometry)'),
+            :timestamp
+          )
+          return [] if row.nil?
+
+          lon, lat, ts = row
+          return [] if Time.current.to_i - ts.to_i > LIVE_FRESHNESS_SECONDS
+
+          point = SharedLinks::LivePoint.new(link.user, lat: lat, lon: lon, timestamp: ts).call
+          return [] if point[:masked]
+
+          [[point[:lon], point[:lat], point[:ts]]]
+        end
 
         def scoped_points
           case link.resource_type.to_sym
@@ -19,6 +44,11 @@ module Api
             return [] if trip.nil?
 
             outside_privacy_zones(trip.points)
+          when :track
+            track = link.resource
+            return [] if track.nil?
+
+            outside_privacy_zones(track.points)
           when :timeline
             range = timeline_epoch_range
             return [] if range.nil?

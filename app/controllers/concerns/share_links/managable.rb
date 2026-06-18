@@ -44,6 +44,7 @@ module ShareLinks
       return ensure_share! unless @share
 
       @share.update!(revoked_at: Time.current)
+      broadcast_live_share_ended(@share)
       redirect_to redirect_after_action_path, notice: 'Share link revoked.'
     end
 
@@ -60,6 +61,7 @@ module ShareLinks
           settings:      @share.settings,
           expires_at:    @share.expires_at
         )
+        broadcast_live_share_ended(@share)
         @share.destroy!
       end
       SharedLinks::OgImageJob.perform_later(transferred.id)
@@ -70,6 +72,7 @@ module ShareLinks
       return ensure_share! unless @share
 
       @share.update!(magic_phrase: SharedLink::PhraseGenerator.call)
+      broadcast_live_share_ended(@share)
       redirect_to redirect_after_action_path, notice: 'Magic phrase regenerated.'
     end
 
@@ -101,6 +104,12 @@ module ShareLinks
       keys = %i[show_photos show_stats]
       permitted = raw.respond_to?(:permit) ? raw.permit(*keys) : raw.slice(*keys.map(&:to_s))
       permitted.to_h.transform_values { |v| ActiveModel::Type::Boolean.new.cast(v) }
+    end
+
+    def broadcast_live_share_ended(share)
+      return unless share.resource_type == 'live'
+
+      SharedLocationChannel.broadcast_to(share, { revoked: true })
     end
 
     def expiry_from(raw)

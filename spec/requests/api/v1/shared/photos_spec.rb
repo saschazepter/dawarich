@@ -74,4 +74,34 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  context 'for a track share with photos' do
+    let(:track) do
+      create(:track, user: owner, start_at: Time.utc(2026, 4, 1), end_at: Time.utc(2026, 4, 14))
+    end
+    let(:link) do
+      create(:shared_link, user: owner, resource_type: :track, resource_id: track.id,
+                           settings: { 'show_photos' => true })
+    end
+    let(:found_photos) { [{ id: 'asset-1', source: 'immich', latitude: 52.0, longitude: 13.0 }] }
+
+    before do
+      allow(Photos::Search).to receive(:new).and_return(instance_double(Photos::Search, call: found_photos))
+    end
+
+    it 'returns geotagged photos within the track window' do
+      get "/api/v1/shared/#{link.id}/photos"
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body).first).to include('id' => 'asset-1', 'latitude' => 52.0)
+    end
+
+    it 'searches photos within the track start_at..end_at range' do
+      expect(Photos::Search).to receive(:new).with(
+        owner, start_date: track.start_at.iso8601, end_date: track.end_at.iso8601
+      ).and_return(instance_double(Photos::Search, call: found_photos))
+
+      get "/api/v1/shared/#{link.id}/photos"
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end

@@ -147,7 +147,7 @@ RSpec.describe SharedLink, type: :model do
       expect(SharedLink::DEFAULT_SETTINGS[:trip]).to include('show_photos' => false, 'show_stats' => false)
       expect(SharedLink::DEFAULT_SETTINGS[:track]).to include('show_stats' => false)
       expect(SharedLink::DEFAULT_SETTINGS[:timeline]).to include('show_photos' => false)
-      expect(SharedLink::DEFAULT_SETTINGS[:live]).to include('history_hours' => 6)
+      expect(SharedLink::DEFAULT_SETTINGS[:live]).to eq('show_photos' => false)
     end
 
     it 'returns defaults via .default_settings_for' do

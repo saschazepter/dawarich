@@ -24,7 +24,7 @@ FactoryBot.define do
     trait :live do
       resource_type { :live }
       resource_id { nil }
-      settings { { 'show_photos' => false, 'history_hours' => 6 } }
+      settings { { 'show_photos' => false } }
     end
 
     trait :with_phrase do

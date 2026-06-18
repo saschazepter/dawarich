@@ -57,6 +57,61 @@ RSpec.describe 'Shared::Links', type: :request do
     end
   end
 
+  describe 'happy-path GET /s/:id for a track' do
+    let(:owner) { create(:user) }
+    let(:track) do
+      create(:track, user: owner, dominant_mode: :driving, distance: 42_000,
+                     start_at: Time.utc(2026, 5, 12), end_at: Time.utc(2026, 5, 12, 1))
+    end
+    let(:link) do
+      create(:shared_link, user: owner, resource_type: :track, resource_id: track.id,
+                           settings: { 'show_stats' => true })
+    end
+
+    it 'renders the track viewer with the map container and derived label' do
+      get "/s/#{link.id}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('shared-trip-map')
+      expect(response.body).to include('Driving')
+    end
+
+    it 'shows a stats block with distance when show_stats is on' do
+      get "/s/#{link.id}"
+      expect(response.body).to include('Distance')
+    end
+
+    it 'shows the phrase prompt first for a phrase-protected track share' do
+      link.update!(magic_phrase: 'blau-tiger-berg')
+      get "/s/#{link.id}"
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.body).to include('magic phrase')
+    end
+  end
+
+  describe 'happy-path GET /s/:id for a live share' do
+    let(:owner) { create(:user) }
+    let(:link) { create(:shared_link, :live, user: owner, name: 'Live location') }
+
+    it 'renders the live map container wired to its own consumer (link id, no unlock token)' do
+      get "/s/#{link.id}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('shared-live-map')
+      expect(response.body).to include(link.id)
+      expect(response.body).not_to include(link.unlock_token.to_s) if link.unlock_token
+    end
+  end
+
+  describe 'dispatch for a resource_type without a partial' do
+    let(:link) { create(:shared_link, resource_type: :trip) }
+
+    it 'renders the unsupported view with 200 instead of raising MissingTemplate' do
+      allow_any_instance_of(SharedLink).to receive(:resource_type).and_return('mystery')
+      get "/s/#{link.id}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('share type is no longer supported')
+    end
+  end
+
   describe 'phrase-protected links' do
     let(:link) { create(:shared_link, :with_phrase) }
 

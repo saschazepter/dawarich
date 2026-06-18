@@ -1,0 +1,14 @@
+<section class="container mx-auto px-4 py-6"
+         data-controller="shared-live-map"
+         data-shared-live-map-link-id-value="<%= link.id %>">
+  <div class="flex items-center gap-3 mb-2">
+    <h1 class="text-3xl font-bold"><%= link.name %></h1>
+    <span class="badge badge-error gap-1">● Live</span>
+  </div>
+  <p data-shared-live-map-target="status" class="text-base-content/70 mb-4">Connecting…</p>
+
+  <div id="shared-live-map"
+       data-shared-live-map-target="map"
+       style="height: 60vh; min-height: 400px;"
+       class="rounded-lg overflow-hidden bg-base-200 my-6"></div>
+</section>

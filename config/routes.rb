@@ -99,6 +99,12 @@ Rails.application.routes.draw do
   resources :imports
   resources :tracks, only: [] do
     resources :segments, controller: 'tracks/segments', only: %i[index update]
+
+    resource :share_link, only: %i[new create destroy], controller: 'tracks/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
   end
   # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
   # once the redesign is known-stable so browsers cache the redirect.
@@ -137,6 +143,11 @@ Rails.application.routes.draw do
 
   namespace :share_links do
     resource :timeline, only: %i[new create destroy], controller: 'timelines' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+    resource :live, only: %i[new create destroy], controller: 'lives' do
       patch :revoke
       post  :regenerate
       post  :regenerate_phrase

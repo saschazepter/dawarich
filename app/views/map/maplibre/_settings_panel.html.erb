@@ -1212,6 +1212,13 @@
               <span class="text-xs">Replay</span>
             </button>
 
+            <%= link_to new_share_links_live_path,
+                        class: "btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3",
+                        data: { turbo_frame: "share-link-modal", testid: "live-share-button" } do %>
+              <%= icon 'share' %>
+              <span class="text-xs">Share live location</span>
+            <% end %>
+
             <% if DawarichSettings.self_hosted? || current_user.pro? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"

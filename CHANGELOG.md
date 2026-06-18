@@ -17,6 +17,8 @@ Upgrade notes:
 - Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
 - Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
 - Trip cards on `/trips` and the trip create/edit form now render their map with MapLibre instead of Leaflet, matching Map v2. The form map live-updates the route preview when the trip dates change.
+- Public sharing of individual **tracks**: a Share button on each track card creates an expiring public link showing that track's route, stats and (optionally) photos.
+- Public **live-location sharing**: share your current position in real time from the Map v2 Tools tab. Viewers see a single live dot over a public, optionally phrase-protected link; the location updates over a token-gated public channel and respects your privacy zones.
 
 ### Changed
 

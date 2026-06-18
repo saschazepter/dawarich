@@ -75,6 +75,11 @@ module Api
             return nil if trip.nil?
 
             [trip.started_at.iso8601, trip.ended_at.iso8601]
+          when :track
+            track = link.resource
+            return nil if track.nil?
+
+            [track.start_at.iso8601, track.end_at.iso8601]
           when :timeline
             zone = Time.find_zone(link.user.timezone_iana) || Time.find_zone('UTC')
             start_at = zone.parse(link.settings['start_date'].to_s)
