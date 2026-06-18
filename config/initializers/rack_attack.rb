@@ -244,6 +244,19 @@ Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
   req.ip if req.path.start_with?('/admin/flipper')
 end
 
+# Shared-link viewer + public shared API: anonymous traffic, no API key.
+# Per-IP throttle protects against runaway crawlers / bots.
+Rack::Attack.throttle('shared_links/viewer', limit: 60, period: 1.minute) do |req|
+  req.ip if req.path.match?(%r{\A/s/[^/]+\z}) || req.path.start_with?('/api/v1/shared/')
+end
+
+# Magic-phrase unlock attempts: 5 per (IP, link) per 5 minutes.
+Rack::Attack.throttle('shared_links/unlock', limit: 5, period: 5.minutes) do |req|
+  if req.post? && (match = req.path.match(%r{\A/s/([^/]+)/unlock\z}))
+    "#{req.ip}:#{match[1]}"
+  end
+end
+
 Rack::Attack.throttled_responder = lambda do |request|
   match_data = request.env['rack.attack.match_data'] || {}
   now = Time.current

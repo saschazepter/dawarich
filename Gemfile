@@ -17,6 +17,7 @@ gem 'connection_pool', '< 4' # Pin to 2.x - version 3.0+ has breaking API change
 gem 'data_migrate'
 gem 'devise', '>= 5.0.4'
 gem 'devise-two-factor'
+gem 'ferrum', '~> 0.17'
 gem 'fit4ruby', '~> 3.13'
 gem 'flipper', '~> 1.4'
 gem 'flipper-active_record', '~> 1.4'

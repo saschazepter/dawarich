@@ -65,3 +65,8 @@
     <%= render 'map/maplibre/residency_modal' %>
   <% end %>
 </div>
+
+<%# Public-share modal mount — kept OUTSIDE #maps-maplibre-container so the
+    daisyUI .modal isn't trapped inside the map's stacking context (the
+    data-turbo-permanent settings panel would otherwise overlap it). %>
+<turbo-frame id="share-link-modal"></turbo-frame>

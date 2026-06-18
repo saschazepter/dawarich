@@ -11,6 +11,8 @@ class Trip < ApplicationRecord
   has_rich_text :description
 
   belongs_to :user
+  has_many :shared_links, -> { where(resource_type: SharedLink.resource_types[:trip]) },
+           foreign_key: :resource_id, inverse_of: false, dependent: :destroy
 
   validates :name, :started_at, :ended_at, presence: true
   validate :started_at_before_ended_at

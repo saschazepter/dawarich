@@ -127,8 +127,30 @@ Rails.application.routes.draw do
       post :export
     end
     resources :notes, controller: 'trips/notes', only: %i[create update destroy]
+
+    resource :share_link, only: %i[new create destroy], controller: 'trips/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+  end
+
+  namespace :share_links do
+    resource :timeline, only: %i[new create destroy], controller: 'timelines' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
   end
   resources :tags, except: [:show]
+
+  # Public shared-link viewer
+  get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link
+  post '/s/:id/unlock',  to: 'shared/links#unlock',   as: :unlock_public_shared_link
+  get  '/s/:id/og.png',  to: 'shared/og_images#show', as: :public_shared_link_og_image
+  get  '/s/:id/og.html', to: 'shared/og_images#html',
+       constraints: ->(req) { Shared::OgImageAccessGuard.allowed?(req) },
+       as: :public_shared_link_og_html
 
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?
@@ -366,6 +388,12 @@ Rails.application.routes.draw do
       end
 
       resources :notes, only: %i[index show create update destroy]
+      namespace :shared do
+        get ':id/trip',   to: 'trips#show'
+        get ':id/points', to: 'points#index'
+        get ':id/photos', to: 'photos#index'
+        get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
+      end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
       post 'users/exist', to: 'users#exist'

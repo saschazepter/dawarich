@@ -1,0 +1,31 @@
+<% ctx = SharedLinkContext.new(link) %>
+<section class="container mx-auto px-4 py-6">
+  <h1 class="text-3xl font-bold mb-2"><%= resource.name %></h1>
+  <p class="text-base-content/70">
+    <%= l(resource.started_at.to_date, format: :long) %> –
+    <%= l(resource.ended_at.to_date, format: :long) %>
+  </p>
+
+  <div id="shared-trip-map"
+       data-controller="shared-trip-map"
+       data-shared-trip-map-link-id-value="<%= link.id %>"
+       data-shared-trip-map-show-photos-value="<%= ctx.show_photos? %>"
+       style="height: 60vh; min-height: 400px;"
+       class="rounded-lg overflow-hidden bg-base-200 my-6"></div>
+
+  <% if ctx.show_stats? %>
+    <% unit = link.user.safe_settings.distance_unit %>
+    <div class="stats shadow w-full">
+      <% if resource.distance.present? %>
+        <div class="stat">
+          <div class="stat-title">Distance</div>
+          <div class="stat-value text-2xl"><%= resource.distance_in_unit(unit).round %> <%= unit %></div>
+        </div>
+      <% end %>
+      <div class="stat">
+        <div class="stat-title">Days</div>
+        <div class="stat-value text-2xl"><%= (resource.ended_at.to_date - resource.started_at.to_date).to_i + 1 %></div>
+      </div>
+    </div>
+  <% end %>
+</section>

@@ -176,6 +176,7 @@ Upgrade notes:
 
 ### Added
 
+- Public location sharing — share a trip or a timeline date range via a revocable public link, with optional magic-phrase protection and an optional expiry date. Shared routes respect privacy zones; stats are opt-in (off by default) and OG previews are suppressed for phrase-protected links. #2804
 - Map v2 **Hexagons** layer (Pro) — H3 cell heatmap, zoom-adaptive resolution. #2568
 - Download a trip's points as GPX or GeoJSON from the trip page. #2400
 - OIDC PKCE support via `OIDC_PKCE_ENABLED=true` (off by default). #2282

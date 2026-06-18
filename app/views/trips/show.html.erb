@@ -64,6 +64,16 @@
                 title: "Edit trip" do %>
               <%= icon 'square-pen', class: 'w-4 h-4' %>
             <% end %>
+            <% trip_share = @trip.shared_links.active.first %>
+            <%= link_to new_trip_share_link_path(@trip),
+                class: "btn btn-sm btn-ghost relative",
+                title: "Share trip",
+                data: { turbo_frame: "share-link-modal" } do %>
+              <%= icon 'share', class: 'w-4 h-4' %>
+              <% if trip_share %>
+                <span class="badge badge-success badge-xs" aria-label="Currently shared">Public</span>
+              <% end %>
+            <% end %>
             <%= button_to trip_path(@trip),
                 method: :delete,
                 form: { data: { turbo_confirm: "Delete this trip? This cannot be undone." } },
@@ -79,6 +89,7 @@
 
         <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
       </div>
+      <turbo-frame id="share-link-modal"></turbo-frame>
 
       <%# Map tools toolbar %>
       <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -203,4 +214,5 @@
       </div>
     </div>
   </div>
+
 </div>
