@@ -61,7 +61,10 @@ module Points
     end
 
     def sql_type(column)
-      Point.columns_hash[column.to_s].sql_type
+      column_definition = Point.columns_hash[column.to_s]
+      raise ArgumentError, "Unknown points column: #{column}" unless column_definition
+
+      column_definition.sql_type
     end
 
     def quote_column(column)

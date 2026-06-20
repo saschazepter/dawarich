@@ -46,5 +46,13 @@ RSpec.describe Points::BulkUpdater do
 
       expect(point.reload.city).to be_nil
     end
+
+    it 'raises ArgumentError for an unknown column' do
+      point = create(:point, user:)
+
+      expect do
+        Points::BulkUpdater.call([{ id: point.id, nonexistent: 'x' }], %i[nonexistent])
+      end.to raise_error(ArgumentError, /Unknown points column: nonexistent/)
+    end
   end
 end
