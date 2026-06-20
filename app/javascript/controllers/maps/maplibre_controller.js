@@ -51,6 +51,7 @@ export default class extends Controller {
     "minutesBetweenValue",
     "minMinutesInCityValue",
     "maxGapMinutesValue",
+    "stayMaxGapMinutesValue",
     "gpsAccuracyThresholdValue",
     "gpsFilteringToggle",
     // Search
@@ -1199,6 +1200,9 @@ export default class extends Controller {
   }
   updateMaxGapMinutesDisplay(event) {
     return this.settingsController.updateMaxGapMinutesDisplay(event)
+  }
+  updateStayMaxGapMinutesDisplay(event) {
+    return this.settingsController.updateStayMaxGapMinutesDisplay(event)
   }
   updateGpsAccuracyThresholdDisplay(event) {
     return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
