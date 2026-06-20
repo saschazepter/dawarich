@@ -117,9 +117,7 @@ module ApplicationHelper
     case provider.to_s
     when 'google_oauth2', 'google' then 'Google'
     when 'apple' then 'Apple'
-    when 'github' then 'GitHub'
-    when 'openid_connect' then (defined?(OIDC_PROVIDER_NAME) ? OIDC_PROVIDER_NAME : 'OpenID Connect')
-    else oauth_provider_name(provider)
+    else oauth_provider_name(provider.to_sym)
     end
   end
 

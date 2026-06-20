@@ -356,6 +356,34 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#oauth_provider_display_name' do
+    it 'maps google_oauth2 to Google' do
+      expect(helper.oauth_provider_display_name('google_oauth2')).to eq('Google')
+    end
+
+    it 'maps the legacy google value to Google' do
+      expect(helper.oauth_provider_display_name('google')).to eq('Google')
+    end
+
+    it 'maps apple to Apple' do
+      expect(helper.oauth_provider_display_name('apple')).to eq('Apple')
+    end
+
+    it 'maps github to GitHub' do
+      expect(helper.oauth_provider_display_name('github')).to eq('GitHub')
+    end
+
+    it 'maps openid_connect to the configured OIDC provider name' do
+      stub_const('OIDC_PROVIDER_NAME', 'Authentik')
+
+      expect(helper.oauth_provider_display_name('openid_connect')).to eq('Authentik')
+    end
+
+    it 'falls back to a humanized name for unknown providers' do
+      expect(helper.oauth_provider_display_name('gitlab')).to eq('Gitlab')
+    end
+  end
+
   describe '#email_password_registration_enabled?' do
     context 'in cloud mode' do
       before do
