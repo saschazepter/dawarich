@@ -294,9 +294,16 @@ class User < ApplicationRecord
   end
 
   def supporter_info
-    return { supporter: false } if safe_settings.supporter_email.blank?
+    if safe_settings.supporter_email.present?
+      email_info = Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+      return email_info if email_info[:supporter]
+    end
 
-    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+    if safe_settings.supporter_github_username.present?
+      return Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+    end
+
+    { supporter: false }
   end
 
   private

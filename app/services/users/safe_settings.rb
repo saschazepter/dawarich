@@ -37,6 +37,7 @@ class Users::SafeSettings
     'news_emails_enabled' => true,
     'globe_projection' => true,
     'supporter_email' => nil,
+    'supporter_github_username' => nil,
     'show_supporter_badge' => true,
     # Transportation mode thresholds (speeds in km/h, distances in km)
     'transportation_thresholds' => {
@@ -257,6 +258,10 @@ class Users::SafeSettings
 
   def supporter_email
     settings['supporter_email']
+  end
+
+  def supporter_github_username
+    settings['supporter_github_username']
   end
 
   def show_supporter_badge?
