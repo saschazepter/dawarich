@@ -29,7 +29,7 @@
     </div>
   <% end %>
 
-  <% if devise_mapping.omniauthable? %>
+  <% if devise_mapping.omniauthable? && !signed_in? %>
     <% visible_omniauth_providers.each do |provider| %>
       <% config = oauth_button_config(provider) %>
       <div>

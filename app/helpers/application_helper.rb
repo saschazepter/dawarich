@@ -113,6 +113,16 @@ module ApplicationHelper
     OmniAuth::Utils.camelize(provider)
   end
 
+  def oauth_provider_display_name(provider)
+    case provider.to_s
+    when 'google_oauth2', 'google' then 'Google'
+    when 'apple' then 'Apple'
+    when 'github' then 'GitHub'
+    when 'openid_connect' then (defined?(OIDC_PROVIDER_NAME) ? OIDC_PROVIDER_NAME : 'OpenID Connect')
+    else oauth_provider_name(provider)
+    end
+  end
+
   OAUTH_PROVIDERS = {
     google_oauth2: {
       icon_name: 'google',
