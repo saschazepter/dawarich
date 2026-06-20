@@ -61,6 +61,7 @@ export default class extends Controller {
       return
     }
     const [lon, lat] = points[0]
+    this.setStatus("")
     this.placeMarker(lon, lat)
   }
 

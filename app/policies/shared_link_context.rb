@@ -22,4 +22,24 @@ class SharedLinkContext
   def show_stats?
     settings['show_stats'] == true
   end
+
+  def show_day_notes?
+    settings['show_day_notes'] == true
+  end
+
+  def show_route?
+    settings['show_route'] != false
+  end
+
+  def show_countries?
+    settings['show_countries'] != false
+  end
+
+  def show_description?
+    settings['show_description'] != false
+  end
+
+  def show_days?
+    settings['show_days'] != false
+  end
 end

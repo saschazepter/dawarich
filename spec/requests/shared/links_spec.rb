@@ -57,6 +57,47 @@ RSpec.describe 'Shared::Links', type: :request do
     end
   end
 
+  describe 'trip share section toggles' do
+    let(:owner) { create(:user) }
+    let(:trip) do
+      create(:trip, user: owner, name: 'Norway 2026',
+                    started_at: Time.utc(2026, 4, 1, 12), ended_at: Time.utc(2026, 4, 3, 12))
+    end
+
+    it 'shows the route map by default when the key is absent' do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id, settings: {})
+      get "/s/#{link.id}"
+      expect(response.body).to include('shared-trip-map')
+    end
+
+    it 'hides the map when show_route is false' do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: { 'show_route' => false })
+      get "/s/#{link.id}"
+      expect(response.body).not_to include('shared-trip-map')
+    end
+
+    it 'renders the day-by-day accordion rows when show_days is on' do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: { 'show_days' => true })
+      get "/s/#{link.id}"
+      expect(response.body).to include('Apr 1, Wednesday')
+    end
+
+    it 'omits the day-by-day rows when show_days is false' do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: { 'show_days' => false })
+      get "/s/#{link.id}"
+      expect(response.body).not_to include('Apr 1, Wednesday')
+    end
+
+    it 'never reveals the owner email (anonymous attribution)' do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id)
+      get "/s/#{link.id}"
+      expect(response.body).not_to include(owner.email)
+    end
+  end
+
   describe 'happy-path GET /s/:id for a track' do
     let(:owner) { create(:user) }
     let(:track) do

@@ -27,9 +27,10 @@ Rack::Attack.enabled = false if Rails.env.test?
 # Configurable per-plan limits. Override in tests via Rack::Attack.api_rate_limits=
 class Rack::Attack
   class << self
-    attr_accessor :api_rate_limits
+    attr_accessor :api_rate_limits, :shared_links_viewer_limit
   end
   self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000 }
+  self.shared_links_viewer_limit = 60
 end
 
 # Dynamic per-user rate limiting keyed by API token.
@@ -245,8 +246,13 @@ Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
 end
 
 # Shared-link viewer + public shared API: anonymous traffic, no API key.
-# Per-IP throttle protects against runaway crawlers / bots.
-Rack::Attack.throttle('shared_links/viewer', limit: 60, period: 1.minute) do |req|
+# Per-IP throttle protects against runaway crawlers / bots on cloud. Self-hosted
+# instances serve their own public pages with no quota.
+Rack::Attack.throttle('shared_links/viewer',
+                      limit: proc { Rack::Attack.shared_links_viewer_limit },
+                      period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+
   req.ip if req.path.match?(%r{\A/s/[^/]+\z}) || req.path.start_with?('/api/v1/shared/')
 end
 

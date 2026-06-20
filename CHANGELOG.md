@@ -19,12 +19,15 @@ Upgrade notes:
 - Trip cards on `/trips` and the trip create/edit form now render their map with MapLibre instead of Leaflet, matching Map v2. The form map live-updates the route preview when the trip dates change.
 - Public sharing of individual **tracks**: a Share button on each track card creates an expiring public link showing that track's route, stats and (optionally) photos.
 - Public **live-location sharing**: share your current position in real time from the Map v2 Tools tab. Viewers see a single live dot over a public, optionally phrase-protected link; the location updates over a token-gated public channel and respects your privacy zones.
+- Public shared **trip** pages now mirror the in-app trip layout — sticky day-colored map, a per-day accordion (hover a day to highlight it on the map, click to pin), stats, and a full **replay** scrubber. The trip share form gained per-section toggles to choose exactly what the public page exposes (route, stats, countries, description, day-by-day, per-day notes, photos).
 
 ### Changed
 
 - A trip's rich-text **notes** field is renamed to **description**; existing content is migrated automatically.
 - Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
 - Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
+- Self-hosted instances no longer rate-limit public shared pages (`/s/:id` and the shared API); the per-IP throttle now applies to cloud only.
+- Trip replay now plays back proportional to the real time between points, and the map/trip/public-share pages all share one replay implementation.
 - Ruby version updated to 3.4.9
 
 ### Fixed
@@ -36,6 +39,7 @@ Upgrade notes:
 - Users signed in via Google will now be able to sign in with new password after setting it up, instead of being locked out by the old password being ignored.
 - Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
+- Dragging the map during replay no longer snaps the view back to the moving marker; auto-follow yields until you reopen the replay panel.
 
 ## [1.8.1] - 2026-06-11
 

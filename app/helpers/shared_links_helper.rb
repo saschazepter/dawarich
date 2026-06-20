@@ -34,4 +34,16 @@ module SharedLinksHelper
     distance = track.distance_in_unit(unit).round
     "#{mode} · #{date} · #{distance} #{unit}"
   end
+
+  PUBLIC_SHARE_CTA_BASE = 'https://dawarich.app'
+
+  def public_share_cta_url(utm_content, path: '/')
+    utm = {
+      utm_source: 'dawarich_share',
+      utm_medium: 'public_share',
+      utm_campaign: 'cloud',
+      utm_content: utm_content
+    }.to_query
+    "#{PUBLIC_SHARE_CTA_BASE}#{path}?#{utm}"
+  end
 end

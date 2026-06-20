@@ -12,16 +12,24 @@
     <span class="label-text-alt mt-1">Leave blank for a link that never expires.</span>
   </div>
   <div class="form-control mt-4">
-    <label class="label cursor-pointer">
-      <span class="label-text">Show photos</span>
-      <%= hidden_field_tag 'shared_link[settings][show_photos]', '0' %>
-      <%= check_box_tag 'shared_link[settings][show_photos]', '1', false, class: 'checkbox' %>
-    </label>
-    <label class="label cursor-pointer">
-      <span class="label-text">Show stats</span>
-      <%= hidden_field_tag 'shared_link[settings][show_stats]', '0' %>
-      <%= check_box_tag 'shared_link[settings][show_stats]', '1', false, class: 'checkbox' %>
-    </label>
+    <span class="label-text font-semibold">What to include on the public page</span>
+    <%
+      sections = [
+        ['show_route',       'Route map',                              true],
+        ['show_stats',       'Stats & countries (distance, duration)', true],
+        ['show_days',        'Day-by-day breakdown',                   true],
+        ['show_day_notes',   'Per-day notes',                          false],
+        ['show_description', 'Trip description',                       true],
+        ['show_photos',      'Photos on map',                          false]
+      ]
+    %>
+    <% sections.each do |key, label, checked| %>
+      <label class="label cursor-pointer">
+        <span class="label-text"><%= label %></span>
+        <%= hidden_field_tag "shared_link[settings][#{key}]", '0' %>
+        <%= check_box_tag "shared_link[settings][#{key}]", '1', checked, class: 'checkbox' %>
+      </label>
+    <% end %>
   </div>
   <div class="modal-action">
     <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
