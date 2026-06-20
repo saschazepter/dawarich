@@ -40,7 +40,7 @@ module SharedLinks
 
     def day_stats
       tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
-      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE #{tz_quoted})::date"
+      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE #{tz_quoted})::date"
 
       points_outside_privacy_zones.reorder(nil).group(Arel.sql(day_expr)).pluck(
         Arel.sql(day_expr),

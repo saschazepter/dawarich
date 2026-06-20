@@ -59,4 +59,18 @@ RSpec.describe SharedLinks::TripDays do
     expect(km_rows.first[:distance_label]).to include('km')
     expect(mi_rows.first[:distance_label]).to include('mi')
   end
+
+  it 'buckets a point just after local midnight into the correct local day' do
+    boundary_trip = create(:trip, user: user,
+                                  started_at: Time.utc(2025, 1, 15),
+                                  ended_at: Time.utc(2025, 1, 16, 23, 59, 59))
+    create(:point, user: user, timestamp: Time.utc(2025, 1, 15, 12, 0).to_i, latitude: 52.0, longitude: 13.0)
+    create(:point, user: user, timestamp: Time.utc(2025, 1, 15, 23, 30).to_i, latitude: 52.6, longitude: 13.4)
+
+    rows = described_class.new(boundary_trip, timezone: 'Europe/Berlin', unit: 'km').call
+    jan16 = rows.find { |r| r[:date] == Date.new(2025, 1, 16) }
+
+    expect(jan16[:has_data]).to be true
+    expect(jan16[:first_time].strftime('%H:%M')).to eq('00:30')
+  end
 end

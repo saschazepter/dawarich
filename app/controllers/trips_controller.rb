@@ -16,7 +16,7 @@ class TripsController < ApplicationController
     @photo_previews = @trip.photo_previews
     @photo_sources = @trip.photo_sources
     @distance_unit = current_user.safe_settings.distance_unit
-    @timezone = current_user.timezone
+    @timezone = current_user.timezone_iana
     @day_notes = @trip.notes.index_by(&:date)
     @day_stats = compute_day_stats
 
@@ -153,7 +153,7 @@ class TripsController < ApplicationController
 
     Rails.cache.fetch(cache_key, expires_in: 1.hour) do
       tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
-      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE #{tz_quoted})::date"
+      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE #{tz_quoted})::date"
 
       rows = @trip.points.reorder(nil).group(Arel.sql(day_expr)).pluck(
         Arel.sql(day_expr),
