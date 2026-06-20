@@ -21,9 +21,15 @@
               data-controller="clipboard"
               data-clipboard-text-value="<%= public_shared_link_url(share.id) %>"
               data-action="click->clipboard#copy"
+              title="Copy link"
               aria-label="Copy public link">
         <%= icon 'copy', class: 'w-4 h-4' %>
       </button>
+      <%= link_to public_shared_link_url(share.id), target: '_blank', rel: 'noopener',
+                  class: 'btn btn-outline join-item', data: { turbo: false },
+                  title: 'Open in new tab', aria: { label: 'Open in new tab' } do %>
+        <%= icon 'external-link', class: 'w-4 h-4' %>
+      <% end %>
     </div>
   </div>
 

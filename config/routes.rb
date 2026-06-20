@@ -142,6 +142,10 @@ Rails.application.routes.draw do
   end
 
   namespace :share_links do
+    resource :hub, only: :show, controller: 'hubs'
+    resources :shares, only: [] do
+      member { patch :revoke }
+    end
     resource :timeline, only: %i[new create destroy], controller: 'timelines' do
       patch :revoke
       post  :regenerate
@@ -402,6 +406,7 @@ Rails.application.routes.draw do
       namespace :shared do
         get ':id/trip',   to: 'trips#show'
         get ':id/points', to: 'points#index'
+        get ':id/route',  to: 'points#route'
         get ':id/photos', to: 'photos#index'
         get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
       end

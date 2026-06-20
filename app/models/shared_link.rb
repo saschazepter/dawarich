@@ -20,7 +20,7 @@ class SharedLink < ApplicationRecord
       'show_photos' => false
     }.freeze,
     live: {
-      'show_photos' => false
+      'show_photos' => false, 'show_route' => false
     }.freeze
   }.freeze
 

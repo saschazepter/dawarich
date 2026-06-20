@@ -6,6 +6,10 @@ module ShareLinks
 
     private
 
+    def hub_tab
+      'timeline'
+    end
+
     def active_share_scope
       current_user.shared_links.where(resource_type: :timeline)
     end

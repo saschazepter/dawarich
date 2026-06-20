@@ -115,6 +115,17 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       expect(body.first[1]).to eq(60.0)
     end
 
+    it 'returns track points ordered by timestamp regardless of insertion order' do
+      create(:point, user: owner, track: track, timestamp: Time.utc(2026, 4, 12).to_i, latitude: 63.0, longitude: 23.0)
+      create(:point, user: owner, track: track, timestamp: Time.utc(2026, 4, 2).to_i,  latitude: 60.0, longitude: 20.0)
+      create(:point, user: owner, track: track, timestamp: Time.utc(2026, 4, 9).to_i,  latitude: 61.0, longitude: 21.0)
+
+      get "/api/v1/shared/#{link.id}/points"
+      timestamps = JSON.parse(response.body).map { |p| p[2] }
+      expect(timestamps.size).to be >= 3
+      expect(timestamps).to eq(timestamps.sort)
+    end
+
     it 'returns [] when the track no longer exists' do
       track.destroy
       get "/api/v1/shared/#{link.id}/points"
@@ -198,6 +209,53 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
     it 'returns [] when settings has unparseable dates' do
       link.update_columns(settings: { 'start_date' => 'not-a-date', 'end_date' => 'also-bogus' })
       get "/api/v1/shared/#{link.id}/points"
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq([])
+    end
+  end
+
+  describe 'GET route for a live share' do
+    let(:link) { create(:shared_link, :live, user: owner, settings: { 'show_route' => true }) }
+
+    it 'returns owner points since the share started as [lon, lat, ts] tuples' do
+      start = link.created_at.to_i
+      create(:point, user: owner, timestamp: start - 120, latitude: 60.0, longitude: 10.0)
+      create(:point, user: owner, timestamp: start + 30,  latitude: 61.0, longitude: 11.0)
+      create(:point, user: owner, timestamp: start + 90,  latitude: 62.0, longitude: 12.0)
+
+      get "/api/v1/shared/#{link.id}/route"
+      body = JSON.parse(response.body)
+      expect(response).to have_http_status(:ok)
+      expect(body.size).to eq(2)
+      expect(body.first[1]).to be_within(0.0001).of(61.0)
+      expect(body.last[1]).to be_within(0.0001).of(62.0)
+    end
+
+    it 'returns [] when route sharing is disabled' do
+      link.update_columns(settings: { 'show_route' => false })
+      create(:point, user: owner, timestamp: link.created_at.to_i + 30, latitude: 61.0, longitude: 11.0)
+
+      get "/api/v1/shared/#{link.id}/route"
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq([])
+    end
+
+    it 'excludes points inside a privacy zone' do
+      create(:point, user: owner, timestamp: link.created_at.to_i + 30, latitude: 52.0, longitude: 13.0)
+      home = create(:place, user: owner, latitude: 52.0, longitude: 13.0)
+      tag = create(:tag, user: owner, privacy_radius_meters: 500)
+      create(:tagging, tag: tag, taggable: home)
+
+      get "/api/v1/shared/#{link.id}/route"
+      expect(JSON.parse(response.body)).to eq([])
+    end
+
+    it 'returns [] for a non-live share' do
+      trip = create(:trip, user: owner)
+      trip_link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                       settings: { 'show_route' => true })
+
+      get "/api/v1/shared/#{trip_link.id}/route"
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)).to eq([])
     end

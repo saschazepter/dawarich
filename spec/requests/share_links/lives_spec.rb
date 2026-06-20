@@ -31,6 +31,16 @@ RSpec.describe 'ShareLinks::Lives', type: :request do
       expect(existing.reload.revoked_at).to be_present
       expect(user.shared_links.where(resource_type: :live).active.count).to eq(1)
     end
+
+    it 'stores show_route when the route box is checked' do
+      post share_links_live_path, params: { shared_link: { magic_phrase: '', settings: { show_route: '1' } } }
+      expect(user.shared_links.last.settings['show_route']).to be(true)
+    end
+
+    it 'defaults show_route to false when the box is unchecked' do
+      post share_links_live_path, params: { shared_link: { magic_phrase: '' } }
+      expect(user.shared_links.last.settings['show_route']).to be(false)
+    end
   end
 
   describe 'PATCH /share_links/live/revoke' do

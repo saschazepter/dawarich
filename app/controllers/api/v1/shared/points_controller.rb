@@ -15,7 +15,21 @@ module Api
           end
         end
 
+        def route
+          render json: serialize(route_points)
+        end
+
         private
+
+        def route_points
+          return [] unless link.resource_type.to_sym == :live
+          return [] unless ActiveModel::Type::Boolean.new.cast(link.settings['show_route'])
+
+          points = link.user.points.not_anomaly
+                       .where('timestamp >= ?', link.created_at.to_i)
+                       .order(:timestamp)
+          outside_privacy_zones(points)
+        end
 
         # Current-position-only: the user's latest fresh point, privacy-masked.
         # Returns [] when there is no point, it is stale (user offline), or it
@@ -43,12 +57,12 @@ module Api
             trip = link.resource
             return [] if trip.nil?
 
-            outside_privacy_zones(trip.points)
+            outside_privacy_zones(trip.points.order(:timestamp))
           when :track
             track = link.resource
             return [] if track.nil?
 
-            outside_privacy_zones(track.points)
+            outside_privacy_zones(track.points.order(:timestamp))
           when :timeline
             range = timeline_epoch_range
             return [] if range.nil?

@@ -6,6 +6,10 @@ module ShareLinks
 
     private
 
+    def hub_tab
+      'live'
+    end
+
     def active_share_scope
       current_user.shared_links.where(resource_type: :live)
     end

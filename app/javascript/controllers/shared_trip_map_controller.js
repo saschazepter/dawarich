@@ -110,7 +110,7 @@ export default class extends Controller {
       id: "route-line",
       type: "line",
       source: "route",
-      paint: { "line-color": "#0ea5e9", "line-width": 3 },
+      paint: { "line-color": "#6366F1", "line-width": 3 },
     })
 
     const bounds = coords.reduce(

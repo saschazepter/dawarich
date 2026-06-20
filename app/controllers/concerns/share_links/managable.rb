@@ -5,6 +5,7 @@ module ShareLinks
     extend ActiveSupport::Concern
 
     included do
+      include ShareLinks::HubStreamable
       before_action :authenticate_user!
       before_action :prepare_share_context
     end
@@ -26,7 +27,10 @@ module ShareLinks
 
       if saved
         SharedLinks::OgImageJob.perform_later(@shared_link.id)
-        redirect_to redirect_after_action_path, notice: 'Share link created.'
+        respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Share link created.')
+      elsif hub_request?
+        render turbo_stream: render_hub_streams(hub_tab, errors: @shared_link.errors.full_messages),
+               status: :unprocessable_content
       else
         @share = nil
         render :new, status: :unprocessable_content, layout: !turbo_frame_request?
@@ -37,7 +41,7 @@ module ShareLinks
       return ensure_share! unless @share
 
       @share.destroy!
-      redirect_to redirect_after_action_path, notice: 'Share link deleted.'
+      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Share link deleted.')
     end
 
     def revoke
@@ -45,7 +49,7 @@ module ShareLinks
 
       @share.update!(revoked_at: Time.current)
       broadcast_live_share_ended(@share)
-      redirect_to redirect_after_action_path, notice: 'Share link revoked.'
+      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Share link revoked.')
     end
 
     def regenerate
@@ -65,7 +69,7 @@ module ShareLinks
         @share.destroy!
       end
       SharedLinks::OgImageJob.perform_later(transferred.id)
-      redirect_to redirect_after_action_path, notice: 'URL regenerated.'
+      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'URL regenerated.')
     end
 
     def regenerate_phrase
@@ -73,10 +77,22 @@ module ShareLinks
 
       @share.update!(magic_phrase: SharedLink::PhraseGenerator.call)
       broadcast_live_share_ended(@share)
-      redirect_to redirect_after_action_path, notice: 'Magic phrase regenerated.'
+      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Magic phrase regenerated.')
     end
 
     private
+
+    def respond_with_hub_or(redirect_path, active_tab:, notice: nil)
+      if hub_request?
+        render turbo_stream: render_hub_streams(active_tab)
+      else
+        redirect_to redirect_path, notice: notice
+      end
+    end
+
+    def hub_tab
+      nil
+    end
 
     def prepare_share_context
       load_share_dependencies if respond_to?(:load_share_dependencies, true)
