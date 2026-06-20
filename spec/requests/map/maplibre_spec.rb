@@ -33,13 +33,14 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
     end
   end
 
-  describe 'Tools tab live-location share entry' do
-    it 'renders a Share live location button targeting the share-link-modal frame' do
+  describe 'share hub entry' do
+    it 'renders a Share button opening the share hub in the share-link-modal frame' do
       get map_v2_path
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(new_share_links_live_path)
-      expect(response.body).to include('Share live location')
+      expect(response.body).to include(share_links_hub_path)
+      expect(response.body).to include('timeline-share-button')
+      expect(response.body).to include('share-link-modal')
     end
   end
 end
