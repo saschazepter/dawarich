@@ -215,6 +215,17 @@ export class SettingsController {
       }
     }
 
+    // Sync visit detection settings
+    const stayMaxGapInput = controller.element.querySelector(
+      'input[name="stayMaxGapMinutes"]',
+    )
+    if (stayMaxGapInput) {
+      stayMaxGapInput.value = this.settings.stayMaxGapMinutes || 60
+      if (controller.hasStayMaxGapMinutesValueTarget) {
+        controller.stayMaxGapMinutesValueTarget.textContent = `${stayMaxGapInput.value} min`
+      }
+    }
+
     // Sync GPS noise filtering settings
     const gpsFilteringToggle = controller.element.querySelector(
       'input[name="gpsFilteringEnabled"]',
@@ -1162,6 +1173,7 @@ export class SettingsController {
         10,
       ),
       maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
+      stayMaxGapMinutes: parseInt(formData.get("stayMaxGapMinutes"), 10),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
       gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
     }
@@ -1343,6 +1355,12 @@ export class SettingsController {
   updateMaxGapMinutesDisplay(event) {
     if (this.controller.hasMaxGapMinutesValueTarget) {
       this.controller.maxGapMinutesValueTarget.textContent = `${event.target.value} min`
+    }
+  }
+
+  updateStayMaxGapMinutesDisplay(event) {
+    if (this.controller.hasStayMaxGapMinutesValueTarget) {
+      this.controller.stayMaxGapMinutesValueTarget.textContent = `${event.target.value} min`
     }
   }
 
