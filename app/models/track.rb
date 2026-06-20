@@ -22,6 +22,8 @@ class Track < ApplicationRecord
   belongs_to :user
   has_many :points, dependent: :nullify
   has_many :track_segments, dependent: :destroy
+  has_many :shared_links, -> { where(resource_type: SharedLink.resource_types[:track]) },
+           foreign_key: :resource_id, inverse_of: false, dependent: :destroy
 
   enum :dominant_mode, TRANSPORTATION_MODES, prefix: true
 

@@ -17,7 +17,8 @@ class Points::LiveBroadcaster
 
     live_map = user.safe_settings&.live_map_enabled
     family = family_sharing?(user)
-    return unless live_map || family
+    active_live = SharedLink.active.where(user_id: user_id, resource_type: :live).to_a
+    return if !live_map && !family && active_live.empty?
 
     payloads_by_timestamp = payloads.index_by { |p| p[:timestamp].to_i }
 
@@ -26,9 +27,25 @@ class Points::LiveBroadcaster
       broadcast_points(user, result, payload) if live_map
       broadcast_family(user, result) if family
     end
+
+    broadcast_live_shares(user, active_live) if active_live.any?
   end
 
   private
+
+  def broadcast_live_shares(user, shares)
+    latest = upserted_results.max_by { |r| r['timestamp'].to_i }
+    return if latest.nil?
+
+    point = SharedLinks::LivePoint.new(
+      user,
+      lat: latest['latitude'],
+      lon: latest['longitude'],
+      timestamp: latest['timestamp']
+    ).call
+
+    shares.each { |share| SharedLocationChannel.broadcast_to(share, point) }
+  end
 
   def family_sharing?(user)
     DawarichSettings.family_feature_enabled? &&

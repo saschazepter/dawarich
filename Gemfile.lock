@@ -394,8 +394,8 @@ GEM
       webfinger (~> 2.0)
     optimist (3.2.1)
     orm_adapter (0.5.0)
-    parallel (2.1.0)
     ostruct (0.6.3)
+    parallel (2.1.0)
     parser (3.3.11.1)
       ast (~> 2.4.1)
       racc

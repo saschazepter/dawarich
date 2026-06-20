@@ -46,6 +46,8 @@
       <%= yield %>
     </div>
 
+    <%= turbo_frame_tag 'share-link-modal' %>
+
     <% if user_signed_in? && current_user.imports.exists?(demo: true) %>
       <div id="demo-data-banner" class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))]" data-controller="demo-banner">
         <div class="alert alert-info shadow-lg py-1.5 px-3 flex items-center gap-1.5 rounded-lg whitespace-nowrap text-sm">
