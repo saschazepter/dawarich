@@ -103,6 +103,13 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(5)
       end
 
+      it 'preserves stay_max_gap_minutes when a patch omits it' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
+
+        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
+      end
+
       context 'when user is inactive' do
         before do
           user.update(status: :inactive, active_until: 1.day.ago)

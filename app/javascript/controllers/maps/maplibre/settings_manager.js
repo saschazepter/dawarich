@@ -1173,9 +1173,15 @@ export class SettingsController {
         10,
       ),
       maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
-      stayMaxGapMinutes: parseInt(formData.get("stayMaxGapMinutes"), 10),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
       gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
+    }
+
+    if (formData.has("stayMaxGapMinutes")) {
+      settings.stayMaxGapMinutes = parseInt(
+        formData.get("stayMaxGapMinutes"),
+        10,
+      )
     }
 
     // Collect transportation thresholds if present (convert from display units to metric)
