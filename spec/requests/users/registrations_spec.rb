@@ -900,4 +900,59 @@ RSpec.describe 'Users::Registrations', type: :request do
       end
     end
   end
+
+  describe 'GET /users/edit (account settings)' do
+    context 'when signed in as a Google OAuth user' do
+      let(:oauth_user) { create(:user, provider: 'google_oauth2', uid: '777', password: SecureRandom.hex(16)) }
+
+      # Providers stubbed so the shared partial would render the sign-in buttons
+      # for an unguarded (signed-in) user; the buttons must be hidden instead.
+      before do
+        allow(User).to receive(:omniauth_providers).and_return([:google_oauth2])
+        sign_in oauth_user
+      end
+
+      it 'renders without the "Sign in with Google" button' do
+        get edit_user_registration_path
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include('Sign in with Google')
+      end
+
+      it 'shows that the account is connected with Google' do
+        get edit_user_registration_path
+
+        expect(response.body).to include('Connected with Google')
+      end
+    end
+
+    context 'when signed in as an Apple OAuth user' do
+      let(:oauth_user) { create(:user, provider: 'apple', uid: '000.apple', password: SecureRandom.hex(16)) }
+
+      before { sign_in oauth_user }
+
+      it 'shows that the account is connected with Apple' do
+        get edit_user_registration_path
+
+        expect(response.body).to include('Connected with Apple')
+      end
+    end
+
+    context 'when signed in as an email/password user' do
+      let(:password_user) { create(:user, provider: nil, uid: nil) }
+
+      before do
+        allow(User).to receive(:omniauth_providers).and_return([:google_oauth2])
+        sign_in password_user
+      end
+
+      it 'renders without an OAuth sign-in button or a connected indicator' do
+        get edit_user_registration_path
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include('Sign in with Google')
+        expect(response.body).not_to include('Connected with')
+      end
+    end
+  end
 end

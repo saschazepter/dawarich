@@ -34,6 +34,7 @@ Upgrade notes:
 - Users signed in via Google will now be able to sign in with new password after setting it up, instead of being locked out by the old password being ignored.
 - Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
+- Signing in with Google resolves to a single account across web and mobile, and the account settings page shows which provider an OAuth account is connected with instead of offering a sign-in button. #2969
 
 ## [1.8.1] - 2026-06-11
 
