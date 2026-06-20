@@ -4,10 +4,8 @@ class SharedLink < ApplicationRecord
   RESOURCE_TYPES_REQUIRING_ID = %w[trip track].freeze
 
   belongs_to :user
-  has_one_attached :og_image
 
   enum :resource_type, { trip: 0, track: 1, timeline: 2, live: 3 }
-  enum :og_image_state, { pending: 0, ready: 1, failed: 2 }, prefix: :og_image
 
   DEFAULT_SETTINGS = {
     trip: {

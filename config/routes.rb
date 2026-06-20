@@ -162,10 +162,6 @@ Rails.application.routes.draw do
   # Public shared-link viewer
   get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link
   post '/s/:id/unlock',  to: 'shared/links#unlock',   as: :unlock_public_shared_link
-  get  '/s/:id/og.png',  to: 'shared/og_images#show', as: :public_shared_link_og_image
-  get  '/s/:id/og.html', to: 'shared/og_images#html',
-       constraints: ->(req) { Shared::OgImageAccessGuard.allowed?(req) },
-       as: :public_shared_link_og_html
 
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?

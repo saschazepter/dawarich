@@ -19,7 +19,7 @@ class Shared::LinksController < ApplicationController
       set_unlock_cookie
       redirect_to public_shared_link_path(@link.id)
     else
-      flash.now[:error] = I18n.t('shared.links.invalid_phrase')
+      flash.now[:error] = "That phrase didn't work. Try again."
       render :phrase_prompt, status: :unauthorized
     end
   end

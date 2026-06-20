@@ -26,7 +26,6 @@ module ShareLinks
       end
 
       if saved
-        SharedLinks::OgImageJob.perform_later(@shared_link.id)
         respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Share link created.')
       elsif hub_request?
         render turbo_stream: render_hub_streams(hub_tab, errors: @shared_link.errors.full_messages),
@@ -55,9 +54,8 @@ module ShareLinks
     def regenerate
       return ensure_share! unless @share
 
-      transferred = nil
       current_user.shared_links.transaction do
-        transferred = current_user.shared_links.create!(
+        current_user.shared_links.create!(
           resource_type: @share.resource_type,
           resource_id:   @share.resource_id,
           name:          @share.name,
@@ -68,7 +66,6 @@ module ShareLinks
         broadcast_live_share_ended(@share)
         @share.destroy!
       end
-      SharedLinks::OgImageJob.perform_later(transferred.id)
       respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'URL regenerated.')
     end
 

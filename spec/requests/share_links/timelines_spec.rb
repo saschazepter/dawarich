@@ -21,13 +21,12 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
   end
 
   describe 'POST /share_links/timeline' do
-    it 'creates a timeline SharedLink and queues the OG image job' do
+    it 'creates a timeline SharedLink' do
       expect do
         post share_links_timeline_path, params: {
           shared_link: { start_date: '2026-04-01', end_date: '2026-04-14', magic_phrase: '' }
         }
       end.to change { user.shared_links.where(resource_type: :timeline).count }.by(1)
-         .and have_enqueued_job(SharedLinks::OgImageJob)
       link = user.shared_links.where(resource_type: :timeline).last
       expect(link.settings['start_date']).to eq('2026-04-01')
       expect(link.settings['end_date']).to eq('2026-04-14')
@@ -69,7 +68,7 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
                                     settings: { 'start_date' => '2026-04-01', 'end_date' => '2026-04-14' },
                                     autobuild_trip: false)
       old_id = share.id
-      expect { post regenerate_share_links_timeline_path }.to have_enqueued_job(SharedLinks::OgImageJob)
+      post regenerate_share_links_timeline_path
       expect(SharedLink.exists?(old_id)).to be false
       expect(user.shared_links.where(resource_type: :timeline).active.count).to eq(1)
     end

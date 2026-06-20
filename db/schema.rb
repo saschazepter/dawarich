@@ -13,7 +13,6 @@
 ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
-  enable_extension "pgcrypto"
   enable_extension "postgis"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
@@ -388,7 +387,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.jsonb "settings", default: {}, null: false
     t.integer "view_count", default: 0, null: false
     t.datetime "last_accessed_at"
-    t.integer "og_image_state", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["resource_type", "resource_id"], name: "index_shared_links_on_resource_type_and_resource_id", where: "(resource_id IS NOT NULL)"
