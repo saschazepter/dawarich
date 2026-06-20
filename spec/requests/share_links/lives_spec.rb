@@ -32,6 +32,13 @@ RSpec.describe 'ShareLinks::Lives', type: :request do
       expect(user.shared_links.where(resource_type: :live).active.count).to eq(1)
     end
 
+    it 'broadcasts a terminal {revoked: true} to the prior live share before revoking it' do
+      existing = create(:shared_link, :live, user: user)
+      expect do
+        post share_links_live_path, params: { shared_link: { magic_phrase: '' } }
+      end.to have_broadcasted_to(existing).from_channel(SharedLocationChannel).with(revoked: true)
+    end
+
     it 'stores show_route when the route box is checked' do
       post share_links_live_path, params: { shared_link: { magic_phrase: '', settings: { show_route: '1' } } }
       expect(user.shared_links.last.settings['show_route']).to be(true)

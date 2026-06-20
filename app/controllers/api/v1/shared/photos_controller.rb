@@ -9,6 +9,7 @@ module Api
         def index
           return render(json: []) unless ctx.show_photos?
 
+          cache_public_for(60.seconds)
           render json: mappable_photos.map { |p| serialize(p) }
         rescue StandardError => e
           Rails.logger.error("Shared photos fetch failed: #{e.class} #{e.message}")
@@ -48,7 +49,9 @@ module Api
         end
 
         def capped_geotagged(photos)
-          photos.select { |p| p[:latitude].present? && p[:longitude].present? }.first(MAX_PHOTOS)
+          photos.select { |p| p[:latitude].present? && p[:longitude].present? }
+                .reject { |p| within_privacy_zone?(p[:latitude], p[:longitude]) }
+                .first(MAX_PHOTOS)
         end
 
         def allowed_ids_for(photos)

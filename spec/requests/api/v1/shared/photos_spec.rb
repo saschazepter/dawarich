@@ -75,6 +75,36 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
     end
   end
 
+  context 'when a photo falls inside a privacy zone' do
+    let(:link) do
+      create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                           settings: { 'show_photos' => true })
+    end
+    let(:found_photos) do
+      [{ id: 'public-1', source: 'immich', latitude: 60.0, longitude: 10.0 },
+       { id: 'private-1', source: 'immich', latitude: 52.0, longitude: 13.0 }]
+    end
+
+    before do
+      allow(Photos::Search).to receive(:new).and_return(instance_double(Photos::Search, call: found_photos))
+      home = create(:place, user: owner, latitude: 52.0, longitude: 13.0)
+      tag = create(:tag, user: owner, privacy_radius_meters: 500)
+      create(:tagging, tag: tag, taggable: home)
+    end
+
+    it 'excludes the masked photo from the index' do
+      get "/api/v1/shared/#{link.id}/photos"
+      ids = JSON.parse(response.body).map { |p| p['id'] }
+      expect(ids).to eq(['public-1'])
+    end
+
+    it 'returns 404 for a masked photo thumbnail without contacting the integration' do
+      expect(Photos::Thumbnail).not_to receive(:new)
+      get "/api/v1/shared/#{link.id}/photos/private-1/thumbnail", params: { source: 'immich' }
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   context 'for a track share with photos' do
     let(:track) do
       create(:track, user: owner, start_at: Time.utc(2026, 4, 1), end_at: Time.utc(2026, 4, 14))

@@ -11,11 +11,13 @@ module Api
           if link.resource_type.to_sym == :live
             render json: live_points
           else
+            cache_public_for(30.seconds)
             render json: serialize(scoped_points)
           end
         end
 
         def route
+          cache_public_for(30.seconds)
           render json: serialize(route_points)
         end
 
@@ -80,14 +82,6 @@ module Api
           condition = zones.map { 'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
                            .join(' OR ')
           points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
-        end
-
-        def privacy_zones
-          link.user.tags.privacy_zones.includes(:places).flat_map do |tag|
-            tag.places.map do |place|
-              { lon: place.longitude.to_f, lat: place.latitude.to_f, radius: tag.privacy_radius_meters }
-            end
-          end
         end
 
         def timeline_epoch_range

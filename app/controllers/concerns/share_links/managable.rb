@@ -61,7 +61,7 @@ module ShareLinks
           name:          @share.name,
           magic_phrase:  @share.magic_phrase,
           settings:      @share.settings,
-          expires_at:    @share.expires_at
+          expires_at:    (@share.expires_at if @share.expires_at&.future?)
         )
         broadcast_live_share_ended(@share)
         @share.destroy!
@@ -107,6 +107,7 @@ module ShareLinks
     end
 
     def revoke_existing_active_shares!
+      active_share_scope.active.find_each { |share| broadcast_live_share_ended(share) }
       active_share_scope.active.update_all(revoked_at: Time.current)
     end
 

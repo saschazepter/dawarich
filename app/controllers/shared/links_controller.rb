@@ -43,7 +43,7 @@ class Shared::LinksController < ApplicationController
   def set_unlock_cookie
     cookies.encrypted[unlock_cookie_key] = {
       value: @link.unlock_token,
-      expires: 1.hour.from_now,
+      expires: @link.expires_at || 30.days.from_now,
       httponly: true,
       secure: Rails.env.production?,
       same_site: :lax
