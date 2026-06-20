@@ -115,7 +115,7 @@ module ApplicationHelper
 
   def oauth_provider_display_name(provider)
     case provider.to_s
-    when 'google_oauth2', 'google' then 'Google'
+    when 'google_oauth2' then 'Google'
     when 'apple' then 'Apple'
     else oauth_provider_name(provider.to_sym)
     end
