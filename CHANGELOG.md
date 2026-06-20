@@ -40,6 +40,7 @@ Upgrade notes:
 - Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
 - Dragging the map during replay no longer snaps the view back to the moving marker; auto-follow yields until you reopen the replay panel.
+- Signing in with Google resolves to a single account across web and mobile, and the account settings page shows which provider an OAuth account is connected with instead of offering a sign-in button. #2969
 
 ## [1.8.1] - 2026-06-11
 
@@ -49,6 +50,7 @@ Upgrade notes:
 
 ### Added
 
+- Map v2 settings panel: a **Visit Max Gap** slider to tune the stay-point visit detector's maximum gap (minutes) between points within a single visit. Only shown when the `stay_point_detection` feature flag is enabled (off by default).
 - Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)
 
 ### Changed

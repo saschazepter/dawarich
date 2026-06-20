@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::Auth::GoogleController < Api::V1::Auth::BaseController
-  PROVIDER = 'google'
+  PROVIDER = 'google_oauth2'
   PROVIDER_LABEL = 'Google'
 
   def create

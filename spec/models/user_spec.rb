@@ -691,6 +691,24 @@ subscription_source: :none)
         expect(user.email).to eq(email)
         expect(user.persisted?).to be true
       end
+
+      context 'when the same Google account was first registered via the mobile app' do
+        let!(:mobile_user) do
+          create(:user,
+                 email: email,
+                 provider: Api::V1::Auth::GoogleController::PROVIDER,
+                 uid: '123545')
+        end
+
+        it 'signs in the existing user by identity without prompting to link' do
+          user = nil
+          expect do
+            user = described_class.from_omniauth(auth_hash)
+          end.not_to change(User, :count)
+
+          expect(user).to eq(mobile_user)
+        end
+      end
     end
 
     context 'when email is blank or nil' do

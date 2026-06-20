@@ -15,6 +15,12 @@
               <p class="mt-1 text-sm text-base-content/70">Update your email address and password from one place.</p>
             </div>
 
+            <% if current_user.oauth_user? %>
+              <div class="rounded-xl border border-base-300 bg-base-200/50 px-4 py-3 text-sm font-medium">
+                Connected with <%= oauth_provider_display_name(current_user.provider) %>
+              </div>
+            <% end %>
+
             <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', method: :put, data: { turbo_method: :put, turbo: false }) do |f| %>
               <%= render "devise/shared/error_messages", resource: resource %>
 
