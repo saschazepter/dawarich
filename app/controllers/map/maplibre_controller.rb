@@ -25,9 +25,20 @@ module Map
 
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
+
+      return unless DawarichSettings.poster_service_enabled?
+
+      @poster_themes = cached_poster_themes
+      @recent_posters = current_user.posters.with_attached_image.order(created_at: :desc).limit(10)
     end
 
     private
+
+    def cached_poster_themes
+      Rails.cache.fetch('poster_service_themes', expires_in: 1.hour, skip_nil: true) do
+        Posters::Client.new.themes.presence
+      end || []
+    end
 
     # Reuses the same month-resolution rule as the calendar helper so the
     # filter pills are aligned with whatever month the calendar lands on

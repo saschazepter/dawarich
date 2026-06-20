@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_11_135333) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -376,6 +376,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
   end
 
+  create_table "posters", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.integer "status", default: 0, null: false
+    t.jsonb "settings", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_posters_on_user_id"
+  end
+
   create_table "stats", force: :cascade do |t|
     t.integer "year", null: false
     t.integer "month", null: false
@@ -585,6 +595,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
+  add_foreign_key "posters", "users"
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"

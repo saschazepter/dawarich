@@ -54,6 +54,18 @@
     <%= icon 'play', class: 'w-5 h-5', aria: { hidden: true } %>
   </button>
 
+  <% if DawarichSettings.poster_service_enabled? %>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->map-panel#openTab"
+            data-tab="poster"
+            data-testid="map-button-poster"
+            aria-label="Poster"
+            title="Poster">
+      <%= icon 'camera' %>
+    </button>
+  <% end %>
+
   <div class="map-button-cluster__divider" aria-hidden="true"></div>
 
   <button type="button"

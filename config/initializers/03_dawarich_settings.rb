@@ -13,6 +13,10 @@ class DawarichSettings
       @photon_enabled ||= PHOTON_API_HOST.present?
     end
 
+    def poster_service_enabled?
+      POSTER_SERVICE_URL.present?
+    end
+
     def photon_uses_komoot_io?
       @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
     end

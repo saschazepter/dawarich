@@ -22,6 +22,7 @@ export default class extends Controller {
     tools: "Tools",
     links: "Links",
     settings: "Settings",
+    poster: "Poster",
   }
 
   connect() {

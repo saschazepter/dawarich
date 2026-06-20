@@ -121,6 +121,7 @@ Rails.application.routes.draw do
     end
   end
   resources :exports, only: %i[index create destroy]
+  resources :posters, only: %i[create destroy]
   resources :trips do
     member do
       post :recalculate

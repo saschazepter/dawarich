@@ -1443,6 +1443,100 @@
           </div>
         </div>
       <% end %>
+
+      <% if DawarichSettings.poster_service_enabled? %>
+        <div class="tab-content" data-tab-content="poster" data-map-panel-target="tabContent">
+          <div data-controller="poster-tab" class="space-y-4">
+            <%= turbo_stream_from current_user, :posters %>
+
+            <% if @poster_themes.blank? %>
+              <div class="alert alert-warning text-sm">Poster service is unreachable. Try again later.</div>
+            <% end %>
+
+            <%= form_with url: posters_path, scope: :poster, method: :post, class: 'space-y-3',
+                  data: { action: 'submit->poster-tab#prepareSubmit' } do |f| %>
+              <div>
+                <%= f.label :name, 'Title', class: 'label py-1' %>
+                <%= f.text_field :name, placeholder: 'Berlin', class: 'input input-bordered input-sm w-full' %>
+              </div>
+
+              <div data-controller="poster-theme-picker">
+                <span class="label py-1"><span class="label-text">Theme</span></span>
+
+                <input type="hidden" name="poster[theme]"
+                       value="<%= Array(@poster_themes).first&.dig('key') %>"
+                       data-poster-theme-picker-target="input">
+
+                <div class="rounded-lg border border-base-300 bg-base-100 p-2 mb-2">
+                  <div data-poster-theme-picker-target="previewMock"
+                       class="relative w-full overflow-hidden rounded-md border border-base-300"
+                       style="height: 150px;">
+                    <img data-poster-theme-picker-target="previewImage" alt="" loading="lazy"
+                         class="absolute inset-0 h-full w-full object-cover">
+                  </div>
+                  <div class="mt-2 min-w-0">
+                    <div data-poster-theme-picker-target="previewName" class="truncate text-sm font-semibold"></div>
+                    <div data-poster-theme-picker-target="previewDescription" class="text-xs leading-snug opacity-70 line-clamp-2" style="height: 2.25rem; overflow: hidden;"></div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-6 gap-1.5" data-action="mouseleave->poster-theme-picker#restorePreview">
+                  <% Array(@poster_themes).each do |theme| %>
+                    <button type="button"
+                            class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
+                            style="height: 44px; background-image: url('<%= asset_path("poster_themes/#{theme['key']}.webp") %>'); background-size: cover; background-position: center;"
+                            title="<%= theme['name'] %>"
+                            aria-label="<%= theme['name'] %> theme"
+                            aria-pressed="false"
+                            data-poster-theme-picker-target="swatch"
+                            data-key="<%= theme['key'] %>"
+                            data-name="<%= theme['name'] %>"
+                            data-bg="<%= theme['bg'] %>"
+                            data-route="<%= theme['route'] %>"
+                            data-text="<%= theme['text'] %>"
+                            data-description="<%= theme['description'] %>"
+                            data-thumb="<%= asset_path("poster_themes/lg/#{theme['key']}.webp") %>"
+                            data-action="click->poster-theme-picker#select mouseenter->poster-theme-picker#preview"></button>
+                  <% end %>
+                </div>
+              </div>
+
+              <div data-controller="range-display">
+                <div class="flex items-center justify-between py-1">
+                  <span class="label-text text-xs">Route opacity</span>
+                  <span class="text-xs font-medium tabular-nums opacity-80" data-range-display-target="output"></span>
+                </div>
+                <%= f.range_field :route_opacity, in: 0.1..1.0, step: 0.1, value: 0.6,
+                      class: 'range range-primary range-xs',
+                      data: { range_display_target: 'input', action: 'input->range-display#update' } %>
+              </div>
+
+              <%= f.hidden_field :lat, data: { poster_tab_target: 'lat' } %>
+              <%= f.hidden_field :lon, data: { poster_tab_target: 'lon' } %>
+              <%= f.hidden_field :distance, data: { poster_tab_target: 'distance' } %>
+              <%= f.hidden_field :start_at, data: { poster_tab_target: 'startAt' } %>
+              <%= f.hidden_field :end_at, data: { poster_tab_target: 'endAt' } %>
+              <%= f.hidden_field :source, data: { poster_tab_target: 'source' } %>
+
+              <%= f.submit 'Generate poster', class: 'btn btn-primary btn-sm w-full',
+                    disabled: @poster_themes.blank?,
+                    data: { poster_tab_target: 'submit', themes_missing: @poster_themes.blank?,
+                            turbo_submits_with: 'Generating…' } %>
+              <p class="text-xs text-warning hidden" data-poster-tab-target="emptyNotice">No location data in this date range.</p>
+              <p class="text-xs text-warning hidden" data-poster-tab-target="outOfAreaNotice">No tracks in the selected area — move the frame over your route.</p>
+              <p class="text-xs opacity-70" data-poster-tab-target="areaLabel"></p>
+              <p class="text-[11px] leading-snug opacity-60">Captures exactly what's inside the frame, for the current date range.</p>
+            <% end %>
+
+            <div class="divider my-2"></div>
+
+            <h4 class="font-semibold text-sm">Recent posters</h4>
+            <div id="poster-gallery-list" class="space-y-3">
+              <%= render partial: 'posters/poster', collection: @recent_posters %>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>
