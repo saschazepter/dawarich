@@ -124,6 +124,7 @@ RSpec.describe Users::SafeSettings do
             'news_emails_enabled' => true,
             'globe_projection' => true,
             'supporter_email' => nil,
+            'supporter_github_username' => nil,
             'show_supporter_badge' => true,
             'transportation_thresholds' => {
               'walking_max_speed' => 7,

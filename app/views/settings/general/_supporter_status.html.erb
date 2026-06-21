@@ -18,20 +18,31 @@
             <%= vf.label :supporter_email, class: 'label' do %>
               <span class="label-text font-medium">Email used for Patreon/GitHub/Ko-fi</span>
             <% end %>
-            <div class="join w-full">
-              <%= vf.email_field :supporter_email,
-                  value: current_user.safe_settings.supporter_email,
-                  class: 'input input-bordered join-item w-full',
-                  placeholder: 'supporter@example.com' %>
-              <%= vf.submit 'Verify', class: 'btn btn-primary join-item' %>
-            </div>
+            <%= vf.email_field :supporter_email,
+                value: current_user.safe_settings.supporter_email,
+                class: 'input input-bordered w-full',
+                placeholder: 'supporter@example.com' %>
           </div>
+
+          <div class="form-control mt-3">
+            <%= vf.label :supporter_github_username, class: 'label' do %>
+              <span class="label-text font-medium">GitHub username (for GitHub Sponsors with a private email)</span>
+            <% end %>
+            <%= vf.text_field :supporter_github_username,
+                value: current_user.safe_settings.supporter_github_username,
+                class: 'input input-bordered w-full',
+                placeholder: 'octocat',
+                autocapitalize: 'none',
+                autocorrect: 'off' %>
+          </div>
+
+          <%= vf.submit 'Verify', class: 'btn btn-primary mt-3' %>
         <% end %>
 
-        <% if current_user.safe_settings.supporter_email.present? && !current_user.supporter? %>
+        <% if (current_user.safe_settings.supporter_email.present? || current_user.safe_settings.supporter_github_username.present?) && !current_user.supporter? %>
           <div class="alert">
             <%= icon 'triangle-alert', class: 'w-5 h-5 text-warning' %>
-            <span>Email not found in supporter list. Make sure you're using the same email as your donation platform.</span>
+            <span>Not found in supporter list. Make sure you're using the same email or GitHub username as your donation platform.</span>
           </div>
         <% end %>
 
