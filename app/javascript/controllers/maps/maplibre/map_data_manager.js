@@ -1,6 +1,11 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import {
+  flightWindows,
+  maskLines,
+  maskPoints,
+} from "maps_maplibre/utils/flight_mask"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
@@ -256,6 +261,7 @@ export class MapDataManager {
       photos: "photos",
       fog: "fog",
       scratch: "scratch",
+      flights: "flights",
     }
     const layerName = layerMap[source]
     if (!layerName) return
@@ -263,6 +269,44 @@ export class MapDataManager {
     const layer = this.layerManager?.getLayer(layerName)
     if (layer) {
       layer.update(geoJSON)
+    }
+
+    if (source === "flights") {
+      this.applyFlightMask()
+    }
+  }
+
+  /**
+   * Give AirTrail flights render priority: when the Flights layer is visible,
+   * hide GPS points/routes/tracks that fall inside a flight's time window.
+   * When hidden, restore the original (unmasked) GPS geometry. Reversible.
+   */
+  applyFlightMask() {
+    const flightsLayer = this.layerManager?.getLayer("flights")
+    const data = this.lastLoadedData
+    if (!data) return
+
+    const pointsLayer = this.layerManager?.getLayer("points")
+    const routesLayer = this.layerManager?.getLayer("routes")
+    const tracksLayer = this.layerManager?.getLayer("tracks")
+
+    const windows = flightsLayer?.visible
+      ? flightWindows(data.flightsGeoJSON)
+      : []
+
+    if (windows.length === 0) {
+      pointsLayer?.update(data.pointsGeoJSON || EMPTY_GEOJSON)
+      routesLayer?.update(data.routesGeoJSON || EMPTY_GEOJSON)
+      if (data.tracksGeoJSON) tracksLayer?.update(data.tracksGeoJSON)
+      return
+    }
+
+    pointsLayer?.update(
+      maskPoints(data.pointsGeoJSON || EMPTY_GEOJSON, windows),
+    )
+    routesLayer?.update(maskLines(data.routesGeoJSON || EMPTY_GEOJSON, windows))
+    if (data.tracksGeoJSON) {
+      tracksLayer?.update(maskLines(data.tracksGeoJSON, windows))
     }
   }
 
@@ -308,6 +352,7 @@ export class MapDataManager {
         data.areasGeoJSON,
         data.tracksGeoJSON,
         data.placesGeoJSON,
+        data.flightsGeoJSON,
       )
 
       // Setup event handlers after layers are added

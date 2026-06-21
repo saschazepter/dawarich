@@ -65,6 +65,7 @@ export class SettingsController {
       familyToggle: "familyEnabled",
       speedColoredToggle: "speedColoredRoutes",
       tracksToggle: "tracksEnabled",
+      flightsToggle: "flightsEnabled",
       anomaliesToggle: "anomaliesEnabled",
     }
 
@@ -211,6 +212,17 @@ export class SettingsController {
       maxGapInput.value = this.settings.maxGapMinutesInCity || 120
       if (controller.hasMaxGapMinutesValueTarget) {
         controller.maxGapMinutesValueTarget.textContent = `${maxGapInput.value} min`
+      }
+    }
+
+    // Sync visit detection settings
+    const stayMaxGapInput = controller.element.querySelector(
+      'input[name="stayMaxGapMinutes"]',
+    )
+    if (stayMaxGapInput) {
+      stayMaxGapInput.value = this.settings.stayMaxGapMinutes || 60
+      if (controller.hasStayMaxGapMinutesValueTarget) {
+        controller.stayMaxGapMinutesValueTarget.textContent = `${stayMaxGapInput.value} min`
       }
     }
 
@@ -1165,6 +1177,13 @@ export class SettingsController {
       gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
     }
 
+    if (formData.has("stayMaxGapMinutes")) {
+      settings.stayMaxGapMinutes = parseInt(
+        formData.get("stayMaxGapMinutes"),
+        10,
+      )
+    }
+
     // Collect transportation thresholds if present (convert from display units to metric)
     const basicThresholdFields = [
       "walkingMaxSpeed",
@@ -1342,6 +1361,12 @@ export class SettingsController {
   updateMaxGapMinutesDisplay(event) {
     if (this.controller.hasMaxGapMinutesValueTarget) {
       this.controller.maxGapMinutesValueTarget.textContent = `${event.target.value} min`
+    }
+  }
+
+  updateStayMaxGapMinutesDisplay(event) {
+    if (this.controller.hasStayMaxGapMinutesValueTarget) {
+      this.controller.stayMaxGapMinutesValueTarget.textContent = `${event.target.value} min`
     }
   }
 

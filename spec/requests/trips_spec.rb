@@ -52,6 +52,56 @@ RSpec.describe '/trips', type: :request do
 
       expect(response).to be_successful
     end
+
+    it 'renders the recalculate button' do
+      get trip_url(trip)
+
+      expect(response.body).to include('Recalculate')
+    end
+
+    it 'renders header edit and delete actions' do
+      get trip_url(trip)
+
+      expect(response.body).to include(edit_trip_path(trip))
+      expect(response.body).to include('Delete this trip')
+    end
+
+    it 'computes day stats with PostGIS (no Ruby Geocoder fallback)' do
+      allow(Geocoder::Calculations).to receive(:distance_between).and_call_original
+
+      get trip_url(trip)
+
+      expect(response).to be_successful
+      expect(Geocoder::Calculations).not_to have_received(:distance_between)
+    end
+
+    context 'when the user timezone is not UTC' do
+      before { user.update!(settings: user.settings.merge('timezone' => 'Europe/Berlin')) }
+
+      let(:boundary_trip) do
+        create(:trip, user:, started_at: Time.utc(2025, 1, 15), ended_at: Time.utc(2025, 1, 16, 23, 59, 59))
+      end
+
+      it 'buckets a point just after local midnight into its correct local day' do
+        create(:point, user:, timestamp: Time.utc(2025, 1, 15, 12, 0).to_i, latitude: 52.0, longitude: 13.0)
+        create(:point, user:, timestamp: Time.utc(2025, 1, 15, 23, 30).to_i, latitude: 52.6, longitude: 13.4)
+
+        get trip_url(boundary_trip)
+
+        day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2025-01-16']")
+        expect(day.text).to include('00:30')
+        expect(day.text).not_to include('No data')
+      end
+
+      it 'renders successfully when the timezone is a non-IANA ActiveSupport name' do
+        user.update!(settings: user.settings.merge('timezone' => 'Berlin'))
+        create(:point, user:, timestamp: Time.utc(2025, 1, 15, 12, 0).to_i, latitude: 52.0, longitude: 13.0)
+
+        get trip_url(boundary_trip)
+
+        expect(response).to be_successful
+      end
+    end
   end
 
   describe 'GET /new' do
@@ -131,7 +181,7 @@ RSpec.describe '/trips', type: :request do
       let(:new_attributes) do
         {
           name: 'Updated Trip Name',
-          notes: 'Changed trip notes'
+          description: 'Changed trip notes'
         }
       end
       let(:trip) { create(:trip, :with_points, user:) }
@@ -141,8 +191,8 @@ RSpec.describe '/trips', type: :request do
         trip.reload
 
         expect(trip.name).to eq('Updated Trip Name')
-        expect(trip.notes.body.to_plain_text).to eq('Changed trip notes')
-        expect(trip.notes).to be_an(ActionText::RichText)
+        expect(trip.description.body.to_plain_text).to eq('Changed trip notes')
+        expect(trip.description).to be_an(ActionText::RichText)
       end
 
       it 'redirects to the trip' do

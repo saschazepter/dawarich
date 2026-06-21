@@ -174,6 +174,37 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
   end
 
+  create_table "flights", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "external_id", null: false
+    t.date "flight_date"
+    t.string "date_precision", default: "day", null: false
+    t.datetime "departure_time"
+    t.datetime "arrival_time"
+    t.string "from_code"
+    t.string "from_name"
+    t.float "from_lat"
+    t.float "from_lon"
+    t.string "to_code"
+    t.string "to_name"
+    t.float "to_lat"
+    t.float "to_lon"
+    t.string "airline_name"
+    t.string "airline_iata"
+    t.string "aircraft_name"
+    t.string "aircraft_reg"
+    t.string "flight_number"
+    t.string "seat"
+    t.string "seat_class"
+    t.text "note"
+    t.float "distance_km"
+    t.jsonb "raw", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "departure_time"], name: "index_flights_on_user_id_and_departure_time"
+    t.index ["user_id", "external_id"], name: "index_flights_on_user_id_and_external_id", unique: true
+    t.index ["user_id"], name: "index_flights_on_user_id"
+  end
   create_table "flipper_features", force: :cascade do |t|
     t.string "key", null: false
     t.datetime "created_at", null: false
@@ -208,6 +239,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
+  end
+
+  create_table "notes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "title"
+    t.text "body"
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.string "attachable_type"
+    t.bigint "attachable_id"
+    t.datetime "noted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "attachable_type, attachable_id, ((noted_at)::date)", name: "index_notes_on_attachable_and_noted_date", unique: true, where: "(attachable_id IS NOT NULL)"
+    t.index ["attachable_type", "attachable_id"], name: "index_notes_on_attachable_type_and_attachable_id"
+    t.index ["lonlat"], name: "index_notes_on_lonlat", using: :gist
+    t.index ["user_id", "noted_at"], name: "index_notes_on_user_id_and_noted_at"
+    t.index ["user_id"], name: "index_notes_on_user_id"
   end
 
   create_table "notifications", force: :cascade do |t|
@@ -326,6 +374,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.index ["user_id", "year", "month", "chunk_number"], name: "index_raw_data_archives_uniqueness", unique: true
     t.index ["user_id", "year", "month"], name: "index_points_raw_data_archives_on_user_id_and_year_and_month"
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
+  end
+
+  create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "resource_type", null: false
+    t.bigint "resource_id"
+    t.string "name", limit: 255, null: false
+    t.string "magic_phrase", limit: 255
+    t.datetime "expires_at"
+    t.datetime "revoked_at"
+    t.jsonb "settings", default: {}, null: false
+    t.integer "view_count", default: 0, null: false
+    t.datetime "last_accessed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["resource_type", "resource_id"], name: "index_shared_links_on_resource_type_and_resource_id", where: "(resource_id IS NOT NULL)"
+    t.index ["user_id"], name: "index_shared_links_active_by_user", where: "(revoked_at IS NULL)"
+    t.index ["user_id"], name: "index_shared_links_on_user_id"
   end
 
   create_table "stats", force: :cascade do |t|
@@ -528,6 +594,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   add_foreign_key "family_location_requests", "users", column: "target_user_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
+  add_foreign_key "flights", "users"
+  add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
@@ -535,6 +603,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
+  add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"

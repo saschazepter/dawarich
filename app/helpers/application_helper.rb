@@ -113,6 +113,14 @@ module ApplicationHelper
     OmniAuth::Utils.camelize(provider)
   end
 
+  def oauth_provider_display_name(provider)
+    case provider.to_s
+    when 'google_oauth2' then 'Google'
+    when 'apple' then 'Apple'
+    else oauth_provider_name(provider.to_sym)
+    end
+  end
+
   OAUTH_PROVIDERS = {
     google_oauth2: {
       icon_name: 'google',

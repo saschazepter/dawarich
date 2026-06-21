@@ -148,6 +148,7 @@ export class DataLoader {
       if (this.settings.areasEnabled) counter.expect("areas")
       if (this.settings.tracksEnabled) counter.expect("tracks")
       if (this.settings.photosEnabled) counter.expect("photos")
+      if (this.settings.flightsEnabled) counter.expect("flights")
     }
 
     // Start ALL core fetches in parallel for better progress granularity.
@@ -234,12 +235,37 @@ export class DataLoader {
           })
       : Promise.resolve([])
 
+    const flightsPromise = this.settings.flightsEnabled
+      ? this.api
+          .fetchFlights({ start_at: startDate, end_at: endDate })
+          .then((result) => {
+            const collection = result || {
+              type: "FeatureCollection",
+              features: [],
+            }
+            if (counter) {
+              counter.update("flights", collection.features?.length || 0)
+              counter.complete("flights")
+            }
+            if (onLayerData) {
+              onLayerData("flights", collection)
+            }
+            return collection
+          })
+          .catch((error) => {
+            console.warn("Failed to fetch flights:", error)
+            if (counter) counter.complete("flights")
+            return { type: "FeatureCollection", features: [] }
+          })
+      : Promise.resolve({ type: "FeatureCollection", features: [] })
+
     // Wait for all core data
-    const [pointsResult, visits, areas, places] = await Promise.all([
+    const [pointsResult, visits, areas, places, flights] = await Promise.all([
       pointsPromise,
       visitsPromise,
       areasPromise,
       placesPromise,
+      flightsPromise,
     ])
     const points = pointsResult.points
     const totalPointsInRange = pointsResult.totalPointsInRange || 0
@@ -303,6 +329,7 @@ export class DataLoader {
     data.areasGeoJSON = this.areasToGeoJSON(data.areas)
     data.places = places
     data.placesGeoJSON = this.placesToGeoJSON(data.places)
+    data.flightsGeoJSON = flights || { type: "FeatureCollection", features: [] }
 
     // Initialize empty collections for background-loaded data
     data.photos = []

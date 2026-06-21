@@ -4,7 +4,7 @@ class Settings::BackgroundJobsController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_self_hosted!, unless: lambda {
     action_name == 'create' &&
-      %w[start_immich_import start_photoprism_import].include?(params[:job_name])
+      %w[start_immich_import start_photoprism_import start_airtrail_import].include?(params[:job_name])
   }
 
   def index; end
@@ -29,6 +29,8 @@ class Settings::BackgroundJobsController < ApplicationController
       case params[:job_name]
       when 'start_immich_import', 'start_photoprism_import'
         imports_path
+      when 'start_airtrail_import'
+        settings_integrations_path
       else
         settings_background_jobs_path
       end

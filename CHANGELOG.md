@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.9.0] - 2026-06-21
+
+### Added
+
+- AirTrail integration: Dawarich can pull your flight history from a self-hosted [AirTrail](https://github.com/johanohly/AirTrail) instance and draw the flights as arcs on Map v2. Configure it on the Integrations page (with "Test connection" and "Sync now"); flights also re-sync daily, and the Flights map layer hides overlapping GPS points while enabled.
+- Run the app and Sidekiq containers under a custom user via `PUID`/`PGID` environment variables: the container starts as root, fixes ownership of the mounted volumes, then drops privileges. Use this instead of Compose `user:`, which cannot write to root-owned volumes (#1159).
+- Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
+- Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
+- Trip cards on `/trips` and the trip create/edit form now render their map with MapLibre instead of Leaflet, matching Map v2. The form map live-updates the route preview when the trip dates change.
+- Public sharing of individual **tracks**: a Share button on each track card creates an expiring public link showing that track's route, stats and (optionally) photos.
+- Public **live-location sharing**: share your current position in real time from the Map v2 Tools tab. Viewers see a single live dot over a public, optionally phrase-protected link; the location updates over a token-gated public channel and respects your privacy zones.
+- Public shared **trip** pages now mirror the in-app trip layout — sticky day-colored map, a per-day accordion (hover a day to highlight it on the map, click to pin), stats, and a full **replay** scrubber. The trip share form gained per-section toggles to choose exactly what the public page exposes (route, stats, countries, description, day-by-day, per-day notes, photos).
+- Supporters can now verify by their **GitHub username** as well as email (Settings → General), so GitHub Sponsors whose sponsorship email is private can still get their supporter badge. (#2980)
+
+### Changed
+
+- A trip's rich-text **notes** field is renamed to **description**; existing content is migrated automatically.
+- Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
+- Trip replay now plays back proportional to the real time between points, and the map/trip/public-share pages all share one replay implementation.
+- Ruby version updated to 3.4.9
+
+### Fixed
+
+- Family Members map layer no longer draws a stray line to the map center when a member location update lacks coordinates (#2863)
+- Insights and statistics now report the same number of countries visited, excluding fly-over countries without a qualifying city. (#2929)
+- OIDC login no longer fails with an "Issuer mismatch" error when the provider's issuer ends in a trailing slash (e.g. Authentik); the trailing slash is now preserved instead of being stripped. (#2925)
+- Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- Users signed in via Google will now be able to sign in with new password after setting it up, instead of being locked out by the old password being ignored.
+- Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
+- Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
+- Dragging the map during replay no longer snaps the view back to the moving marker; auto-follow yields until you reopen the replay panel.
+- [Cloud] Signing in with Google resolves to a single account across web and mobile, and the account settings page shows which provider an OAuth account is connected with instead of offering a sign-in button. #2969
+
+
 ## [1.8.1] - 2026-06-11
 
 Upgrade notes:
@@ -12,6 +46,7 @@ Upgrade notes:
 
 ### Added
 
+- Map v2 settings panel: a **Visit Max Gap** slider to tune the stay-point visit detector's maximum gap (minutes) between points within a single visit. Only shown when the `stay_point_detection` feature flag is enabled (off by default).
 - Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)
 
 ### Changed
@@ -145,6 +180,7 @@ Upgrade notes:
 
 ### Added
 
+- Public location sharing — share a trip or a timeline date range via a revocable public link, with optional magic-phrase protection and an optional expiry date. Shared routes respect privacy zones; stats are opt-in (off by default) and OG previews are suppressed for phrase-protected links. #2804
 - Map v2 **Hexagons** layer (Pro) — H3 cell heatmap, zoom-adaptive resolution. #2568
 - Download a trip's points as GPX or GeoJSON from the trip page. #2400
 - OIDC PKCE support via `OIDC_PKCE_ENABLED=true` (off by default). #2282

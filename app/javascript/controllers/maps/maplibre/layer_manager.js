@@ -1,6 +1,7 @@
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
 import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
+import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { FogLayer } from "maps_maplibre/layers/fog_layer"
 import { HeatmapLayer } from "maps_maplibre/layers/heatmap_layer"
 import { HexagonLayer } from "maps_maplibre/layers/hexagon_layer"
@@ -39,6 +40,7 @@ export class LayerManager {
     areasGeoJSON,
     tracksGeoJSON,
     placesGeoJSON,
+    flightsGeoJSON,
   ) {
     performanceMonitor.mark("add-layers")
 
@@ -52,6 +54,7 @@ export class LayerManager {
     this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(tracksGeoJSON)
     this._addRoutesLayer(routesGeoJSON)
+    this._addFlightsLayer(flightsGeoJSON)
     this._addVisitsLayer(visitsGeoJSON)
     this._addPlacesLayer(placesGeoJSON)
 
@@ -296,6 +299,18 @@ export class LayerManager {
       this.layers.routesLayer.add(routesGeoJSON)
     } else {
       this.layers.routesLayer.update(routesGeoJSON)
+    }
+  }
+
+  _addFlightsLayer(flightsGeoJSON) {
+    if (!this.layers.flightsLayer) {
+      this.layers.flightsLayer = new FlightsLayer(this.map, {
+        visible: this.settings.flightsEnabled || false,
+        style: this.settings.mapStyle || "light",
+      })
+      this.layers.flightsLayer.add(flightsGeoJSON)
+    } else {
+      this.layers.flightsLayer.update(flightsGeoJSON)
     }
   }
 

@@ -20,6 +20,11 @@ watcher_job:
   class: "Import::WatcherJob"
   queue: imports
 
+airtrail_flight_import_job:
+  cron: "0 2 * * *" # every day at 02:00
+  class: "AirTrail::SyncSchedulingJob"
+  queue: imports
+
 app_version_checking_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "AppVersionCheckingJob"

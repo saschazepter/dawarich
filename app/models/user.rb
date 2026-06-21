@@ -30,8 +30,11 @@ class User < ApplicationRecord
   has_many :tags,           dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
+  has_many :flights, dependent: :destroy
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
+  has_many :notes, dependent: :destroy
+  has_many :shared_links, dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
@@ -58,6 +61,7 @@ class User < ApplicationRecord
   enum :plan, { lite: 0, pro: 1 }, default: :pro
   # No default: nil means the user has not yet been prompted about the
   # changelog widget. prefix avoids `granted?`/`declined?` collisions.
+  attribute :changelog_consent, :integer
   enum :changelog_consent, { declined: 0, granted: 1 }, prefix: :changelog_consent
 
   MAX_FAILED_OTP_ATTEMPTS = 10
@@ -291,9 +295,16 @@ class User < ApplicationRecord
   end
 
   def supporter_info
-    return { supporter: false } if safe_settings.supporter_email.blank?
+    if safe_settings.supporter_email.present?
+      email_info = Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+      return email_info if email_info[:supporter]
+    end
 
-    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+    if safe_settings.supporter_github_username.present?
+      return Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+    end
+
+    { supporter: false }
   end
 
   private

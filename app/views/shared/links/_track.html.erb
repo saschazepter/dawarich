@@ -1,0 +1,48 @@
+<% ctx = SharedLinkContext.new(link) %>
+<% unit = link.user.safe_settings.distance_unit %>
+<section class="container mx-auto px-4 py-6">
+  <h1 class="text-3xl font-bold mb-2"><%= track_share_label(resource, unit) %></h1>
+
+  <div id="shared-trip-map"
+       data-controller="shared-trip-map"
+       data-shared-trip-map-link-id-value="<%= link.id %>"
+       data-shared-trip-map-show-photos-value="<%= ctx.show_photos? %>"
+       style="height: 60vh; min-height: 400px;"
+       class="rounded-lg overflow-hidden bg-base-200 my-6"></div>
+
+  <% if ctx.show_stats? %>
+    <div class="stats shadow w-full">
+      <% if resource.distance.present? %>
+        <div class="stat">
+          <div class="stat-title">Distance</div>
+          <div class="stat-value text-2xl"><%= resource.distance_in_unit(unit).round(1) %> <%= unit %></div>
+        </div>
+      <% end %>
+      <% if resource.duration.present? && resource.duration.positive? %>
+        <div class="stat">
+          <div class="stat-title">Duration</div>
+          <div class="stat-value text-2xl"><%= distance_of_time_in_words(resource.duration) %></div>
+        </div>
+      <% end %>
+      <% if resource.avg_speed.present? %>
+        <% speed = unit == 'mi' ? (resource.avg_speed.to_f * 0.621371).round(1) : resource.avg_speed.to_f.round(1) %>
+        <div class="stat">
+          <div class="stat-title">Avg speed</div>
+          <div class="stat-value text-2xl"><%= speed %> <%= unit == 'mi' ? 'mph' : 'km/h' %></div>
+        </div>
+      <% end %>
+      <% if resource.elevation_gain.present? && resource.elevation_gain.positive? %>
+        <div class="stat">
+          <div class="stat-title">Elevation gain</div>
+          <div class="stat-value text-2xl"><%= resource.elevation_gain.round %> m</div>
+        </div>
+      <% end %>
+      <% if resource.elevation_loss.present? && resource.elevation_loss.positive? %>
+        <div class="stat">
+          <div class="stat-title">Elevation loss</div>
+          <div class="stat-value text-2xl"><%= resource.elevation_loss.round %> m</div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</section>

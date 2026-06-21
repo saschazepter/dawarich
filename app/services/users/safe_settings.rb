@@ -26,6 +26,10 @@ class Users::SafeSettings
     'photoprism_url' => nil,
     'photoprism_api_key' => nil,
     'photoprism_skip_ssl_verification' => false,
+    'airtrail_url' => nil,
+    'airtrail_api_key' => nil,
+    'airtrail_skip_ssl_verification' => false,
+    'airtrail_last_synced_at' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
@@ -33,6 +37,7 @@ class Users::SafeSettings
     'news_emails_enabled' => true,
     'globe_projection' => true,
     'supporter_email' => nil,
+    'supporter_github_username' => nil,
     'show_supporter_badge' => true,
     # Transportation mode thresholds (speeds in km/h, distances in km)
     'transportation_thresholds' => {
@@ -88,6 +93,8 @@ class Users::SafeSettings
       immich_api_key: immich_api_key,
       photoprism_url: photoprism_url,
       photoprism_api_key: photoprism_api_key,
+      airtrail_url: airtrail_url,
+      airtrail_api_key: airtrail_api_key,
       maps: maps,
       distance_unit: distance_unit,
       visits_suggestions_enabled: visits_suggestions_enabled?,
@@ -178,6 +185,18 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(settings['photoprism_skip_ssl_verification'])
   end
 
+  def airtrail_url
+    settings['airtrail_url']
+  end
+
+  def airtrail_api_key
+    settings['airtrail_api_key']
+  end
+
+  def airtrail_skip_ssl_verification
+    ActiveModel::Type::Boolean.new.cast(settings['airtrail_skip_ssl_verification'])
+  end
+
   def maps
     m = settings['maps']
     return m unless lite?
@@ -239,6 +258,10 @@ class Users::SafeSettings
 
   def supporter_email
     settings['supporter_email']
+  end
+
+  def supporter_github_username
+    settings['supporter_github_username']
   end
 
   def show_supporter_badge?

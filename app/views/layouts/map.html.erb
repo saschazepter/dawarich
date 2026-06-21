@@ -22,6 +22,7 @@
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
       <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer></script>
     <% end %>
   </head>
 
@@ -44,6 +45,8 @@
     <div class='absolute top-[calc(4rem+env(safe-area-inset-top))] left-0 right-0 bottom-0 w-full z-20 flex flex-col'>
       <%= yield %>
     </div>
+
+    <%= turbo_frame_tag 'share-link-modal' %>
 
     <% if user_signed_in? && current_user.imports.exists?(demo: true) %>
       <div id="demo-data-banner" class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))]" data-controller="demo-banner">

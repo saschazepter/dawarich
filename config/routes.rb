@@ -99,6 +99,12 @@ Rails.application.routes.draw do
   resources :imports
   resources :tracks, only: [] do
     resources :segments, controller: 'tracks/segments', only: %i[index update]
+
+    resource :share_link, only: %i[new create destroy], controller: 'tracks/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
   end
   # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
   # once the redesign is known-stable so browsers cache the redirect.
@@ -126,8 +132,36 @@ Rails.application.routes.draw do
       post :recalculate
       post :export
     end
+    resources :notes, controller: 'trips/notes', only: %i[create update destroy]
+
+    resource :share_link, only: %i[new create destroy], controller: 'trips/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+  end
+
+  namespace :share_links do
+    resource :hub, only: :show, controller: 'hubs'
+    resources :shares, only: [] do
+      member { patch :revoke }
+    end
+    resource :timeline, only: %i[new create destroy], controller: 'timelines' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+    resource :live, only: %i[new create destroy], controller: 'lives' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
   end
   resources :tags, except: [:show]
+
+  # Public shared-link viewer
+  get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link
+  post '/s/:id/unlock',  to: 'shared/links#unlock',   as: :unlock_public_shared_link
 
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?
@@ -340,6 +374,8 @@ Rails.application.routes.draw do
 
       resources :timeline, only: [:index]
 
+      resources :flights, only: %i[index]
+
       namespace :maps do
         resources :hexagons, only: [:index] do
           collection do
@@ -360,6 +396,15 @@ Rails.application.routes.draw do
             get :history
           end
         end
+      end
+
+      resources :notes, only: %i[index show create update destroy]
+      namespace :shared do
+        get ':id/trip',   to: 'trips#show'
+        get ':id/points', to: 'points#index'
+        get ':id/route',  to: 'points#route'
+        get ':id/photos', to: 'photos#index'
+        get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
