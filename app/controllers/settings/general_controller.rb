@@ -26,8 +26,8 @@ class Settings::GeneralController < ApplicationController
                          alert: 'Please enter an email address or GitHub username'
     end
 
-    current_user.settings['supporter_email'] = email
-    current_user.settings['supporter_github_username'] = github_username
+    current_user.settings['supporter_email'] = email if email.present?
+    current_user.settings['supporter_github_username'] = github_username if github_username.present?
     current_user.save!
 
     # Clear cached verification so we get a fresh result

@@ -20,6 +20,7 @@ Upgrade notes:
 - Public sharing of individual **tracks**: a Share button on each track card creates an expiring public link showing that track's route, stats and (optionally) photos.
 - Public **live-location sharing**: share your current position in real time from the Map v2 Tools tab. Viewers see a single live dot over a public, optionally phrase-protected link; the location updates over a token-gated public channel and respects your privacy zones.
 - Public shared **trip** pages now mirror the in-app trip layout — sticky day-colored map, a per-day accordion (hover a day to highlight it on the map, click to pin), stats, and a full **replay** scrubber. The trip share form gained per-section toggles to choose exactly what the public page exposes (route, stats, countries, description, day-by-day, per-day notes, photos).
+- Supporters can now verify by their **GitHub username** as well as email (Settings → General), so GitHub Sponsors whose sponsorship email is private can still get their supporter badge. (#2980)
 
 ### Changed
 

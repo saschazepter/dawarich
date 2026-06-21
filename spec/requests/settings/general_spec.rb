@@ -186,6 +186,21 @@ RSpec.describe 'settings/general', type: :request do
           expect(user.reload.settings['supporter_email']).to eq('unknown@example.com')
         end
       end
+
+      context 'when one field is submitted blank while the other was saved' do
+        before do
+          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return({ supporter: false })
+          allow_any_instance_of(Supporter::VerifyGithubUsername).to receive(:call).and_return({ supporter: false })
+          user.update!(settings: user.settings.merge('supporter_email' => 'saved@example.com'))
+        end
+
+        it 'does not wipe the previously saved email' do
+          post settings_verify_supporter_path, params: { supporter_email: '', supporter_github_username: 'octocat' }
+
+          expect(user.reload.settings['supporter_email']).to eq('saved@example.com')
+          expect(user.reload.settings['supporter_github_username']).to eq('octocat')
+        end
+      end
     end
   end
 
