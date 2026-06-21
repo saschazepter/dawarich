@@ -4,11 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
-
-Upgrade notes:
-
-1. **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
+## [1.9.0] - 2026-06-21
 
 ### Added
 
@@ -25,9 +21,7 @@ Upgrade notes:
 ### Changed
 
 - A trip's rich-text **notes** field is renamed to **description**; existing content is migrated automatically.
-- Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
 - Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
-- Self-hosted instances no longer rate-limit public shared pages (`/s/:id`, the shared API, and the live-share WebSocket); the per-IP throttle now applies to cloud only.
 - Trip replay now plays back proportional to the real time between points, and the map/trip/public-share pages all share one replay implementation.
 - Ruby version updated to 3.4.9
 
@@ -41,7 +35,8 @@ Upgrade notes:
 - Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
 - Dragging the map during replay no longer snaps the view back to the moving marker; auto-follow yields until you reopen the replay panel.
-- Signing in with Google resolves to a single account across web and mobile, and the account settings page shows which provider an OAuth account is connected with instead of offering a sign-in button. #2969
+- [Cloud] Signing in with Google resolves to a single account across web and mobile, and the account settings page shows which provider an OAuth account is connected with instead of offering a sign-in button. #2969
+
 
 ## [1.8.1] - 2026-06-11
 
