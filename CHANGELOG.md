@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Trip photos now appear on the Map v2 trip and replay views: thumbnails pop in one at a time as the replay playhead reaches each photo's timestamp, and the same photos are available on public shared-trip links. Photos that fall inside one of your privacy zones are masked from both the map and shared links.
+
 ## [1.9.0] - 2026-06-21
 
 ### Added

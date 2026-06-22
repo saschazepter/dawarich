@@ -484,8 +484,9 @@ export default class extends Controller {
         onReplayPhotosActive: (active) => {
           if (!this.photosLayer) return
           if (active) {
+            this._photosWasVisible = this.photosLayer.visible
             this.photosLayer.hide()
-          } else {
+          } else if (this._photosWasVisible) {
             this.photosLayer.show()
           }
         },

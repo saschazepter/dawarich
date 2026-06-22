@@ -71,7 +71,7 @@ export class ReplayPhotoLayer {
 
     const el = document.createElement("div")
     el.className = "replay-photo-marker replay-photo-pop"
-    el.style.backgroundImage = `url('${photo.thumbnail_url}')`
+    el.style.backgroundImage = `url("${encodeURI(photo.thumbnail_url)}")`
     el.addEventListener("click", (event) => {
       event.stopPropagation()
       this._showPopup(photo, lon, lat)
