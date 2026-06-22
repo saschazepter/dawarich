@@ -13,10 +13,10 @@ class TripsController < ApplicationController
   end
 
   def show
-    @photo_previews = @trip.photo_previews
     @photo_sources = @trip.photo_sources
     @distance_unit = current_user.safe_settings.distance_unit
     @timezone = current_user.timezone_iana
+    @photos_by_day = @trip.photos_by_day(@timezone)
     @day_notes = @trip.notes.index_by(&:date)
     @day_stats = compute_day_stats
 

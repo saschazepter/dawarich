@@ -162,6 +162,19 @@
               <% else %>
                 <%= render "trips/notes/empty", trip: @trip, date: date %>
               <% end %>
+              <% day_photos = @photos_by_day[date] %>
+              <% if day_photos.present? %>
+                <div class="grid grid-cols-3 gap-2 mt-3">
+                  <% day_photos.each do |photo| %>
+                    <div class="aspect-square overflow-hidden rounded-lg transition-transform duration-200 hover:scale-105 hover:shadow-lg">
+                      <img src="<%= photo[:url] %>"
+                           loading="lazy"
+                           alt=""
+                           class="h-full w-full object-cover">
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
           </details>
         <% end %>
@@ -177,32 +190,19 @@
         </div>
       <% end %>
 
-      <%# Photos %>
-      <% if @photo_previews.any? %>
+      <%# Photo sources %>
+      <% if @photo_sources.any? %>
         <div class="mb-6">
-          <h3 class="text-lg font-semibold mb-3">Photos</h3>
-          <div class="grid grid-cols-3 gap-2">
-            <% @photo_previews.each do |photo| %>
-              <div class="aspect-square overflow-hidden rounded-lg transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                <img src="<%= photo[:url] %>"
-                     loading="lazy"
-                     alt=""
-                     class="h-full w-full object-cover">
-              </div>
+          <div class="flex flex-wrap gap-2">
+            <% @photo_sources.each do |source| %>
+              <%= link_to photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at),
+                  class: "btn btn-sm btn-outline gap-1",
+                  target: "_blank",
+                  rel: "noopener" do %>
+                <%= icon 'camera', class: 'w-4 h-4' %> More on <%= source.to_s.titleize %>
+              <% end %>
             <% end %>
           </div>
-          <% if @photo_sources.any? %>
-            <div class="flex flex-wrap gap-2 mt-3">
-              <% @photo_sources.each do |source| %>
-                <%= link_to photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at),
-                    class: "btn btn-sm btn-outline gap-1",
-                    target: "_blank",
-                    rel: "noopener" do %>
-                  <%= icon 'camera', class: 'w-4 h-4' %> More on <%= source.to_s.titleize %>
-                <% end %>
-              <% end %>
-            </div>
-          <% end %>
         </div>
       <% end %>
 

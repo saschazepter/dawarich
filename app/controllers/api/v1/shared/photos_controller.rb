@@ -4,8 +4,6 @@ module Api
   module V1
     module Shared
       class PhotosController < BaseController
-        MAX_PHOTOS = 100
-
         def index
           return render(json: []) unless ctx.show_photos?
 
@@ -49,9 +47,7 @@ module Api
         end
 
         def capped_geotagged(photos)
-          photos.select { |p| p[:latitude].present? && p[:longitude].present? }
-                .reject { |p| within_privacy_zone?(p[:latitude], p[:longitude]) }
-                .first(MAX_PHOTOS)
+          ::Photos::Mappable.new(photos, privacy_zones: privacy_zones).call
         end
 
         def allowed_ids_for(photos)
@@ -105,6 +101,7 @@ module Api
             latitude: photo[:latitude],
             longitude: photo[:longitude],
             source: photo[:source],
+            taken_at: photo[:capturedAt] || photo[:localDateTime],
             thumbnail_url: url_for(
               controller: 'api/v1/shared/photos',
               action: 'thumbnail',
