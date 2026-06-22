@@ -70,8 +70,13 @@ export class ReplayPhotoLayer {
     if (Number.isNaN(lon) || Number.isNaN(lat)) return null
 
     const el = document.createElement("div")
-    el.className = "replay-photo-marker replay-photo-pop"
-    el.style.backgroundImage = `url("${encodeURI(photo.thumbnail_url)}")`
+    el.className = "replay-photo-marker"
+
+    const inner = document.createElement("div")
+    inner.className = "replay-photo-marker-inner replay-photo-pop"
+    inner.style.backgroundImage = `url("${encodeURI(photo.thumbnail_url)}")`
+    el.appendChild(inner)
+
     el.addEventListener("click", (event) => {
       event.stopPropagation()
       this._showPopup(photo, lon, lat)
