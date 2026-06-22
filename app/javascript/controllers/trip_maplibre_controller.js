@@ -6,6 +6,7 @@ import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
+import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 
 /**
  * Trip MapLibre Controller
@@ -434,7 +435,7 @@ export default class extends Controller {
           properties: {
             id: photo.id,
             thumbnail_url: thumbnailUrl,
-            taken_at: photo.localDateTime,
+            taken_at: photo.capturedAt || photo.localDateTime,
             filename: photo.originalFileName,
             city: photo.city,
             state: photo.state,
@@ -476,6 +477,18 @@ export default class extends Controller {
         element: this.element,
         timezone: this.timezoneValue,
         allPoints: this.allPoints,
+        getPhotos: () =>
+          this.photosActive && this.photosGeoJSON
+            ? this.photosGeoJSON.features.map(featureToPhoto)
+            : [],
+        onReplayPhotosActive: (active) => {
+          if (!this.photosLayer) return
+          if (active) {
+            this.photosLayer.hide()
+          } else {
+            this.photosLayer.show()
+          }
+        },
       })
     }
     this.replayPanel.toggle()

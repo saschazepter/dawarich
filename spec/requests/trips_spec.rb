@@ -22,7 +22,7 @@ RSpec.describe '/trips', type: :request do
   let(:user) { create(:user) }
 
   before do
-    allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
+    allow_any_instance_of(Trip).to receive(:photos_by_day).and_return({})
 
     sign_in user
   end
@@ -64,6 +64,33 @@ RSpec.describe '/trips', type: :request do
 
       expect(response.body).to include(edit_trip_path(trip))
       expect(response.body).to include('Delete this trip')
+    end
+
+    context 'with photos grouped by day' do
+      let(:photo) do
+        { id: 7, url: '/api/v1/photos/7/thumbnail.jpg?api_key=x&source=immich',
+          source: 'immich', orientation: 'landscape' }
+      end
+
+      before do
+        allow_any_instance_of(Trip).to receive(:photos_by_day)
+          .and_return({ Date.new(2024, 11, 28) => [photo] })
+      end
+
+      it "renders a day's photos inside that day's collapse" do
+        get trip_url(trip)
+
+        day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2024-11-28']")
+        expect(day.at_css("img[src='#{photo[:url]}']")).to be_present
+      end
+
+      it 'renders photo thumbnails only inside day collapses (no flat bottom grid)' do
+        get trip_url(trip)
+
+        imgs = Nokogiri::HTML(response.body).css("img[src*='/api/v1/photos/']")
+        expect(imgs).to be_present
+        expect(imgs).to all(satisfy { |img| img.ancestors('details').any? })
+      end
     end
 
     it 'computes day stats with PostGIS (no Ruby Geocoder fallback)' do
