@@ -3,6 +3,7 @@ import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
@@ -1950,6 +1951,21 @@ export default class extends Controller {
       highlightPoint: (point) => this._highlightReplayRouteSegment(point),
       clearHighlight: () => this._clearReplayRouteHighlight(),
       onPlayStateChange: (playing) => this._updateTrackReplayButton(playing),
+      getPhotos: () => {
+        const layer = this.layerManager?.getLayer("photos")
+        const features = layer?.visible ? layer.data?.features : null
+        return features?.length ? features.map(featureToPhoto) : []
+      },
+      onReplayPhotosActive: (active) => {
+        const layer = this.layerManager?.getLayer("photos")
+        if (!layer) return
+        if (active) {
+          this._photosWasVisible = layer.visible
+          layer.hide()
+        } else if (this._photosWasVisible) {
+          layer.show()
+        }
+      },
     })
   }
 

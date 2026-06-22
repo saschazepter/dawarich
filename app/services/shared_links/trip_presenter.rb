@@ -64,6 +64,16 @@ module SharedLinks
       notes[day[:date]]
     end
 
+    def photos_by_day
+      return {} unless @ctx.show_photos?
+
+      @photos_by_day ||= SharedLinks::TripPhotos.new(@link, timezone: timezone).call
+    end
+
+    def photos_for(day)
+      photos_by_day[day[:date]] || []
+    end
+
     def interactive_class
       show_map? ? ' cursor-pointer transition-colors hover:bg-base-300' : ''
     end

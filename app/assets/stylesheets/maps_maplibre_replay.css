@@ -433,6 +433,58 @@
   color: oklch(var(--bc) / 0.8);
 }
 
+/* Replay photo marker (HTML overlay revealed progressively as replay reaches each photo) */
+/* MapLibre positions the outer .replay-photo-marker via transform: translate(); keep all
+   visual transforms (pop animation, hover scale) on the inner element so they don't fight it. */
+.replay-photo-marker {
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+}
+
+.replay-photo-marker-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 3px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.replay-photo-marker:hover {
+  z-index: 1000;
+}
+
+.replay-photo-marker:hover .replay-photo-marker-inner {
+  transform: scale(1.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.replay-photo-marker-inner.replay-photo-pop {
+  animation: replay-photo-pop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes replay-photo-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .replay-photo-marker-inner.replay-photo-pop {
+    animation: none;
+  }
+}
+
 /* Responsive: adjust replay panel shift for narrower side panels */
 @media (max-width: 1280px) {
   .maps-maplibre-container.panel-open ~ .replay-panel {
