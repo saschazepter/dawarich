@@ -86,3 +86,4 @@ ARCHIVE_RAW_DATA = ENV.fetch('ARCHIVE_RAW_DATA', 'false') == 'true'
 # own chibichange instance.
 CHIBICHANGE_WIDGET_HOST = ENV.fetch('CHIBICHANGE_WIDGET_HOST', 'https://my.chibichange.com')
 CHIBICHANGE_SLUG = ENV.fetch('CHIBICHANGE_SLUG', 'dawarich')
+CHIBICHANGE_CLOUD_SLUG = ENV.fetch('CHIBICHANGE_CLOUD_SLUG', 'dawarich-cloud')
