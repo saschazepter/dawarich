@@ -41,6 +41,18 @@ RSpec.describe Visits::SmartDetect do
 
       expect(visits.size).to be >= 1
     end
+
+    it 'loads visit_id so confirmed-visit ownership checks do not raise MissingAttributeError' do
+      points = Array.new(6) do |i|
+        create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
+                       timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
+      end
+
+      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+
+      expect(visits.size).to eq(1)
+      expect(points.map { |p| p.reload.visit_id }.uniq).to eq([visits.first.id])
+    end
   end
 
   describe 'detector selection (stay_point_detection flag)' do
