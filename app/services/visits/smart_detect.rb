@@ -146,7 +146,7 @@ module Visits
     def build_visit_hashes(clusters)
       all_point_ids = clusters.flat_map { |c| c[:point_ids] }.select(&:positive?)
       points_by_id = Point.where(id: all_point_ids)
-                          .select(:id, :lonlat, :timestamp, :accuracy, :geodata)
+                          .select(:id, :visit_id, :lonlat, :timestamp, :accuracy, :geodata)
                           .index_by(&:id)
 
       clusters.filter_map do |cluster|
