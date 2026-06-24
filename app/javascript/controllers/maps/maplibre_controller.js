@@ -162,6 +162,7 @@ export default class extends Controller {
     "timelineFeedContainer",
     // Replay playback
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -1362,8 +1363,11 @@ export default class extends Controller {
   toggleScratch(event) {
     return this.routesManager.toggleScratch(event)
   }
-  togglePhotos(event) {
-    return this.routesManager.togglePhotos(event)
+  async togglePhotos(event) {
+    await this.routesManager.togglePhotos(event)
+    if (!this.replayPanel?.isOpen) return
+    if (!event.target.checked) this._photosWasVisible = false
+    this.replayPanel.refreshReplayPhotos()
   }
   toggleAreas(event) {
     return this.routesManager.toggleAreas(event)
@@ -1989,6 +1993,10 @@ export default class extends Controller {
 
   replayTogglePlayback() {
     this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
   }
 
   replaySpeedChange(event) {
