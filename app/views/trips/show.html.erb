@@ -104,6 +104,17 @@
           </button>
         <% end %>
 
+        <% if current_user.safe_settings.airtrail_url.present? %>
+          <button type="button"
+                  class="btn btn-sm btn-outline gap-1"
+                  data-trip-maplibre-target="flightsToggleBtn"
+                  data-action="click->trip-maplibre#toggleFlights"
+                  title="Toggle AirTrail flights on map">
+            <%= icon 'plane', class: 'w-4 h-4' %>
+            <span class="hidden sm:inline">Flights</span>
+          </button>
+        <% end %>
+
         <button type="button"
                 class="btn btn-sm btn-outline gap-1"
                 data-trip-maplibre-target="replayToggleBtn"

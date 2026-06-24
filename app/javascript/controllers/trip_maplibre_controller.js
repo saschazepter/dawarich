@@ -2,11 +2,13 @@ import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
 import maplibregl from "maplibre-gl"
 import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
+import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
+import { flightWindows } from "maps_maplibre/utils/flight_mask"
 
 /**
  * Trip MapLibre Controller
@@ -21,6 +23,8 @@ export default class extends Controller {
     "loadingIndicator",
     // Photos button
     "photosToggleBtn",
+    // Flights button
+    "flightsToggleBtn",
     // Replay toggle button
     "replayToggleBtn",
     // Replay panel
@@ -61,6 +65,9 @@ export default class extends Controller {
     this.photosLayer = null
     this.photosGeoJSON = null
     this.photosActive = false
+    this.flightsLayer = null
+    this.flightsGeoJSON = null
+    this.flightsActive = false
     this.mapInitializing = false
     this.overviewSourceId = "trip-overview-source"
     this.overviewLayerId = "trip-overview-layer"
@@ -79,6 +86,10 @@ export default class extends Controller {
     if (this.photosLayer) {
       this.photosLayer.remove()
       this.photosLayer = null
+    }
+    if (this.flightsLayer) {
+      this.flightsLayer.remove()
+      this.flightsLayer = null
     }
     if (this.dayRoutesLayer) {
       this.dayRoutesLayer.remove()
@@ -215,6 +226,10 @@ export default class extends Controller {
       if (fullBounds) {
         this.map.fitBounds(fullBounds, { padding: 50, maxZoom: 15 })
       }
+
+      // Re-apply flight masking in case flights were toggled on before the
+      // day routes finished loading.
+      this.applyFlightMask()
 
       // Store all points for replay use
       this.allPoints = allPoints
@@ -446,6 +461,59 @@ export default class extends Controller {
         }
       }),
     }
+  }
+
+  // ===== Flights layer toggle (button-based) =====
+
+  async toggleFlights() {
+    this.flightsActive = !this.flightsActive
+
+    if (!this.flightsActive) {
+      this.flightsLayer?.hide()
+      this.applyFlightMask()
+      this._setButtonActive(this.flightsToggleBtnTarget, false)
+      return
+    }
+
+    if (!this.flightsGeoJSON) {
+      const apiClient = new ApiClient(this.apiKeyValue)
+      try {
+        this.flightsGeoJSON = await apiClient.fetchFlights({
+          start_at: this.startedAtValue,
+          end_at: this.endedAtValue,
+        })
+      } catch (e) {
+        console.error("[TripMapLibre] Error fetching flights:", e)
+        this.flightsActive = false
+        return
+      }
+    }
+
+    if (!this.flightsGeoJSON.features?.length) {
+      this.flightsActive = false
+      return
+    }
+
+    if (!this.flightsLayer) {
+      this.flightsLayer = new FlightsLayer(this.map, {
+        style: this.mapStyleValue,
+      })
+      this.flightsLayer.add(this.flightsGeoJSON)
+    } else {
+      this.flightsLayer.update(this.flightsGeoJSON)
+      this.flightsLayer.show()
+    }
+
+    this.applyFlightMask()
+    this._setButtonActive(this.flightsToggleBtnTarget, true)
+  }
+
+  applyFlightMask() {
+    const windows =
+      this.flightsActive && this.flightsLayer?.visible
+        ? flightWindows(this.flightsGeoJSON)
+        : []
+    this.dayRoutesLayer?.maskRoutes(windows)
   }
 
   // ===== Note form toggling =====
