@@ -5,6 +5,7 @@ import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
+import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -374,6 +375,7 @@ export default class extends Controller {
     this.visitsManager?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
+    if (this._persistView) this.map?.off("moveend", this._persistView)
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -397,12 +399,21 @@ export default class extends Controller {
    * Initialize MapLibre map
    */
   async initializeMap() {
+    // Reopen at the user's last viewport instead of the zoomed-out globe.
+    // When the date range has data, fitBounds overrides this; when it has
+    // none, the map stays on the last-known view rather than the world.
+    const lastView = loadLastView()
+
     this.map = await MapInitializer.initialize(this.containerTarget, {
       mapStyle: this.settings.mapStyle,
       globeProjection: this.settings.globeProjection,
       hiddenTileCategories: this.settings.hiddenTileCategories || [],
       disabledPoiGroups: this.settings.disabledPoiGroups || [],
+      ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
     })
+
+    this._persistView = () => saveView(this.map)
+    this.map.on("moveend", this._persistView)
   }
 
   /**
@@ -1824,26 +1835,38 @@ export default class extends Controller {
     )
     if (!confirmed) return
 
+    const numericId = Number(pointId)
+    const pointsLayer = this.layerManager.getLayer("points")
+    const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
+    const data = source?._data
+    const removedFeature = data?.features?.find(
+      (f) => Number(f.properties?.id) === numericId,
+    )
+    const canReconcile = Boolean(data?.features && removedFeature)
+
+    // Optimistically remove the point so the map updates instantly; the API
+    // call and route rebuild run in the background and are reverted on error.
+    if (canReconcile) {
+      data.features = data.features.filter(
+        (f) => Number(f.properties?.id) !== numericId,
+      )
+      source.setData(data)
+      pointsLayer.data = data
+      this.routesManager.reloadRoutes()
+    }
+    this.closeInfo()
+
     try {
-      Toast.info("Deleting point...")
       await this.api.deletePoint(pointId)
-
-      const numericId = Number(pointId)
-      const pointsLayer = this.layerManager.getLayer("points")
-      const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
-      if (source?._data?.features) {
-        const data = source._data
-        data.features = data.features.filter(
-          (f) => Number(f.properties?.id) !== numericId,
-        )
-        source.setData(data)
-        pointsLayer.data = data
-        await this.routesManager.reloadRoutes()
-      }
-
-      this.closeInfo()
       Toast.success("Point deleted successfully")
     } catch (_error) {
+      // Reconcile: the server still has the point, so restore it on the map.
+      if (canReconcile) {
+        data.features = [...data.features, removedFeature]
+        source.setData(data)
+        pointsLayer.data = data
+        this.routesManager.reloadRoutes()
+      }
       Toast.error("Failed to delete point")
     }
   }
