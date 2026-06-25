@@ -15,7 +15,7 @@ RSpec.describe Photoprism::RequestPhotos do
 
   let(:start_date) { '2024-01-01' }
   let(:end_date) { '2024-12-31' }
-  let(:expected_before_date) { (end_date.to_date + 1.day).to_time.beginning_of_day.iso8601 }
+  let(:expected_before_date) { (end_date.to_date + 1.day).beginning_of_day.iso8601 }
   let(:service) { described_class.new(user, start_date: start_date, end_date: end_date) }
 
   let(:mock_photo_response) do
