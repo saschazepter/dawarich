@@ -9,7 +9,7 @@ Sentry.init do |config|
   config.dsn = SENTRY_DSN
   config.traces_sample_rate = 0.05
   config.profiles_sample_rate = 0.1
-  config.enable_logs = Rails.env.production? || Rails.env.staging?
+  config.enable_logs = ENV.fetch('SENTRY_ENABLE_LOGS', 'false').casecmp?('true')
 
   config.before_send_log = ->(log) { SentryLogRedactor.call(log) }
 end

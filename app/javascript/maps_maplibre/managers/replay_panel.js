@@ -1,3 +1,4 @@
+import { ReplayPhotoStack } from "maps_maplibre/components/replay_photo_stack"
 import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { ReplayPhotoLayer } from "maps_maplibre/layers/replay_photo_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
@@ -21,6 +22,7 @@ export class ReplayPanel {
     this._onReplayPhotosActive = opts.onReplayPhotosActive || (() => {})
     this._replayPhotoLayer = null
     this._photoIndex = null
+    this._replayPhotoStack = null
   }
 
   get isOpen() {
@@ -106,6 +108,9 @@ export class ReplayPanel {
       timezone: this.timezone,
     })
     this._replayPhotoLayer.setPhotos(this._photoIndex.allPhotos())
+    this._replayPhotoStack = new ReplayPhotoStack(this.map, {
+      timezone: this.timezone,
+    })
     this._onReplayPhotosActive(true)
   }
 
@@ -116,24 +121,31 @@ export class ReplayPanel {
     const day = this.replayManager?.getCurrentDay()
     if (!day) return
 
-    const reveal = new Set(this._photoIndex.idsToReveal(day, playheadMs))
+    const revealed = this._photoIndex.revealedPhotos(day, playheadMs)
+    const revealIds = new Set(revealed.map((photo) => photo.id))
     for (const photo of this._photoIndex.dayPhotos(day)) {
-      if (reveal.has(photo.id)) {
+      if (revealIds.has(photo.id)) {
         this._replayPhotoLayer.reveal(photo.id)
       } else {
         this._replayPhotoLayer.hide(photo.id)
       }
     }
+    this._replayPhotoStack?.sync(revealed)
   }
 
   resetReplayPhotos() {
     if (this._replayPhotoLayer) this._replayPhotoLayer.hideAll()
+    if (this._replayPhotoStack) this._replayPhotoStack.clear()
   }
 
   teardownReplayPhotos() {
     if (this._replayPhotoLayer) {
       this._replayPhotoLayer.clear()
       this._replayPhotoLayer = null
+    }
+    if (this._replayPhotoStack) {
+      this._replayPhotoStack.destroy()
+      this._replayPhotoStack = null
     }
     if (this._photoIndex) {
       this._photoIndex = null
