@@ -487,6 +487,8 @@ export class ReplayPanel {
     this.replaySpeed = this.replaySpeed || 2
     this.replayPoints = dayPoints
     this.replayPointIndex = 0
+    this.userPanned = false
+    this.setFollowActive(true)
 
     const currentMinute = parseInt(this.c.replayScrubberTarget.value, 10)
     for (let i = 0; i < dayPoints.length; i++) {
@@ -557,7 +559,7 @@ export class ReplayPanel {
     this.replayNextCoords = null
     this.replaySegmentDurationMs = 0
     this.userPanned = false
-    this.setFollowActive(true)
+    this.setFollowActive(false)
     if (this.c.hasReplaySpeedLabelTarget)
       this.c.replaySpeedLabelTarget.textContent = "2x"
     if (this.c.hasReplaySpeedSliderTarget)
@@ -662,10 +664,16 @@ export class ReplayPanel {
   bindFollowInterrupt() {
     if (this._followInterruptBound || !this.map) return
     this._followInterruptBound = true
-    this.map.on("dragstart", () => {
-      this.userPanned = true
-      this.setFollowActive(false)
-    })
+    const stopFollow = () => {
+      if (!this.userPanned) {
+        this.userPanned = true
+        this.setFollowActive(false)
+      }
+    }
+    this.map.on("mousedown", stopFollow)
+    this.map.on("touchstart", stopFollow)
+    this.map.on("wheel", stopFollow)
+    this.map.on("dragstart", stopFollow)
   }
 
   panToFollow(lon, lat) {
