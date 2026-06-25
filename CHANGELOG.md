@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.9.2] - 2026-06-25
+
+### Added
+
+- A Flights toggle on the Map v2 trip view shows your AirTrail flights alongside the route and photo overlays, and hides the day-route segments that fall inside a flight so the two don't overlap. The button only appears when an AirTrail URL is configured.
+
+### Fixed
+
+- Photoprism photo imports with an end date no longer fail with an HTTP 400: the `before` filter is now sent as a full ISO8601 timestamp instead of a bare date (#1608).
+- Re-running visit detection no longer raises `ActiveModel::MissingAttributeError` when a cluster contains points already attached to a confirmed visit.
+
 ## [1.9.1] - 2026-06-22
 
 ### Added

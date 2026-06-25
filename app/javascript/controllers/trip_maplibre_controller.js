@@ -9,6 +9,7 @@ import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { flightWindows } from "maps_maplibre/utils/flight_mask"
+import Flash from "./flash_controller"
 
 /**
  * Trip MapLibre Controller
@@ -484,13 +485,22 @@ export default class extends Controller {
         })
       } catch (e) {
         console.error("[TripMapLibre] Error fetching flights:", e)
+        // Drop the cache so the next click retries the fetch.
+        this.flightsGeoJSON = null
         this.flightsActive = false
+        this._setButtonActive(this.flightsToggleBtnTarget, false)
+        Flash.show("error", "Could not load flights. Please try again.")
         return
       }
     }
 
     if (!this.flightsGeoJSON.features?.length) {
+      // Drop the cache so flights added to AirTrail later in the session are
+      // picked up on the next click instead of staying empty.
+      this.flightsGeoJSON = null
       this.flightsActive = false
+      this._setButtonActive(this.flightsToggleBtnTarget, false)
+      Flash.show("notice", "No flights found for this trip.")
       return
     }
 
