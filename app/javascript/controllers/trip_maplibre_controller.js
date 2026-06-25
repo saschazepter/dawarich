@@ -229,8 +229,9 @@ export default class extends Controller {
       }
 
       // Re-apply flight masking in case flights were toggled on before the
-      // day routes finished loading.
-      this.applyFlightMask()
+      // day routes finished loading. Skip when flights are off so we don't
+      // re-set every route source to its unmasked data on every load.
+      if (this.flightsActive) this.applyFlightMask()
 
       // Store all points for replay use
       this.allPoints = allPoints
