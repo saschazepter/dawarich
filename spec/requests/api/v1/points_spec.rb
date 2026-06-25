@@ -129,6 +129,35 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
 
+    context 'when import_id param is provided' do
+      let!(:import_a) { create(:import, user:) }
+      let!(:import_b) { create(:import, user:) }
+      let!(:points_from_a) do
+        (1..3).map { |i| create(:point, user:, import: import_a, timestamp: 2.days.ago + i.minutes) }
+      end
+      let!(:points_from_b) do
+        (1..2).map { |i| create(:point, user:, import: import_b, timestamp: 2.days.ago + i.minutes) }
+      end
+
+      it 'returns only points belonging to that import' do
+        get api_v1_points_url(api_key: user.api_key, import_id: import_a.id, per_page: 1000)
+
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+
+        expect(json_response.map { |p| p['id'] }).to match_array(points_from_a.map(&:id))
+      end
+
+      it 'does not return points from another import' do
+        get api_v1_points_url(api_key: user.api_key, import_id: import_b.id, per_page: 1000)
+
+        json_response = JSON.parse(response.body)
+
+        expect(json_response.map { |p| p['id'] }).to match_array(points_from_b.map(&:id))
+        expect(json_response.map { |p| p['id'] }).not_to include(*points_from_a.map(&:id))
+      end
+    end
+
     context 'when user is on lite plan and result spans multiple pages' do
       let!(:lite_user) do
         u = create(:user)

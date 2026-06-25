@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero, so no place visits were ever detected for them. Note for self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand on large databases if you want it gentler (#2963)
 - The nightly place-visit job now only processes points that don't yet belong to a visit, instead of recomputing every place's entire history each night, and pauses briefly between places — together these stop it from saturating the database and delaying incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
+- Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
 
 
 ## [1.9.2] - 2026-06-25

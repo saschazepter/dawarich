@@ -33,6 +33,7 @@ export default class extends Controller {
     timezone: String,
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
+    importId: { type: String, default: "" },
   }
 
   static targets = [
@@ -409,7 +410,7 @@ export default class extends Controller {
    * Initialize API client
    */
   initializeAPI() {
-    this.api = new ApiClient(this.apiKeyValue)
+    this.api = new ApiClient(this.apiKeyValue, this.importIdValue || null)
   }
 
   /**

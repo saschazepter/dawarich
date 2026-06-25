@@ -26,6 +26,8 @@ class Api::V1::PointsController < ApiController
              .without_raw_data
              .where(timestamp: start_at..end_at)
 
+    points = points.where(import_id: params[:import_id]) if params[:import_id].present?
+
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
       bbox = parse_bbox(params)
