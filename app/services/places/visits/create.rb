@@ -6,15 +6,23 @@ class Places::Visits::Create
   # Default radius for place visit detection (in meters)
   DEFAULT_PLACE_RADIUS = 100
 
-  def initialize(user, places)
+  def self.default_throttle_seconds
+    ENV.fetch('PLACE_VISITS_THROTTLE_SECONDS', '0.1').to_f
+  end
+
+  def initialize(user, places, throttle_seconds: self.class.default_throttle_seconds, sleep_fn: method(:sleep))
     @user = user
     @places = places
+    @throttle_seconds = throttle_seconds
+    @sleep_fn = sleep_fn
     @time_threshold_minutes = user.safe_settings.time_threshold_minutes || 30
     @merge_threshold_minutes = user.safe_settings.merge_threshold_minutes || 15
   end
 
   def call
-    places.each { place_visits(_1) }
+    places.each do |place|
+      throttle if place_visits(place)
+    end
   end
 
   private
@@ -37,12 +45,19 @@ class Places::Visits::Create
         create_or_update_visit(place, time_range, visit_points)
       end
     end
+
+    months.any?
+  end
+
+  def throttle
+    @sleep_fn.call(@throttle_seconds) if @throttle_seconds.positive?
   end
 
   def distinct_months_for_place(place)
-    place_radius = DEFAULT_PLACE_RADIUS / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
+    place_radius = DEFAULT_PLACE_RADIUS.to_f / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
 
     relation = Point.where(user_id: user.id)
+                    .where(visit_id: nil)
                     .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
     sql = <<~SQL.squish
       SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp), 'YYYY-MM') AS month
@@ -54,12 +69,7 @@ class Places::Visits::Create
   end
 
   def place_points_for_month(place, month)
-    place_radius =
-      if user.safe_settings.distance_unit == :km
-        DEFAULT_PLACE_RADIUS / ::DISTANCE_UNITS[:km]
-      else
-        DEFAULT_PLACE_RADIUS / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
-      end
+    place_radius = DEFAULT_PLACE_RADIUS.to_f / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
 
     year, month_num = month.split('-').map(&:to_i)
     month_start = Time.utc(year, month_num, 1).to_i
