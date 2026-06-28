@@ -3,6 +3,12 @@
 class Photos::Search
   attr_reader :user, :start_date, :end_date, :errors
 
+  def self.cached(user, start_date: '1970-01-01', end_date: nil, expires_in: 1.minute)
+    Rails.cache.fetch("photos_search/#{user.id}/#{start_date}/#{end_date}", expires_in: expires_in) do
+      new(user, start_date: start_date, end_date: end_date).call
+    end
+  end
+
   def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
     @start_date = start_date
