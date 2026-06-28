@@ -637,6 +637,8 @@ export class ApiClient {
       per_page: "10000", // Get all points in area (up to 10k)
     })
 
+    if (this.importId) params.append("import_id", this.importId)
+
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
     })

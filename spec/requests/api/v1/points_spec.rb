@@ -156,6 +156,17 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(json_response.map { |p| p['id'] }).to match_array(points_from_b.map(&:id))
         expect(json_response.map { |p| p['id'] }).not_to include(*points_from_a.map(&:id))
       end
+
+      it 'returns no points for an import_id owned by another user' do
+        other_user = create(:user)
+        other_import = create(:import, user: other_user)
+        create(:point, user: other_user, import: other_import, timestamp: 2.days.ago)
+
+        get api_v1_points_url(api_key: user.api_key, import_id: other_import.id, per_page: 1000)
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)).to be_empty
+      end
     end
 
     context 'when user is on lite plan and result spans multiple pages' do
