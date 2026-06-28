@@ -368,6 +368,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this._disconnected = true
     if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
     this.replayPanel?.destroy()
     this.settingsController?.stopRecalculationPolling()
@@ -402,9 +403,9 @@ export default class extends Controller {
     // Reopen at the user's last viewport instead of the zoomed-out globe.
     // When the date range has data, fitBounds overrides this; when it has
     // none, the map stays on the last-known view rather than the world.
-    const lastView = loadLastView()
+    const lastView = loadLastView(this.apiKeyValue)
 
-    this.map = await MapInitializer.initialize(this.containerTarget, {
+    const map = await MapInitializer.initialize(this.containerTarget, {
       mapStyle: this.settings.mapStyle,
       globeProjection: this.settings.globeProjection,
       hiddenTileCategories: this.settings.hiddenTileCategories || [],
@@ -412,7 +413,16 @@ export default class extends Controller {
       ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
     })
 
-    this._persistView = () => saveView(this.map)
+    // The controller may have disconnected while the style was loading (e.g.
+    // fast Turbo navigation). Tear the map down instead of attaching a listener
+    // to an orphaned instance that disconnect() can no longer reach.
+    if (this._disconnected) {
+      map.remove()
+      return
+    }
+
+    this.map = map
+    this._persistView = () => saveView(this.map, this.apiKeyValue)
     this.map.on("moveend", this._persistView)
   }
 
@@ -1852,20 +1862,25 @@ export default class extends Controller {
       )
       source.setData(data)
       pointsLayer.data = data
-      this.routesManager.reloadRoutes()
+      this.routesManager.reloadRoutes().catch(() => {})
     }
-    this.closeInfo()
 
     try {
       await this.api.deletePoint(pointId)
+      this.closeInfo()
       Toast.success("Point deleted successfully")
     } catch (_error) {
-      // Reconcile: the server still has the point, so restore it on the map.
-      if (canReconcile) {
-        data.features = [...data.features, removedFeature]
-        source.setData(data)
-        pointsLayer.data = data
-        this.routesManager.reloadRoutes()
+      // Reconcile against the source's CURRENT data, re-read fresh: a realtime
+      // broadcast may have replaced it while the request was in flight, so the
+      // snapshot captured above could be stale and would clobber that update.
+      const currentSource =
+        pointsLayer && this.map?.getSource(pointsLayer.sourceId)
+      const currentData = currentSource?._data
+      if (currentData?.features && removedFeature) {
+        currentData.features = [...currentData.features, removedFeature]
+        currentSource.setData(currentData)
+        pointsLayer.data = currentData
+        this.routesManager.reloadRoutes().catch(() => {})
       }
       Toast.error("Failed to delete point")
     }
