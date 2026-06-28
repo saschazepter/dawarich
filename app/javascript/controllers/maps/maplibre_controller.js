@@ -203,6 +203,11 @@ export default class extends Controller {
     this.settingsController.syncToggleStates()
 
     await this.initializeMap()
+    // initializeMap bails without setting this.map if the controller
+    // disconnected mid-init (fast Turbo nav); don't build managers on a
+    // dead controller with an undefined map.
+    if (this._disconnected) return
+
     this.initializeAPI()
 
     // Initialize managers
@@ -1849,9 +1854,12 @@ export default class extends Controller {
     const pointsLayer = this.layerManager.getLayer("points")
     const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
     const data = source?._data
-    const removedFeature = data?.features?.find(
-      (f) => Number(f.properties?.id) === numericId,
-    )
+    const removedIndex =
+      data?.features?.findIndex(
+        (f) => Number(f.properties?.id) === numericId,
+      ) ?? -1
+    const removedFeature =
+      removedIndex >= 0 ? data.features[removedIndex] : undefined
     const canReconcile = Boolean(data?.features && removedFeature)
 
     // Optimistically remove the point so the map updates instantly; the API
@@ -1862,7 +1870,7 @@ export default class extends Controller {
       )
       source.setData(data)
       pointsLayer.data = data
-      this.routesManager.reloadRoutes().catch(() => {})
+      this.routesManager.reloadRoutes().catch((error) => console.error(error))
     }
 
     try {
@@ -1877,10 +1885,18 @@ export default class extends Controller {
         pointsLayer && this.map?.getSource(pointsLayer.sourceId)
       const currentData = currentSource?._data
       if (currentData?.features && removedFeature) {
-        currentData.features = [...currentData.features, removedFeature]
+        // Splice back at the original index so the restored point keeps its
+        // render order instead of jumping on top of every other point.
+        const features = [...currentData.features]
+        features.splice(
+          Math.min(removedIndex, features.length),
+          0,
+          removedFeature,
+        )
+        currentData.features = features
         currentSource.setData(currentData)
         pointsLayer.data = currentData
-        this.routesManager.reloadRoutes().catch(() => {})
+        this.routesManager.reloadRoutes().catch((error) => console.error(error))
       }
       Toast.error("Failed to delete point")
     }

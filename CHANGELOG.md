@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
+
+### Changed
+
+- Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
+
 ## [1.9.2] - 2026-06-25
 
 ### Added

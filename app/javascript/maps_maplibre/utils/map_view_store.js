@@ -27,6 +27,10 @@ function storageKey(scope) {
  * @returns {{center: [number, number], zoom: number} | null}
  */
 export function loadLastView(scope) {
+  // Without a scope the key would collapse to the shared prefix, leaking one
+  // account's viewport into another's on a shared browser — skip persistence.
+  if (!scope) return null
+
   try {
     const raw = localStorage.getItem(storageKey(scope))
     if (!raw) return null
@@ -40,6 +44,8 @@ export function loadLastView(scope) {
       center.length === 2 &&
       Number.isFinite(center[0]) &&
       Number.isFinite(center[1]) &&
+      Math.abs(center[0]) <= 180 &&
+      Math.abs(center[1]) <= 90 &&
       Number.isFinite(zoom)
 
     return valid ? { center, zoom } : null
@@ -53,6 +59,8 @@ export function loadLastView(scope) {
  * @param {string} [scope] - Per-user scope (e.g. the API key)
  */
 export function saveView(map, scope) {
+  if (!scope) return
+
   try {
     const center = map.getCenter()
     localStorage.setItem(
