@@ -11,8 +11,6 @@ RSpec.describe Places::Visits::Create do
     described_class.new(user, user.reload.places, throttle_seconds: 0).call
   end
 
-  # A point a few metres from the place (unique lonlat per call to satisfy the
-  # uniqueness validation), at the given timestamp.
   def near_point(timestamp, seq:, **attrs)
     lon = 13.0948638 + (seq * 0.00001)
     lat = 54.2905245 + (seq * 0.00001)
@@ -20,14 +18,11 @@ RSpec.describe Places::Visits::Create do
                    lonlat: "POINT(#{lon} #{lat})", timestamp: timestamp, **attrs)
   end
 
-  # Count the per-month point-loading queries (`place_points_for_month`),
-  # identified by their `ORDER BY "points"."timestamp"` clause — the distinct
-  # months query orders by month, not by points.
   def count_point_load_queries
     count = 0
     sub = ActiveSupport::Notifications.subscribe('sql.active_record') do |*args|
       sql = args.last[:sql].to_s.downcase
-      count += 1 if sql.include?('order by "points"."timestamp"')
+      count += 1 if sql.match?(/from "points".*order by "points"\."timestamp"/)
     end
     yield
     count
@@ -68,28 +63,52 @@ RSpec.describe Places::Visits::Create do
     expect(queries).to eq(0)
   end
 
-  it 'pauses between places when a throttle is configured' do
+  it 'pauses after a place that had new points to process' do
     near_point(base_ts, seq: 1)
     near_point(base_ts + 5.minutes, seq: 2)
     near_point(base_ts + 10.minutes, seq: 3)
 
-    service = described_class.new(user, user.reload.places, throttle_seconds: 0.01)
-    allow(service).to receive(:sleep)
+    paused = []
+    described_class.new(user, user.reload.places, throttle_seconds: 0.01, sleep_fn: ->(s) { paused << s }).call
 
-    service.call
+    expect(paused).to include(0.01)
+  end
 
-    expect(service).to have_received(:sleep).with(0.01).at_least(:once)
+  it 'does not pause for a place with no new points to process' do
+    near_point(base_ts, seq: 1)
+    near_point(base_ts + 5.minutes, seq: 2)
+    near_point(base_ts + 10.minutes, seq: 3)
+    run
+
+    paused = []
+    described_class.new(user, user.reload.places, throttle_seconds: 0.01, sleep_fn: ->(s) { paused << s }).call
+
+    expect(paused).to be_empty
   end
 
   it 'does not pause when the throttle is zero' do
     near_point(base_ts, seq: 1)
+    near_point(base_ts + 5.minutes, seq: 2)
+    near_point(base_ts + 10.minutes, seq: 3)
 
-    service = described_class.new(user, user.reload.places, throttle_seconds: 0)
-    allow(service).to receive(:sleep)
+    paused = []
+    described_class.new(user, user.reload.places, throttle_seconds: 0, sleep_fn: ->(s) { paused << s }).call
 
-    service.call
+    expect(paused).to be_empty
+  end
 
-    expect(service).not_to have_received(:sleep)
+  it 'attributes a point near two places to a single visit (first place wins, no duplication)' do
+    create(:place, user: user, latitude: 54.2905245, longitude: 13.0948638)
+    near_point(base_ts, seq: 1)
+    near_point(base_ts + 5.minutes, seq: 2)
+    near_point(base_ts + 10.minutes, seq: 3)
+
+    run
+
+    visited = Point.where(user_id: user.id).where.not(visit_id: nil)
+    expect(visited.count).to eq(3)
+    expect(visited.distinct.pluck(:visit_id).size).to eq(1)
+    expect(Visit.count).to eq(1)
   end
 
   it 'extends an existing visit when a new adjacent point arrives' do
