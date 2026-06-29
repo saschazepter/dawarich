@@ -11,6 +11,7 @@ module Map
     def index
       @start_at = parsed_start_at
       @end_at = parsed_end_at
+      @import_id = import_record&.id
 
       # Status counts shown in the Timeline tab's FILTER section — scoped to
       # the calendar's currently-visible month so the numbers reflect "what
