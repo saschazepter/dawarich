@@ -15,8 +15,10 @@ RSpec.describe Photoprism::RequestPhotos do
 
   let(:start_date) { '2024-01-01' }
   let(:end_date) { '2024-12-31' }
-  let(:expected_before_date) { (end_date.to_date + 1.day).to_s }
+  let(:expected_before_date) { '2025-01-01T00:00:00Z' }
   let(:service) { described_class.new(user, start_date: start_date, end_date: end_date) }
+
+  around { |example| Time.use_zone('UTC') { example.run } }
 
   let(:mock_photo_response) do
     [
@@ -158,7 +160,7 @@ RSpec.describe Photoprism::RequestPhotos do
         service.call
 
         expect(WebMock).to have_requested(:get, /photoprism\.local/)
-          .with(query: hash_including(before: '2025-01-01'))
+          .with(query: hash_including(before: expected_before_date))
       end
     end
 
