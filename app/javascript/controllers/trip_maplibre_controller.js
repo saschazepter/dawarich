@@ -42,6 +42,7 @@ export default class extends Controller {
     "replayPrevDayButton",
     "replayNextDayButton",
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -410,6 +411,7 @@ export default class extends Controller {
         this.photosLayer = null
       }
       this._setButtonActive(this.photosToggleBtnTarget, false)
+      if (this.replayPanel?.isOpen) this.replayPanel.refreshReplayPhotos()
       return
     }
 
@@ -436,6 +438,7 @@ export default class extends Controller {
     this.photosLayer = new PhotosLayer(this.map)
     this.photosLayer.add(this.photosGeoJSON)
     this._setButtonActive(this.photosToggleBtnTarget, true)
+    if (this.replayPanel?.isOpen) this.replayPanel.refreshReplayPhotos()
   }
 
   photosToGeoJSON(photos) {
@@ -596,6 +599,10 @@ export default class extends Controller {
 
   replayTogglePlayback() {
     this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
   }
 
   replaySpeedChange(event) {

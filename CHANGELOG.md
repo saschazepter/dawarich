@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
+- During replay, photos also stack up as a tilted, Polaroid-style pile in the top-left corner of the map as the playhead reaches each one (newest on top, up to five shown at once); click a photo in the pile to open it. The pile stays in sync with the on-map photo markers as you play, scrub, or rewind, and works on the map, trip, and public shared-trip replays.
+- Turning on the photos layer while a replay is already running now adds those photos to the replay (corner pile and map markers) and hides the static markers; turning it off removes them again — previously photos only appeared if the layer was enabled before starting replay.
+- Replay panel: a **recenter & follow** button. During playback the camera follows the moving marker; dragging the map turns following off so you can look around freely, and pressing the button re-centers on the marker and resumes following.
+- The replay panel no longer shows the per-day point count.
+
+### Fixed
+
+- Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero, so no place visits were ever detected for them. Note for self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand on large databases if you want it gentler (#2963)
+- The nightly place-visit job now only processes points that don't yet belong to a visit, instead of recomputing every place's entire history each night, and pauses briefly between places — together these stop it from saturating the database and delaying incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
+
 
 ## [1.9.2] - 2026-06-25
 
@@ -36,7 +46,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Re-running visit detection no longer creates duplicate suggestions for a visit you already confirmed, even after correcting its address moved the place marker away from the underlying points (#2952)
 - Adding a per-day trip note no longer fails with "Content missing" on instances upgraded from a pre-release build; a migration backfills the `notes` table columns that an earlier `if_not_exists` table creation could have skipped (#2987)
 - Reverse geocoding against the hosted `photon.dawarich.app` (and `photon.komoot.io`) now always uses HTTPS, even when `PHOTON_API_USE_HTTPS` is unset or not exactly `true`, fixing the `Geocoder::ResponseParseError` caused by Cloudflare's HTTP→HTTPS redirect (#2982)
-
 
 ## [1.9.0] - 2026-06-21
 
