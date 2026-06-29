@@ -201,6 +201,23 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response.headers['X-Scoped-Points']).to eq('3')
       end
 
+      it 'import-scopes X-Total-Points-In-Range when import_id is provided' do
+        import = create(:import, user: lite_user)
+        create(:point, user: lite_user, import: import, timestamp: (window_start + 4.days).to_i)
+        create(:point, user: lite_user, import: import, timestamp: (window_start + 5.days).to_i)
+
+        get api_v1_points_url(
+          api_key: lite_user.api_key,
+          start_at: (window_start - 3.days).to_i,
+          end_at: Time.current.to_i,
+          import_id: import.id,
+          per_page: 10
+        )
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['X-Total-Points-In-Range']).to eq('2')
+      end
+
       it 'does not set Lite headers for a pro user' do
         pro_user = create(:user)
         pro_user.update_columns(plan: User.plans[:pro])

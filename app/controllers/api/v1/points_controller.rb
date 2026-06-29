@@ -67,7 +67,9 @@ class Api::V1::PointsController < ApiController
     # so the frontend can show how many points fall outside the 12-month data window.
     if !DawarichSettings.self_hosted? && current_api_user.lite?
       total_in_range = current_api_user.points
-                                       .where(timestamp: start_at..end_at).count
+                                       .where(timestamp: start_at..end_at)
+      total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?
+      total_in_range = total_in_range.count
       scoped_count = points.total_count
       response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
       response.set_header('X-Scoped-Points', scoped_count.to_s)
