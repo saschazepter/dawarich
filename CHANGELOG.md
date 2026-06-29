@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- During replay, photos also stack up as a tilted, Polaroid-style pile in the top-left corner of the map as the playhead reaches each one (newest on top, up to five shown at once); click a photo in the pile to open it. The pile stays in sync with the on-map photo markers as you play, scrub, or rewind, and works on the map, trip, and public shared-trip replays.
-- Turning on the photos layer while a replay is already running now adds those photos to the replay (corner pile and map markers) and hides the static markers; turning it off removes them again — previously photos only appeared if the layer was enabled before starting replay.
-- Replay panel: a **recenter & follow** button. During playback the camera follows the moving marker; dragging the map turns following off so you can look around freely, and pressing the button re-centers on the marker and resumes following.
+- Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
 
 ### Changed
 
+- Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
+- During replay, photos also stack up as a tilted, Polaroid-style pile in the top-left corner of the map as the playhead reaches each one (newest on top, up to five shown at once); click a photo in the pile to open it. The pile stays in sync with the on-map photo markers as you play, scrub, or rewind, and works on the map, trip, and public shared-trip replays.
+- Turning on the photos layer while a replay is already running now adds those photos to the replay (corner pile and map markers) and hides the static markers; turning it off removes them again — previously photos only appeared if the layer was enabled before starting replay.
+- Replay panel: a **recenter & follow** button. During playback the camera follows the moving marker; dragging the map turns following off so you can look around freely, and pressing the button re-centers on the marker and resumes following.
 - The replay panel no longer shows the per-day point count.
 
 ### Fixed
