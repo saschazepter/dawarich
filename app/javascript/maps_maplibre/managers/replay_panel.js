@@ -177,6 +177,7 @@ export class ReplayPanel {
     this.clearMarker()
     this.clearHighlight()
     this.teardownReplayPhotos()
+    this.unbindFollowInterrupt()
     this.replayManager = null
   }
 
@@ -664,16 +665,25 @@ export class ReplayPanel {
   bindFollowInterrupt() {
     if (this._followInterruptBound || !this.map) return
     this._followInterruptBound = true
-    const stopFollow = () => {
+    this._followEvents = ["mousedown", "touchstart", "wheel", "dragstart"]
+    this._followHandler = () => {
       if (!this.userPanned) {
         this.userPanned = true
         this.setFollowActive(false)
       }
     }
-    this.map.on("mousedown", stopFollow)
-    this.map.on("touchstart", stopFollow)
-    this.map.on("wheel", stopFollow)
-    this.map.on("dragstart", stopFollow)
+    for (const event of this._followEvents) {
+      this.map.on(event, this._followHandler)
+    }
+  }
+
+  unbindFollowInterrupt() {
+    if (!this._followInterruptBound || !this.map || !this._followHandler) return
+    for (const event of this._followEvents) {
+      this.map.off(event, this._followHandler)
+    }
+    this._followHandler = null
+    this._followInterruptBound = false
   }
 
   panToFollow(lon, lat) {

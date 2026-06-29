@@ -178,5 +178,18 @@ RSpec.describe Photos::Search do
 
       expect(call_count).to eq(1)
     end
+
+    it 'does not cache an empty result, so a transient empty re-queries upstream' do
+      call_count = 0
+      allow_any_instance_of(Immich::RequestPhotos).to receive(:call) do
+        call_count += 1
+        []
+      end
+
+      described_class.cached(user, **args)
+      described_class.cached(user, **args)
+
+      expect(call_count).to eq(2)
+    end
   end
 end

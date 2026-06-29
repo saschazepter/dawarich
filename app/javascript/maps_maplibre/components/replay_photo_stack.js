@@ -53,7 +53,9 @@ export class ReplayPhotoStack {
 
     const img = document.createElement("div")
     img.className = "replay-photo-stack-img"
-    img.style.backgroundImage = `url("${encodeURI(photo.thumbnail_url)}")`
+    if (photo.thumbnail_url) {
+      img.style.backgroundImage = `url("${encodeURI(photo.thumbnail_url)}")`
+    }
     card.appendChild(img)
 
     card.addEventListener("click", (event) => {
