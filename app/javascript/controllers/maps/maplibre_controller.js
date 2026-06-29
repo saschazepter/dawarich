@@ -174,6 +174,10 @@ export default class extends Controller {
   ]
 
   async connect() {
+    // Reset in case this controller instance is reconnected after a prior
+    // disconnect (so the mid-init teardown guard doesn't fire on a fresh map).
+    this._disconnected = false
+
     if (!this.isWebGLSupported()) {
       this.showWebGLError()
       return
