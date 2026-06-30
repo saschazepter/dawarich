@@ -4,7 +4,7 @@ class Places::Visits::Create
   attr_reader :user, :places
 
   # Default radius for place visit detection (in meters)
-  DEFAULT_PLACE_RADIUS = 100
+  DEFAULT_PLACE_RADIUS = 100.0
 
   def self.default_throttle_seconds
     ENV.fetch('PLACE_VISITS_THROTTLE_SECONDS', '0.1').to_f
