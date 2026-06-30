@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Photoprism photo imports no longer fail with an HTTP 400: the `after` and `before` filters are now sent as plain `YYYY-MM-DD` dates, which Photoprism's search API requires (recent Photoprism rejects full timestamps, including the `before` value shipped in 1.9.2) (#3034).
+
 ## [1.9.2] - 2026-06-25
 
 ### Added

@@ -87,7 +87,7 @@ class Photoprism::RequestPhotos
 
   def request_params(offset = 0)
     params = offset.zero? ? default_params : default_params.merge(offset: offset)
-    params[:before] = (end_date.to_date + 1.day).beginning_of_day.iso8601 if end_date.present?
+    params[:before] = (end_date.to_date + 1.day).iso8601 if end_date.present?
     params
   end
 
@@ -96,7 +96,7 @@ class Photoprism::RequestPhotos
       q: '',
       public: true,
       quality: 3,
-      after: start_date,
+      after: start_date.to_date.iso8601,
       count: 1000
     }
   end
