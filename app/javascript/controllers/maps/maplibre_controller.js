@@ -5,6 +5,7 @@ import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
+import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -33,6 +34,7 @@ export default class extends Controller {
     timezone: String,
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
+    importId: { type: String, default: "" },
   }
 
   static targets = [
@@ -162,6 +164,7 @@ export default class extends Controller {
     "timelineFeedContainer",
     // Replay playback
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -173,6 +176,10 @@ export default class extends Controller {
   ]
 
   async connect() {
+    // Reset in case this controller instance is reconnected after a prior
+    // disconnect (so the mid-init teardown guard doesn't fire on a fresh map).
+    this._disconnected = false
+
     if (!this.isWebGLSupported()) {
       this.showWebGLError()
       return
@@ -202,6 +209,11 @@ export default class extends Controller {
     this.settingsController.syncToggleStates()
 
     await this.initializeMap()
+    // initializeMap bails without setting this.map if the controller
+    // disconnected mid-init (fast Turbo nav); don't build managers on a
+    // dead controller with an undefined map.
+    if (this._disconnected) return
+
     this.initializeAPI()
 
     // Initialize managers
@@ -367,6 +379,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this._disconnected = true
     if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
     this.replayPanel?.destroy()
     this.settingsController?.stopRecalculationPolling()
@@ -374,6 +387,7 @@ export default class extends Controller {
     this.visitsManager?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
+    if (this._persistView) this.map?.off("moveend", this._persistView)
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -397,19 +411,37 @@ export default class extends Controller {
    * Initialize MapLibre map
    */
   async initializeMap() {
-    this.map = await MapInitializer.initialize(this.containerTarget, {
+    // Reopen at the user's last viewport instead of the zoomed-out globe.
+    // When the date range has data, fitBounds overrides this; when it has
+    // none, the map stays on the last-known view rather than the world.
+    const lastView = loadLastView(this.apiKeyValue)
+
+    const map = await MapInitializer.initialize(this.containerTarget, {
       mapStyle: this.settings.mapStyle,
       globeProjection: this.settings.globeProjection,
       hiddenTileCategories: this.settings.hiddenTileCategories || [],
       disabledPoiGroups: this.settings.disabledPoiGroups || [],
+      ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
     })
+
+    // The controller may have disconnected while the style was loading (e.g.
+    // fast Turbo navigation). Tear the map down instead of attaching a listener
+    // to an orphaned instance that disconnect() can no longer reach.
+    if (this._disconnected) {
+      map.remove()
+      return
+    }
+
+    this.map = map
+    this._persistView = () => saveView(this.map, this.apiKeyValue)
+    this.map.on("moveend", this._persistView)
   }
 
   /**
    * Initialize API client
    */
   initializeAPI() {
-    this.api = new ApiClient(this.apiKeyValue)
+    this.api = new ApiClient(this.apiKeyValue, this.importIdValue || null)
   }
 
   /**
@@ -1362,8 +1394,11 @@ export default class extends Controller {
   toggleScratch(event) {
     return this.routesManager.toggleScratch(event)
   }
-  togglePhotos(event) {
-    return this.routesManager.togglePhotos(event)
+  async togglePhotos(event) {
+    await this.routesManager.togglePhotos(event)
+    if (!this.replayPanel?.isOpen) return
+    if (!event.target.checked) this._photosWasVisible = false
+    this.replayPanel.refreshReplayPhotos()
   }
   toggleAreas(event) {
     return this.routesManager.toggleAreas(event)
@@ -1824,26 +1859,54 @@ export default class extends Controller {
     )
     if (!confirmed) return
 
+    const numericId = Number(pointId)
+    const pointsLayer = this.layerManager.getLayer("points")
+    const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
+    const data = source?._data
+    const removedIndex =
+      data?.features?.findIndex(
+        (f) => Number(f.properties?.id) === numericId,
+      ) ?? -1
+    const removedFeature =
+      removedIndex >= 0 ? data.features[removedIndex] : undefined
+    const canReconcile = Boolean(data?.features && removedFeature)
+
+    // Optimistically remove the point so the map updates instantly; the API
+    // call and route rebuild run in the background and are reverted on error.
+    if (canReconcile) {
+      data.features = data.features.filter(
+        (f) => Number(f.properties?.id) !== numericId,
+      )
+      source.setData(data)
+      pointsLayer.data = data
+      this.routesManager.reloadRoutes().catch((error) => console.error(error))
+    }
+
     try {
-      Toast.info("Deleting point...")
       await this.api.deletePoint(pointId)
-
-      const numericId = Number(pointId)
-      const pointsLayer = this.layerManager.getLayer("points")
-      const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
-      if (source?._data?.features) {
-        const data = source._data
-        data.features = data.features.filter(
-          (f) => Number(f.properties?.id) !== numericId,
-        )
-        source.setData(data)
-        pointsLayer.data = data
-        await this.routesManager.reloadRoutes()
-      }
-
       this.closeInfo()
       Toast.success("Point deleted successfully")
     } catch (_error) {
+      // Reconcile against the source's CURRENT data, re-read fresh: a realtime
+      // broadcast may have replaced it while the request was in flight, so the
+      // snapshot captured above could be stale and would clobber that update.
+      const currentSource =
+        pointsLayer && this.map?.getSource(pointsLayer.sourceId)
+      const currentData = currentSource?._data
+      if (currentData?.features && removedFeature) {
+        // Splice back at the original index so the restored point keeps its
+        // render order instead of jumping on top of every other point.
+        const features = [...currentData.features]
+        features.splice(
+          Math.min(removedIndex, features.length),
+          0,
+          removedFeature,
+        )
+        currentData.features = features
+        currentSource.setData(currentData)
+        pointsLayer.data = currentData
+        this.routesManager.reloadRoutes().catch((error) => console.error(error))
+      }
       Toast.error("Failed to delete point")
     }
   }
@@ -1989,6 +2052,10 @@ export default class extends Controller {
 
   replayTogglePlayback() {
     this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
   }
 
   replaySpeedChange(event) {
