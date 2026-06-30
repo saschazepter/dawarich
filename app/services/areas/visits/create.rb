@@ -40,9 +40,9 @@ class Areas::Visits::Create
   def distinct_months_for_area(area)
     area_radius =
       if user.safe_settings.distance_unit == :km
-        area.radius / ::DISTANCE_UNITS[:km]
+        area.radius.to_f / ::DISTANCE_UNITS[:km]
       else
-        area.radius / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
+        area.radius.to_f / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
       end
 
     relation = Point.where(user_id: user.id)
@@ -57,7 +57,7 @@ class Areas::Visits::Create
   end
 
   def area_points_for_month(area, month)
-    area_radius = area.radius / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
+    area_radius = area.radius.to_f / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
 
     year, month_num = month.split('-').map(&:to_i)
     month_start = Time.utc(year, month_num, 1).to_i
