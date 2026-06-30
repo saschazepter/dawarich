@@ -46,15 +46,21 @@ RSpec.describe 'Photoprism date filters are sent as plain dates' do
     expect(captured('after')).to eq('1970-01-01')
   end
 
-  it 'keeps photos taken later on the end day instead of clipping at midnight' do
+  it 'defaults the after date and does not raise when start_date is blank' do
+    stub_empty
+    expect { Photoprism::RequestPhotos.new(user, start_date: '').call }.not_to raise_error
+    expect(captured('after')).to eq('1970-01-01')
+  end
+
+  it 'excludes photos taken after a precise end_date' do
     stub_request(:get, /photoprism\.local/).to_return(
       { status: 200, body: [{ 'TakenAtLocal' => '2026-06-23T18:00:00Z' }].to_json,
         headers: { 'Content-Type' => 'application/json' } },
       { status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' } }
     )
 
-    result = Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23').call
+    result = Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23T10:00:00Z').call
 
-    expect(result.size).to eq(1)
+    expect(result).to be_empty
   end
 end
