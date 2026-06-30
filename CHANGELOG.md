@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Automatic visit detection (nightly and realtime) now runs even when no reverse geocoder is configured; self-hosters without Photon/Nominatim/etc. now get visit suggestions, named by coordinates until geocoding is available (#3043).
+
 ## [1.9.2] - 2026-06-25
 
 ### Added
