@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
+
 ## [1.9.2] - 2026-06-25
 
 ### Added
