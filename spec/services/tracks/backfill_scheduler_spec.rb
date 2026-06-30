@@ -7,7 +7,7 @@ RSpec.describe Tracks::BackfillScheduler do
   let(:window_start) { Tracks::IncrementalGenerator::LOOKBACK_HOURS.hours.ago.to_i }
 
   after do
-    described_class.pop_range(user.id)
+    described_class.clear(user.id)
   end
 
   describe '#call' do
@@ -30,18 +30,22 @@ RSpec.describe Tracks::BackfillScheduler do
   describe 'range accumulation across a burst' do
     let(:day) { Time.zone.local(2024, 6, 15, 12, 0, 0).to_i }
 
-    it 'pops the widest min/max seen across all triggers' do
+    it 'peeks the widest min/max seen across all triggers' do
       described_class.new(user.id, [day, day + 100]).call
       described_class.new(user.id, [day - 86_400, day + 100]).call
 
-      expect(described_class.pop_range(user.id)).to eq([day - 86_400, day + 100])
+      expect(described_class.peek_range(user.id)).to eq([day - 86_400, day + 100])
     end
 
-    it 'returns nil once the range has been popped' do
+    it 'leaves the range intact for a retry until it is cleared' do
       described_class.new(user.id, [day]).call
-      described_class.pop_range(user.id)
 
-      expect(described_class.pop_range(user.id)).to be_nil
+      expect(described_class.peek_range(user.id)).to eq([day, day])
+      expect(described_class.peek_range(user.id)).to eq([day, day])
+
+      described_class.clear(user.id)
+
+      expect(described_class.peek_range(user.id)).to be_nil
     end
   end
 end

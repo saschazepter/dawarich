@@ -2,7 +2,7 @@
 
 class Tracks::BackfillScheduler
   DEBOUNCE_DELAY = 1.minute
-  REDIS_KEY_TTL = 5.minutes
+  REDIS_KEY_TTL = 1.hour
 
   def initialize(user_id, timestamps)
     @user_id = user_id
@@ -28,18 +28,25 @@ class Tracks::BackfillScheduler
     end
   end
 
-  def self.pop_range(user_id)
-    new(user_id, []).pop_range
+  def self.peek_range(user_id)
+    new(user_id, []).peek_range
   end
 
-  def pop_range
+  def self.clear(user_id)
+    new(user_id, []).clear
+  end
+
+  def peek_range
     redis_pool.with do |redis|
       bounds = redis.zrange(range_key, 0, -1)
-      redis.del(range_key, schedule_key)
       return nil if bounds.empty?
 
       [bounds.first.to_i, bounds.last.to_i]
     end
+  end
+
+  def clear
+    redis_pool.with { |redis| redis.del(range_key, schedule_key) }
   end
 
   private
