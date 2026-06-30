@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Photoprism photo imports with a start date no longer fail with an HTTP 400: the `after` filter is now sent as a full ISO8601 timestamp instead of a bare date, matching the `before` fix from 1.9.2 (#3034).
+
 ## [1.9.2] - 2026-06-25
 
 ### Added
