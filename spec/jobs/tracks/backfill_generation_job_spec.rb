@@ -7,7 +7,7 @@ RSpec.describe Tracks::BackfillGenerationJob do
   let(:old_time) { Time.zone.local(2024, 6, 15, 10, 0, 0) }
 
   after do
-    Tracks::BackfillScheduler.clear(user.id)
+    Tracks::BackfillScheduler.pop_range(user.id)
   end
 
   it 'does nothing when no range is pending' do
@@ -42,19 +42,19 @@ RSpec.describe Tracks::BackfillGenerationJob do
       end
   end
 
-  it 'clears the pending range after enqueueing generation' do
+  it 'consumes the pending range after enqueueing generation' do
     Tracks::BackfillScheduler.new(user.id, [old_time.to_i]).call
 
     described_class.perform_now(user.id)
 
-    expect(Tracks::BackfillScheduler.peek_range(user.id)).to be_nil
+    expect(Tracks::BackfillScheduler.pop_range(user.id)).to be_nil
   end
 
-  it 'leaves the range intact for retry when enqueueing fails' do
+  it 'reschedules the range for retry when enqueueing fails' do
     Tracks::BackfillScheduler.new(user.id, [old_time.to_i]).call
     allow(Tracks::ParallelGeneratorJob).to receive(:perform_later).and_raise(StandardError, 'boom')
 
-    expect { described_class.perform_now(user.id) }.to raise_error(StandardError)
-    expect(Tracks::BackfillScheduler.peek_range(user.id)).to eq([old_time.to_i, old_time.to_i])
+    expect { described_class.perform_now(user.id) }.not_to raise_error
+    expect(Tracks::BackfillScheduler.pop_range(user.id)).to eq([old_time.to_i, old_time.to_i])
   end
 end

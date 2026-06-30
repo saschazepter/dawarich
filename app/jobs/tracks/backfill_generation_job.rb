@@ -4,7 +4,7 @@ class Tracks::BackfillGenerationJob < ApplicationJob
   queue_as :tracks
 
   def perform(user_id)
-    range = Tracks::BackfillScheduler.peek_range(user_id)
+    range = Tracks::BackfillScheduler.pop_range(user_id)
     return if range.nil?
 
     earliest, latest = range
@@ -17,7 +17,8 @@ class Tracks::BackfillGenerationJob < ApplicationJob
       mode: :bulk,
       untracked_only: true
     )
-
-    Tracks::BackfillScheduler.clear(user_id)
+  rescue StandardError => e
+    Tracks::BackfillScheduler.new(user_id, range).call if range
+    ExceptionReporter.call(e, "Failed to schedule backfill track generation for user #{user_id}")
   end
 end
