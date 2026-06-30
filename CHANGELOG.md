@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Points added retroactively through the API (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
+
 ## [1.9.2] - 2026-06-25
 
 ### Added
