@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
 ### Added
 
 - Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The nightly place-visit job now only processes points that don't yet belong to a visit, instead of recomputing every place's entire history each night, and pauses briefly between places — together these stop it from saturating the database and delaying incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
 - Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
 - Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
+- Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
 
 
 ## [1.9.2] - 2026-06-25
