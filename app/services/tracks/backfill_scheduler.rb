@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Tracks::BackfillScheduler
+  DEBOUNCE_DELAY = 1.minute
+  REDIS_KEY_TTL = 5.minutes
+
   def initialize(user_id, timestamps)
     @user_id = user_id
     @timestamps = timestamps.compact
@@ -12,18 +15,48 @@ class Tracks::BackfillScheduler
     earliest = @timestamps.min
     return if earliest >= realtime_window_start
 
-    Tracks::ParallelGeneratorJob.perform_later(
-      @user_id,
-      start_at: Time.zone.at(earliest).beginning_of_day,
-      end_at: Time.zone.at(@timestamps.max).end_of_day,
-      mode: :bulk,
-      untracked_only: true
-    )
+    redis_pool.with do |redis|
+      latest = @timestamps.max
+      redis.zadd(range_key, earliest, earliest.to_s, latest, latest.to_s)
+      redis.expire(range_key, REDIS_KEY_TTL.to_i)
+
+      if redis.set(schedule_key, 1, nx: true, ex: REDIS_KEY_TTL.to_i)
+        Tracks::BackfillGenerationJob.set(wait: DEBOUNCE_DELAY).perform_later(@user_id)
+      else
+        redis.expire(schedule_key, REDIS_KEY_TTL.to_i)
+      end
+    end
+  end
+
+  def self.pop_range(user_id)
+    new(user_id, []).pop_range
+  end
+
+  def pop_range
+    redis_pool.with do |redis|
+      bounds = redis.zrange(range_key, 0, -1)
+      redis.del(range_key, schedule_key)
+      return nil if bounds.empty?
+
+      [bounds.first.to_i, bounds.last.to_i]
+    end
   end
 
   private
 
   def realtime_window_start
     Tracks::IncrementalGenerator::LOOKBACK_HOURS.hours.ago.to_i
+  end
+
+  def range_key
+    "track_backfill_range:user:#{@user_id}"
+  end
+
+  def schedule_key
+    "track_backfill:user:#{@user_id}"
+  end
+
+  def redis_pool
+    Sidekiq.redis_pool
   end
 end
