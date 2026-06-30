@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Photoprism after filter is sent as a plain date' do
+RSpec.describe 'Photoprism date filters are sent as plain dates' do
   let(:user) do
     create(
       :user,
@@ -13,25 +13,48 @@ RSpec.describe 'Photoprism after filter is sent as a plain date' do
     )
   end
 
-  let(:minute_precision_start_date) { '2026-06-21T00:00+02:00' }
-  let(:service) { Photoprism::RequestPhotos.new(user, start_date: minute_precision_start_date) }
-
-  it 'reduces a minute-precision start_date to the YYYY-MM-DD date Photoprism accepts' do
-    stub_request(:any, /photoprism\.local/).to_return(
+  def stub_empty
+    stub_request(:get, /photoprism\.local/).to_return(
       status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' }
     )
+  end
 
-    service.call
+  def captured(param)
+    value = nil
+    expect(WebMock).to(have_requested(:get, /photoprism\.local/).with do |req|
+      value ||= req.uri.query_values[param]
+      true
+    end)
+    value
+  end
 
-    requested_after = nil
-    expect(WebMock).to(
-      have_requested(:get, /photoprism\.local/).with do |request|
-        requested_after = request.uri.query_values['after']
-        true
-      end
+  it 'reduces a minute-precision start_date to the plain after date Photoprism accepts' do
+    stub_empty
+    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21T00:00+02:00').call
+    expect(captured('after')).to eq('2026-06-21')
+  end
+
+  it 'sends before as a plain date one day past end_date' do
+    stub_empty
+    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23T00:00+02:00').call
+    expect(captured('before')).to eq('2026-06-24')
+  end
+
+  it 'defaults the after date and does not raise when start_date is nil' do
+    stub_empty
+    expect { Photoprism::RequestPhotos.new(user, start_date: nil).call }.not_to raise_error
+    expect(captured('after')).to eq('1970-01-01')
+  end
+
+  it 'keeps photos taken later on the end day instead of clipping at midnight' do
+    stub_request(:get, /photoprism\.local/).to_return(
+      { status: 200, body: [{ 'TakenAtLocal' => '2026-06-23T18:00:00Z' }].to_json,
+        headers: { 'Content-Type' => 'application/json' } },
+      { status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' } }
     )
 
-    expect(requested_after).to eq('2026-06-21')
-    expect(requested_after).not_to eq(minute_precision_start_date)
+    result = Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23').call
+
+    expect(result.size).to eq(1)
   end
 end
