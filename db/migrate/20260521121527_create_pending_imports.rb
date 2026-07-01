@@ -2,6 +2,8 @@
 
 class CreatePendingImports < ActiveRecord::Migration[8.0]
   def change
+    enable_extension 'pgcrypto'
+
     create_table :pending_imports do |t|
       t.uuid :claim_ticket, null: false, default: -> { 'gen_random_uuid()' }
       t.string :original_filename, null: false

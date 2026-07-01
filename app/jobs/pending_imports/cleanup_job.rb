@@ -14,10 +14,14 @@ class PendingImports::CleanupJob < ApplicationJob
       expired += 1
     end
 
-    # Claimed more than 7 days ago — destroy record but DO NOT purge the blob
-    # (it's shared with the user's Import via blob reassignment). Detach first.
+    # Claimed more than 7 days ago — destroy record but keep the blob while
+    # the user's Import still references it (shared via blob reassignment).
+    # If the Import was deleted in the meantime, this detach removes the last
+    # attachment and the blob must be purged here or it leaks forever.
     PendingImport.where('claimed_at < ?', 7.days.ago).find_each do |pi|
+      blob = pi.file.blob if pi.file.attached?
       pi.file.detach if pi.file.attached?
+      blob.purge_later if blob && blob.attachments.reload.none?
       pi.destroy
       claimed += 1
     end

@@ -277,12 +277,12 @@ end
 # Prevents abuse of the public pending-import surface (no API key required,
 # accepts up to 100MB files).
 Rack::Attack.throttle('api/v1/imports/pending CREATE', limit: 60, period: 1.hour) do |req|
-  req.ip if req.post? && req.path == '/api/v1/imports/pending'
+  req.ip if req.post? && req.path.start_with?('/api/v1/imports/pending')
 end
 
 # Companion throttle for the signup claim path that consumes ?import_ticket=.
 Rack::Attack.throttle('imports/claim attempts', limit: 30, period: 1.hour) do |req|
-  req.ip if req.get? && req.path == '/users/sign_up' && req.params['import_ticket'].present?
+  req.ip if req.get? && req.path.start_with?('/users/sign_up') && req.params['import_ticket'].present?
 end
 
 Rack::Attack.throttled_responder = lambda do |request|

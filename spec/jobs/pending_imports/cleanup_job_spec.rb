@@ -22,6 +22,36 @@ RSpec.describe PendingImports::CleanupJob do
     end
   end
 
+  describe 'orphaned blob purge' do
+    it 'purges the blob when the claiming Import was deleted before the sweep' do
+      user = create(:user)
+      pending = create(:pending_import, :with_file)
+      import = PendingImports::Claim.new(pending, user).call
+      blob = pending.file.blob
+
+      import.destroy
+      pending.update!(claimed_at: 8.days.ago)
+
+      perform_enqueued_jobs { described_class.perform_now }
+
+      expect(PendingImport.exists?(pending.id)).to be false
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be false
+    end
+
+    it 'keeps the blob while the claiming Import still references it' do
+      user = create(:user)
+      pending = create(:pending_import, :with_file)
+      import = PendingImports::Claim.new(pending, user).call
+      blob = pending.file.blob
+      pending.update!(claimed_at: 8.days.ago)
+
+      perform_enqueued_jobs { described_class.perform_now }
+
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be true
+      expect(import.reload.file).to be_attached
+    end
+  end
+
   describe 'claimed-old purge' do
     it 'destroys pending imports claimed more than 7 days ago' do
       old = create(:pending_import, :with_file)
