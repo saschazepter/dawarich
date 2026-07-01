@@ -248,5 +248,16 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
       expect(user.reload.settings.dig('maps', 'hidden_tile_categories')).to eq(['poi'])
     end
+
+    it 'rejects invalid distance units' do
+      user.settings['maps'] = { 'distance_unit' => 'km' }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'banana' } } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('km')
+    end
   end
 end
