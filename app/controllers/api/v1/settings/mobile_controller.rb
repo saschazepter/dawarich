@@ -22,13 +22,17 @@ class Api::V1::Settings::MobileController < ApiController
   end
 
   def update
+    sanitized = sanitized_params
     settings = current_api_user.settings || {}
     existing = settings['mobile'] || {}
     settings['mobile'] = existing
-                         .merge(sanitized_params)
+                         .merge(sanitized)
                          .merge('updated_at' => Time.current.iso8601)
 
     if current_api_user.update(settings: settings)
+      Rails.logger.info(
+        "Mobile settings updated for user #{current_api_user.id}: #{sanitized.keys.join(', ')}"
+      )
       render json: mobile_settings_response.merge(message: 'Settings updated'), status: :ok
     else
       render json: {
