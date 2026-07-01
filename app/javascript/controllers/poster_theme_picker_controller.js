@@ -46,6 +46,11 @@ export default class extends Controller {
       s.setAttribute("aria-pressed", on ? "true" : "false")
     }
     this.render(swatch)
+    document.dispatchEvent(
+      new CustomEvent("poster-theme:changed", {
+        detail: { key: this.selectedKey },
+      }),
+    )
   }
 
   render(swatch) {

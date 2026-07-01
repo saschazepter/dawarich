@@ -1528,6 +1528,35 @@
               <p class="text-[11px] leading-snug opacity-60">Captures exactly what's inside the frame, for the current date range.</p>
             <% end %>
 
+            <div data-controller="poster-studio" class="rounded-lg border border-base-300 bg-base-100 p-3 space-y-2">
+              <span class="text-sm font-semibold">Instant download <span class="badge badge-ghost badge-xs align-middle">beta</span></span>
+              <p class="text-[11px] leading-snug opacity-60">Renders in your browser from the current frame — no queue. Print sizes up to A0.</p>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="form-control">
+                  <span class="label-text text-xs">Size</span>
+                  <select class="select select-bordered select-sm" data-poster-studio-target="paperSize">
+                    <option value="A2">A2</option>
+                    <option value="A3" selected>A3</option>
+                    <option value="A4">A4</option>
+                    <option value="A5">A5</option>
+                    <option value="A1">A1</option>
+                    <option value="A0">A0</option>
+                  </select>
+                </label>
+                <label class="form-control">
+                  <span class="label-text text-xs">Format</span>
+                  <select class="select select-bordered select-sm" data-poster-studio-target="format">
+                    <option value="png" selected>PNG</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                </label>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm w-full"
+                      data-poster-studio-target="button"
+                      data-action="poster-studio#download">Download poster</button>
+              <p class="text-xs opacity-70" data-poster-studio-target="status"></p>
+            </div>
+
             <div class="divider my-2"></div>
 
             <h4 class="font-semibold text-sm">Recent posters</h4>

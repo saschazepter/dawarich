@@ -35,9 +35,21 @@ module Map
     private
 
     def cached_poster_themes
-      Rails.cache.fetch('poster_service_themes', expires_in: 1.hour, skip_nil: true) do
+      remote = Rails.cache.fetch('poster_service_themes', expires_in: 1.hour, skip_nil: true) do
         Posters::Client.new.themes.presence
-      end || []
+      end
+      remote.presence || local_poster_themes
+    end
+
+    # Client-side renderer fallback: the browser poster path needs no sidecar, so
+    # when the sidecar is unreachable we serve the vendored theme tokens directly.
+    def local_poster_themes
+      Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
+        data = JSON.parse(File.read(path))
+        data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
+      rescue JSON::ParserError
+        nil
+      end
     end
 
     # Reuses the same month-resolution rule as the calendar helper so the
