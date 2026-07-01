@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
+
 - Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
 
 ### Changed

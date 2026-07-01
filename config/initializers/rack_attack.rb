@@ -280,9 +280,7 @@ Rack::Attack.throttle('api/v1/imports/pending CREATE', limit: 60, period: 1.hour
   req.ip if req.post? && req.path == '/api/v1/imports/pending'
 end
 
-# Companion throttle for the signup claim path. The Devise integration that
-# consumes ?import_ticket= arrives in a later task, but registering the
-# throttle now is safe (no-op until the path is wired up).
+# Companion throttle for the signup claim path that consumes ?import_ticket=.
 Rack::Attack.throttle('imports/claim attempts', limit: 30, period: 1.hour) do |req|
   req.ip if req.get? && req.path == '/users/sign_up' && req.params['import_ticket'].present?
 end

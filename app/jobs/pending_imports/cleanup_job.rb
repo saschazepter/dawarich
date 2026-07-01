@@ -4,10 +4,14 @@ class PendingImports::CleanupJob < ApplicationJob
   queue_as :default
 
   def perform
+    expired = 0
+    claimed = 0
+
     # Expired and never claimed — purge blob + destroy record
     PendingImport.expired.where(claimed_at: nil).find_each do |pi|
       pi.file.purge if pi.file.attached?
       pi.destroy
+      expired += 1
     end
 
     # Claimed more than 7 days ago — destroy record but DO NOT purge the blob
@@ -15,6 +19,12 @@ class PendingImports::CleanupJob < ApplicationJob
     PendingImport.where('claimed_at < ?', 7.days.ago).find_each do |pi|
       pi.file.detach if pi.file.attached?
       pi.destroy
+      claimed += 1
     end
+
+    Rails.logger.info(
+      "PendingImports::CleanupJob: purged #{expired} expired unclaimed, #{claimed} claimed >7d; " \
+      "#{PendingImport.where(claimed_at: nil).count} unclaimed remain"
+    )
   end
 end

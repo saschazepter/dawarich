@@ -126,13 +126,8 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def handle_logged_in_with_ticket
     return unless user_signed_in? && params[:import_ticket].present?
 
-    pending = PendingImport.claimable.find_by(claim_ticket: params[:import_ticket])
-    if pending
-      PendingImports::Claim.new(pending, current_user).call
-      flash[:notice] = "Importing #{pending.original_filename}... You'll see it in your dashboard shortly."
-    else
-      flash[:alert] = 'Your import link has expired or already been used.'
-    end
+    session[:pending_import_ticket] = params[:import_ticket]
+    claim_pending_import_for(current_user)
 
     redirect_to imports_path
   end

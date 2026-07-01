@@ -3,6 +3,33 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/imports/pending' do
+  before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+  context 'on a self-hosted instance' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    it 'returns 404 — the tools handoff is Cloud-only' do
+      post '/api/v1/imports/pending',
+           params: { file: fixture_file_upload('sample-export.zip', 'application/zip'),
+                     original_filename: 'sample-export.zip' },
+           headers: { 'Origin' => 'https://dawarich.app' }
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  context 'with an empty file' do
+    it 'rejects a 0-byte upload at intake' do
+      empty = Rack::Test::UploadedFile.new(StringIO.new(''), 'application/zip',
+                                           original_filename: 'empty.zip')
+      post '/api/v1/imports/pending',
+           params: { file: empty, original_filename: 'empty.zip' },
+           headers: { 'Origin' => 'https://dawarich.app' }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body['error']).to eq('File is empty')
+    end
+  end
   let(:valid_origin) { 'https://dawarich.app' }
   let(:file) do
     Rack::Test::UploadedFile.new(

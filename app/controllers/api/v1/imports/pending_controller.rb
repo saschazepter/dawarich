@@ -6,6 +6,7 @@ class Api::V1::Imports::PendingController < ApiController
   skip_before_action :authenticate_active_api_user!, raise: false
 
   include OriginAllowlistable
+  before_action :ensure_cloud!
   before_action :enforce_origin_allowlist!
 
   ALLOWED_EXTENSIONS = %w[.gpx .geojson .json .kml .kmz .rec .csv .tcx .fit .zip].freeze
@@ -14,6 +15,7 @@ class Api::V1::Imports::PendingController < ApiController
   def create
     return render_error(:bad_request, 'Missing file') unless file_param.is_a?(ActionDispatch::Http::UploadedFile)
     return render_error(:bad_request, 'Missing original_filename') if params[:original_filename].blank?
+    return render_error(:unprocessable_entity, 'File is empty') unless file_param.size.positive?
     return render_error(:payload_too_large, 'File exceeds 100MB limit') if file_param.size > MAX_BYTE_SIZE
     return render_error(:unprocessable_entity, "Unsupported file type '#{file_extension}'") unless allowed_extension?
 
@@ -42,6 +44,12 @@ class Api::V1::Imports::PendingController < ApiController
   end
 
   private
+
+  # The tools handoff is a Cloud acquisition funnel; self-hosted instances
+  # have no dawarich.app tools pointing at them — don't expose the surface.
+  def ensure_cloud!
+    head :not_found if DawarichSettings.self_hosted?
+  end
 
   def file_param
     params[:file]

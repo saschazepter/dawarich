@@ -33,6 +33,25 @@ RSpec.describe PendingImports::Claim do
     end
   end
 
+  describe 'single-use enforcement' do
+    it 'returns nil and creates no Import when the ticket was already claimed' do
+      described_class.new(pending, user).call
+
+      other_user = create(:user)
+      result = nil
+      expect { result = described_class.new(pending.reload, other_user).call }
+        .not_to change(Import, :count)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil for an expired ticket' do
+      pending.update!(expires_at: 1.hour.ago)
+
+      expect(described_class.new(pending, user).call).to be_nil
+      expect(pending.reload.claimed_at).to be_nil
+    end
+  end
+
   describe 'blob reassignment' do
     it 'reassigns the same blob to the new Import (no copy)' do
       original_blob_id = pending.file.blob.id

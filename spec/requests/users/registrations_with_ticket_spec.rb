@@ -26,6 +26,31 @@ RSpec.describe 'Signup with pending import ticket' do
     end
   end
 
+  describe 'claim failure resilience' do
+    let(:signup_params) do
+      {
+        user: {
+          email: "carryover-err+#{SecureRandom.hex(4)}@example.com",
+          password: 'safepassword',
+          password_confirmation: 'safepassword'
+        }
+      }
+    end
+
+    before do
+      get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
+      allow(PendingImports::Claim).to receive(:new)
+        .and_raise(ActiveRecord::RecordInvalid)
+    end
+
+    it 'still completes signup and warns instead of raising' do
+      expect { post '/users', params: signup_params }
+        .to change(User, :count).by(1)
+
+      expect(flash[:alert]).to include("couldn't be queued")
+    end
+  end
+
   describe 'POST /users (signup completion)' do
     let(:signup_params) do
       {
