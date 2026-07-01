@@ -284,6 +284,8 @@ Rails.application.routes.draw do
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
+      get   'settings/mobile', to: 'settings/mobile#show'
+      patch 'settings/mobile', to: 'settings/mobile#update'
       get   'users/me', to: 'users#me'
       delete 'users/me', to: 'users/destroy#destroy'
 

@@ -49,6 +49,7 @@ class Api::V1::SettingsController < ApiController
   end
 
   PRO_ONLY_KEYS = %i[immich_url immich_api_key photoprism_url photoprism_api_key].freeze
+  VALID_DISTANCE_UNITS = %w[km mi].freeze
 
   def settings_params
     permitted = params.require(:settings).permit(
@@ -65,11 +66,16 @@ class Api::V1::SettingsController < ApiController
       :gps_filtering_enabled, :gps_accuracy_threshold,
       enabled_map_layers: [],
       enabled_transportation_modes: [],
+      maps: [:distance_unit],
       transportation_thresholds: %i[walking_max_speed cycling_max_speed driving_max_speed flying_min_speed],
       transportation_expert_thresholds: %i[stationary_max_speed running_vs_cycling_accel cycling_vs_driving_accel
                                            train_min_speed min_segment_duration time_gap_threshold
                                            min_flight_distance_km]
     )
+
+    if permitted[:maps] && !VALID_DISTANCE_UNITS.include?(permitted[:maps][:distance_unit])
+      permitted[:maps].delete(:distance_unit)
+    end
 
     # Strip Pro-only integration keys for Lite cloud users. Self-hosted
     # users always have full access (`plan_restricted?` returns false).

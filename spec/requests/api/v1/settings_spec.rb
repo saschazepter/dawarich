@@ -228,4 +228,36 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(response.parsed_body['processed_tracks']).to eq(50)
     end
   end
+
+  describe 'PATCH /update with maps.distance_unit' do
+    it 'updates the distance unit' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'mi' } } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('mi')
+      expect(response.parsed_body['settings']['distance_unit']).to eq('mi')
+    end
+
+    it 'preserves other maps subkeys' do
+      user.settings['maps'] = { 'distance_unit' => 'km', 'hidden_tile_categories' => ['poi'] }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'mi' } } }
+
+      expect(user.reload.settings.dig('maps', 'hidden_tile_categories')).to eq(['poi'])
+    end
+
+    it 'rejects invalid distance units' do
+      user.settings['maps'] = { 'distance_unit' => 'km' }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'banana' } } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('km')
+    end
+  end
 end
