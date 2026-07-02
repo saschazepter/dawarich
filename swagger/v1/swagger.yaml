@@ -766,6 +766,98 @@ paths:
                   error:
                     type: string
                     example: 'Missing required parameters: start_at, end_at'
+  "/api/v1/demo_data":
+    get:
+      summary: Checks whether demo data exists
+      tags:
+      - Demo Data
+      description: Returns whether the authenticated user has demo data loaded. Responds
+        404 on servers without demo-data support, which clients treat as the capability
+        signal.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: demo data status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exists:
+                    type: boolean
+                    description: Whether a demo import exists for the user
+                required:
+                - exists
+        '401':
+          description: unauthorized
+    post:
+      summary: Loads demo data
+      tags:
+      - Demo Data
+      description: Seeds the demo dataset (Berlin + Prague) for the authenticated
+        user. Returns 200 with status "exists" when demo data is already loaded.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: demo data created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - created
+                    description: Result of the import
+                required:
+                - status
+        '401':
+          description: unauthorized
+    delete:
+      summary: Removes demo data
+      tags:
+      - Demo Data
+      description: Removes all demo data (points, visits, places, tags, tracks and
+        the demo trip) for the authenticated user. Real user data is not touched.
+        Returns status "no_demo_data" when there is nothing to remove.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: demo data removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - destroyed
+                    - no_demo_data
+                    description: Result of the removal
+                required:
+                - status
+        '401':
+          description: unauthorized
   "/api/v1/digests":
     get:
       summary: Lists all yearly digests
