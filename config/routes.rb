@@ -326,6 +326,7 @@ Rails.application.routes.draw do
       end
       resource :plan, only: [:show], controller: 'plan'
       resource :residency, only: [:show], controller: 'residency'
+      resource :demo_data, only: %i[show create destroy], controller: 'demo_data'
       resources :recalculations, only: [:create]
       resources :stats, only: :index
       resources :insights, only: :index do
