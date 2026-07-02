@@ -59,7 +59,11 @@ module Users
       @settings_params.each do |key, value|
         next if key.to_s == 'timezone' && !ActiveSupport::TimeZone[value]
 
-        @user.settings[key] = value
+        if key.to_s == 'maps'
+          @user.settings['maps'] = (@user.settings['maps'] || {}).merge(value.to_h)
+        else
+          @user.settings[key] = value
+        end
       end
 
       sanitize_gated_layers if @user.lite?
