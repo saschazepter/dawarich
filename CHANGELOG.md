@@ -8,12 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-<<<<<<< mobile-demo-onboarding
 - New API endpoints `GET`/`POST`/`DELETE /api/v1/demo_data` to check, load and remove demo data, enabling demo-data onboarding in the mobile app.
-=======
+- New API endpoints `GET`/`PATCH /api/v1/settings/mobile` for syncing mobile app settings between devices: settings are stored per user with a server-stamped `updated_at` so the most recent write wins. The existing settings API now also accepts `maps.distance_unit` and merges the `maps` hash instead of replacing it, so partial updates no longer wipe other map settings.
 - Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
-
->>>>>>> dev
 - Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
 
 ### Changed
@@ -23,6 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Turning on the photos layer while a replay is already running now adds those photos to the replay (corner pile and map markers) and hides the static markers; turning it off removes them again — previously photos only appeared if the layer was enabled before starting replay.
 - Replay panel: a **recenter & follow** button. During playback the camera follows the moving marker; dragging the map turns following off so you can look around freely, and pressing the button re-centers on the marker and resumes following.
 - The replay panel no longer shows the per-day point count.
+- `GET /api/v1/points` is significantly faster over large date ranges: slim responses are built straight from a single SQL query (~5× faster than per-record serialization, byte-identical output), the map bounding-box filter runs as a single PostGIS predicate, and repeat requests answer `304 Not Modified` via ETags without rebuilding the response. Map v2 and the monthly stats map both ride this path (#3026).
+- Public shared-trip pages now query Immich/Photoprism once per view instead of twice: the photo search result is briefly cached and shared between the page render and the shared photos map endpoint.
 
 ### Fixed
 
@@ -31,7 +30,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
 - Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
 - Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
-- Photoprism photo imports no longer fail with an HTTP 400: the `after` and `before` filters are now sent as plain `YYYY-MM-DD` dates, which Photoprism's search API requires (recent Photoprism rejects full timestamps, including the `before` value shipped in 1.9.2) (#3034).
+- Photoprism photo imports no longer fail with an HTTP 400: the `after` and `before` filters are now sent as plain `YYYY-MM-DD` dates, which Photoprism's search API requires (recent Photoprism rejects full timestamps, including the `before` value shipped in 1.9.2). Since a bare `before` date is coarser than the requested range, results are additionally bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
+- Cloud: for Lite users viewing a single import on the map, the points counter no longer includes unrelated points from the same date range (the `X-Total-Points-In-Range` header is now scoped to the import).
 
 
 ## [1.9.2] - 2026-06-25
