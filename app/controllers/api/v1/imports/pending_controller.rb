@@ -67,8 +67,9 @@ class Api::V1::Imports::PendingController < ApiController
     render json: { error: message }, status: status
   end
 
+  # The signup that claims the ticket lives on the same host that served
+  # this request — no configuration needed, works on any environment.
   def build_claim_url(ticket)
-    host = ENV.fetch('DAWARICH_HOST', 'https://my.dawarich.app')
-    "#{host}/users/sign_up?import_ticket=#{ticket}&utm_source=tool&utm_medium=save-to-account"
+    "#{request.base_url}/users/sign_up?import_ticket=#{ticket}&utm_source=tool&utm_medium=save-to-account"
   end
 end
