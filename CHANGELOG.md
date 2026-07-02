@@ -8,7 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+<<<<<<< mobile-demo-onboarding
 - New API endpoints `GET`/`POST`/`DELETE /api/v1/demo_data` to check, load and remove demo data, enabling demo-data onboarding in the mobile app.
+=======
+- Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
+
+>>>>>>> dev
 - Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
 
 ### Changed
