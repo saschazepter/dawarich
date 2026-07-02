@@ -52,6 +52,7 @@ RSpec.describe 'POST /api/v1/imports/pending' do
       expect(body).to include('claim_ticket', 'expires_at', 'claim_url')
       expect(body['claim_ticket']).to match(/\A[0-9a-f-]{36}\z/)
       expect(body['claim_url']).to include("import_ticket=#{body['claim_ticket']}")
+      expect(body['claim_url']).to start_with('http://www.example.com/users/sign_up')
     end
 
     it 'creates a PendingImport with attached file' do
