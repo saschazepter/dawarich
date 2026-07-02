@@ -26,6 +26,34 @@ RSpec.describe 'Signup with pending import ticket' do
     end
   end
 
+  describe 'reverse-trial signup (Cloud default variant)' do
+    let(:signup_params) do
+      {
+        user: {
+          email: "carryover-rt+#{SecureRandom.hex(4)}@example.com",
+          password: 'safepassword',
+          password_confirmation: 'safepassword'
+        }
+      }
+    end
+
+    before do
+      Flipper.enable(:reverse_trial_signup)
+      get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
+    end
+
+    after { Flipper.disable(:reverse_trial_signup) }
+
+    it 'claims the import before redirecting to the manager checkout' do
+      expect { post '/users', params: signup_params }
+        .to change(Import, :count).by(1)
+
+      expect(response).to redirect_to(%r{\Ahttps://manager\.example\.com/checkout})
+      new_user = User.find_by(email: signup_params[:user][:email])
+      expect(pending.reload.claimed_by_user_id).to eq(new_user.id)
+    end
+  end
+
   describe 'claim failure resilience' do
     let(:signup_params) do
       {
