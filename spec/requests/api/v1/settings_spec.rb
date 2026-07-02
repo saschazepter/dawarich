@@ -259,5 +259,16 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(response).to have_http_status(:success)
       expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('km')
     end
+
+    it 'ignores maps sent as an array' do
+      user.settings['maps'] = { 'distance_unit' => 'km' }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: [{ distance_unit: 'mi' }] } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['maps']).to eq('distance_unit' => 'km')
+    end
   end
 end

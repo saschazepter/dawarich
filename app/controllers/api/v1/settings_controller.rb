@@ -73,8 +73,10 @@ class Api::V1::SettingsController < ApiController
                                            min_flight_distance_km]
     )
 
-    if permitted[:maps] && !VALID_DISTANCE_UNITS.include?(permitted[:maps][:distance_unit])
-      permitted[:maps].delete(:distance_unit)
+    if permitted[:maps].is_a?(ActionController::Parameters)
+      permitted[:maps].delete(:distance_unit) unless VALID_DISTANCE_UNITS.include?(permitted[:maps][:distance_unit])
+    elsif permitted.key?(:maps)
+      permitted.delete(:maps)
     end
 
     # Strip Pro-only integration keys for Lite cloud users. Self-hosted
