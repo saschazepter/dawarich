@@ -60,13 +60,23 @@ module Users
         next if key.to_s == 'timezone' && !ActiveSupport::TimeZone[value]
 
         if key.to_s == 'maps'
-          @user.settings['maps'] = (@user.settings['maps'] || {}).merge(value.to_h)
+          merge_maps_settings(value)
         else
           @user.settings[key] = value
         end
       end
 
       sanitize_gated_layers if @user.lite?
+    end
+
+    # The `maps` hash also carries V1 keys (name, url, preferred_version)
+    # managed by the settings page — merge instead of replacing so an API
+    # update from the map panel can't clobber them.
+    def merge_maps_settings(value)
+      incoming = value.to_h
+      incoming = incoming.except('hidden_tile_categories', 'disabled_poi_groups') if @user.plan_restricted?
+
+      @user.settings['maps'] = (@user.settings['maps'] || {}).merge(incoming)
     end
 
     def sanitize_gated_layers

@@ -26,9 +26,37 @@ module Map
 
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
+
+      # Theme tokens power both the poster tab and the Appearance section's
+      # custom map colors, so they load regardless of the poster service gate.
+      @poster_themes = cached_poster_themes
+
+      return unless DawarichSettings.poster_service_enabled?
+
+      @recent_posters = current_user.posters.with_attached_image.order(created_at: :desc).limit(10)
     end
 
     private
+
+    def cached_poster_themes
+      return local_poster_themes unless DawarichSettings.poster_service_enabled?
+
+      remote = Rails.cache.fetch('poster_service_themes', expires_in: 1.hour, skip_nil: true) do
+        Posters::Client.new.themes.presence
+      end
+      remote.presence || local_poster_themes
+    end
+
+    # Client-side renderer fallback: the browser poster path needs no sidecar, so
+    # when the sidecar is unreachable we serve the vendored theme tokens directly.
+    def local_poster_themes
+      Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
+        data = JSON.parse(File.read(path))
+        data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
+      rescue JSON::ParserError
+        nil
+      end
+    end
 
     # Reuses the same month-resolution rule as the calendar helper so the
     # filter pills are aligned with whatever month the calendar lands on

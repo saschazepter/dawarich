@@ -421,6 +421,8 @@ export default class extends Controller {
       globeProjection: this.settings.globeProjection,
       hiddenTileCategories: this.settings.hiddenTileCategories || [],
       disabledPoiGroups: this.settings.disabledPoiGroups || [],
+      customTheme: this.settings.customTheme,
+      vectorTilesUrl: this.settings.vectorTilesUrl,
       ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
     })
 
@@ -1207,8 +1209,32 @@ export default class extends Controller {
   updateMapStyle(event) {
     return this.settingsController.updateMapStyle(event)
   }
+  applyMapStyle(styleName) {
+    return this.settingsController.applyMapStyle(styleName)
+  }
   resetSettings() {
     return this.settingsController.resetSettings()
+  }
+  toggleTileCategory(event) {
+    return this.settingsController.toggleTileCategory(event)
+  }
+  togglePoiGroup(event) {
+    return this.settingsController.togglePoiGroup(event)
+  }
+  updateDistanceUnit(event) {
+    return this.settingsController.updateDistanceUnit(event)
+  }
+  updateVectorTilesUrl(event) {
+    return this.settingsController.updateVectorTilesUrl(event)
+  }
+  updateRouteColor(event) {
+    return this.settingsController.updateRouteColor(event)
+  }
+  updateTrackColor(event) {
+    return this.settingsController.updateTrackColor(event)
+  }
+  resetLayerColors() {
+    return this.settingsController.resetLayerColors()
   }
   updateRouteOpacity(event) {
     return this.settingsController.updateRouteOpacity(event)

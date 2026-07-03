@@ -392,6 +392,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_22_090000) do
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
   end
 
+  create_table "posters", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.integer "status", default: 0, null: false
+    t.jsonb "settings", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_posters_on_user_id"
+  end
+
   create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.bigint "user_id", null: false
     t.integer "resource_type", null: false
@@ -620,6 +630,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_22_090000) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
+  add_foreign_key "posters", "users"
   add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
