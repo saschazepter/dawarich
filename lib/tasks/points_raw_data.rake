@@ -231,19 +231,19 @@ namespace :points do
       puts 'This is safe to run multiple times (idempotent).'
       puts ''
 
-      stats = Points::RawData::Archiver.new.call
+      stats = archive_all_users
 
       puts ''
       puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       puts '  Archival Complete'
       puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       puts ''
-      puts "Months processed: #{stats[:processed]}"
+      puts "Chunks processed: #{stats[:processed]}"
       puts "Points archived: #{stats[:archived]}"
       puts "Failures: #{stats[:failed]}"
       puts ''
 
-      return unless stats[:archived].positive?
+      next unless stats[:archived].positive?
 
       puts 'Next steps:'
       puts '1. Verify archives: rake points:raw_data:verify'
@@ -261,7 +261,7 @@ namespace :points do
 
       # Step 1: Archive
       puts '▸ Step 1/3: Archiving...'
-      archiver_stats = Points::RawData::Archiver.new.call
+      archiver_stats = archive_all_users
       puts "  ✓ Archived #{archiver_stats[:archived]} points"
       puts ''
 
@@ -388,4 +388,15 @@ def validate_args!(args)
   return if args[:user_id] && args[:year] && args[:month]
 
   raise 'Usage: rake points:raw_data:TASK[user_id,year,month]'
+end
+
+def archive_all_users
+  totals = { processed: 0, archived: 0, failed: 0 }
+
+  User.find_each do |user|
+    stats = Points::RawData::Archiver.new.archive_user(user.id)
+    totals.merge!(stats) { |_key, total, user_stat| total + user_stat }
+  end
+
+  totals
 end

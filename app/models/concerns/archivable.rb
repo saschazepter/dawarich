@@ -13,6 +13,8 @@ module Archivable
     scope :with_archived_raw_data, lambda {
       includes(raw_data_archive: { file_attachment: :blob })
     }
+
+    before_save :reset_archival_on_raw_data_change
   end
 
   # Main method: Get raw_data with fallback to archive
@@ -44,19 +46,25 @@ module Archivable
     handle_archive_fetch_error(e)
   end
 
-  def check_temporary_restore_cache
-    return nil unless respond_to?(:timestamp)
+  def reset_archival_on_raw_data_change
+    return if new_record?
+    return unless raw_data_archived? && will_save_change_to_raw_data?
 
-    recorded_time = Time.zone.at(timestamp)
-    cache_key = "raw_data:temp:#{user_id}:#{recorded_time.year}:#{recorded_time.month}:#{id}"
-    Rails.cache.read(cache_key)
+    self.raw_data_archived = false
+    self.raw_data_archive_id = nil
+  end
+
+  def check_temporary_restore_cache
+    Rails.cache.read("raw_data:temp:#{user_id}:#{id}")
   end
 
   def fetch_from_archive_file
     return {} unless raw_data_archive&.file&.attached?
 
     # Download and search through JSONL
-    compressed_content = raw_data_archive.file.blob.download
+    compressed_content = Points::RawData::Encryption.decrypt_if_needed(
+      raw_data_archive.file.blob.download, raw_data_archive
+    )
     io = StringIO.new(compressed_content)
     gz = Zlib::GzipReader.new(io)
 

@@ -202,6 +202,7 @@ module Points
         Point.where(id: existing_point_ids).find_each do |point|
           archived_raw_data = sampled_data[point.id]
           next if archived_raw_data.nil?
+          next if point.raw_data_archived? && point.raw_data.blank?
 
           mismatches << { point_id: point.id } if archived_raw_data != point.raw_data
         end

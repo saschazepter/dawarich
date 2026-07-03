@@ -22,7 +22,7 @@ RSpec.describe Points::RawData::Verifier do
       # Create archive
       archiver = Points::RawData::Archiver.new
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
-      Points::RawDataArchive.last
+      Points::RawDataArchive.last.tap { |a| a.update_column(:verified_at, nil) }
     end
 
     it 'verifies a valid archive successfully' do
@@ -95,6 +95,16 @@ RSpec.describe Points::RawData::Verifier do
 
       expect(archive.reload.verified_at).to be_present
     end
+
+    it 'passes verification when raw_data was already cleared after archiving' do
+      archive_id = archive.id
+
+      Point.where(id: points.map(&:id)).update_all(raw_data: {})
+
+      expect do
+        verifier.verify_specific_archive(archive_id)
+      end.to change { archive.reload.verified_at }.from(nil)
+    end
   end
 
   describe 'encryption support' do
@@ -143,6 +153,7 @@ RSpec.describe Points::RawData::Verifier do
       # Archive them
       archiver = Points::RawData::Archiver.new
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      user.raw_data_archives.update_all(verified_at: nil)
     end
 
     it 'verifies all archives for a month' do
@@ -165,6 +176,7 @@ RSpec.describe Points::RawData::Verifier do
 
       archiver = Points::RawData::Archiver.new
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      user.raw_data_archives.update_all(verified_at: nil)
     end
 
     it 'verifies all unverified archives' do

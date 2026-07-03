@@ -47,7 +47,8 @@ RSpec.describe Points::RawData::Clearer do
                             raw_data: { lon: 14.0, lat: 53.0 })
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
 
-      unverified_archive = Points::RawDataArchive.where(verified_at: nil).last
+      unverified_archive = Points::RawDataArchive.order(:id).last
+      unverified_archive.update_column(:verified_at, nil)
 
       result = clearer.clear_specific_archive(unverified_archive.id)
 
@@ -127,6 +128,8 @@ RSpec.describe Points::RawData::Clearer do
 
       archiver = Points::RawData::Archiver.new
       archiver.archive_specific_month(user.id, new_date.year, new_date.month)
+      Points::RawDataArchive.for_month(user.id, new_date.year, new_date.month)
+                            .update_all(verified_at: nil)
 
       result = clearer.call
 
