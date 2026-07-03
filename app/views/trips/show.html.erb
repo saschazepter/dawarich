@@ -64,6 +64,16 @@
                 title: "Edit trip" do %>
               <%= icon 'square-pen', class: 'w-4 h-4' %>
             <% end %>
+            <% trip_share = @trip.shared_links.active.first %>
+            <%= link_to new_trip_share_link_path(@trip),
+                class: "btn btn-sm btn-ghost relative",
+                title: "Share trip",
+                data: { turbo_frame: "share-link-modal" } do %>
+              <%= icon 'share', class: 'w-4 h-4' %>
+              <% if trip_share %>
+                <span class="badge badge-success badge-xs" aria-label="Currently shared">Public</span>
+              <% end %>
+            <% end %>
             <%= button_to trip_path(@trip),
                 method: :delete,
                 form: { data: { turbo_confirm: "Delete this trip? This cannot be undone." } },
@@ -79,6 +89,7 @@
 
         <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
       </div>
+      <turbo-frame id="share-link-modal"></turbo-frame>
 
       <%# Map tools toolbar %>
       <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -90,6 +101,17 @@
                   title="Toggle photo markers on map">
             <%= icon 'camera', class: 'w-4 h-4' %>
             <span class="hidden sm:inline">Photos</span>
+          </button>
+        <% end %>
+
+        <% if current_user.safe_settings.airtrail_url.present? %>
+          <button type="button"
+                  class="btn btn-sm btn-outline gap-1"
+                  data-trip-maplibre-target="flightsToggleBtn"
+                  data-action="click->trip-maplibre#toggleFlights"
+                  title="Toggle AirTrail flights on map">
+            <%= icon 'plane', class: 'w-4 h-4' %>
+            <span class="hidden sm:inline">Flights</span>
           </button>
         <% end %>
 
@@ -151,6 +173,19 @@
               <% else %>
                 <%= render "trips/notes/empty", trip: @trip, date: date %>
               <% end %>
+              <% day_photos = @photos_by_day[date] %>
+              <% if day_photos.present? %>
+                <div class="grid grid-cols-3 gap-2 mt-3">
+                  <% day_photos.each do |photo| %>
+                    <div class="aspect-square overflow-hidden rounded-lg transition-transform duration-200 hover:scale-105 hover:shadow-lg">
+                      <img src="<%= photo[:url] %>"
+                           loading="lazy"
+                           alt=""
+                           class="h-full w-full object-cover">
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
           </details>
         <% end %>
@@ -166,32 +201,19 @@
         </div>
       <% end %>
 
-      <%# Photos %>
-      <% if @photo_previews.any? %>
+      <%# Photo sources %>
+      <% if @photo_sources.any? %>
         <div class="mb-6">
-          <h3 class="text-lg font-semibold mb-3">Photos</h3>
-          <div class="grid grid-cols-3 gap-2">
-            <% @photo_previews.each do |photo| %>
-              <div class="aspect-square overflow-hidden rounded-lg transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                <img src="<%= photo[:url] %>"
-                     loading="lazy"
-                     alt=""
-                     class="h-full w-full object-cover">
-              </div>
+          <div class="flex flex-wrap gap-2">
+            <% @photo_sources.each do |source| %>
+              <%= link_to photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at),
+                  class: "btn btn-sm btn-outline gap-1",
+                  target: "_blank",
+                  rel: "noopener" do %>
+                <%= icon 'camera', class: 'w-4 h-4' %> More on <%= source.to_s.titleize %>
+              <% end %>
             <% end %>
           </div>
-          <% if @photo_sources.any? %>
-            <div class="flex flex-wrap gap-2 mt-3">
-              <% @photo_sources.each do |source| %>
-                <%= link_to photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at),
-                    class: "btn btn-sm btn-outline gap-1",
-                    target: "_blank",
-                    rel: "noopener" do %>
-                  <%= icon 'camera', class: 'w-4 h-4' %> More on <%= source.to_s.titleize %>
-                <% end %>
-              <% end %>
-            </div>
-          <% end %>
         </div>
       <% end %>
 
@@ -203,4 +225,5 @@
       </div>
     </div>
   </div>
+
 </div>

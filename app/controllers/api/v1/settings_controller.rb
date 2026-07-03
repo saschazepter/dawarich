@@ -49,6 +49,7 @@ class Api::V1::SettingsController < ApiController
   end
 
   PRO_ONLY_KEYS = %i[immich_url immich_api_key photoprism_url photoprism_api_key].freeze
+  VALID_DISTANCE_UNITS = %w[km mi].freeze
 
   # Map customization is preview-only on the Lite plan: the panel lets Lite
   # users play with these live, but nothing persists (self-hosted and Pro
@@ -68,6 +69,7 @@ class Api::V1::SettingsController < ApiController
       :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url, :globe_projection,
       :transportation_expert_mode,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
+      :stay_max_gap_minutes,
       :gps_filtering_enabled, :gps_accuracy_threshold,
       enabled_map_layers: [],
       enabled_transportation_modes: [],
@@ -83,6 +85,12 @@ class Api::V1::SettingsController < ApiController
                                            train_min_speed min_segment_duration time_gap_threshold
                                            min_flight_distance_km]
     )
+
+    if permitted[:maps].is_a?(ActionController::Parameters)
+      permitted[:maps].delete(:distance_unit) unless VALID_DISTANCE_UNITS.include?(permitted[:maps][:distance_unit])
+    elsif permitted.key?(:maps)
+      permitted.delete(:maps)
+    end
 
     # Strip Pro-only integration keys for Lite cloud users. Self-hosted
     # users always have full access (`plan_restricted?` returns false).

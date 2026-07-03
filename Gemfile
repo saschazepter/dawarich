@@ -10,7 +10,7 @@ gem 'activerecord-postgis-adapter', '11.1.1'
 gem 'apple_id', '~> 1.2'
 gem 'aws-sdk-core', '~> 3.252', require: false
 gem 'aws-sdk-kms', '~> 1.129', require: false
-gem 'aws-sdk-s3', '~> 1.225', require: false
+gem 'aws-sdk-s3', '~> 1.226', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'connection_pool', '< 4' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
@@ -44,6 +44,7 @@ gem 'posthog-ruby'
 gem 'puma'
 gem 'pundit', '>= 2.5.1'
 gem 'rack-attack'
+gem 'rack-cors'
 gem 'rack-session', '>= 2.1.2'
 gem 'rails', '~> 8.1.3'
 gem 'addressable', '>= 2.9.0'
@@ -62,7 +63,7 @@ gem 'rgeo-geojson'
 gem 'rqrcode', '~> 3.2'
 gem 'rswag-api'
 gem 'rswag-ui'
-gem 'rubyzip', '~> 3.3'
+gem 'rubyzip', '~> 3.4'
 gem 'sentry-rails', '>= 5.27.0'
 gem 'sentry-ruby'
 gem 'sidekiq', '8.1.6' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.0+ breaking Rails

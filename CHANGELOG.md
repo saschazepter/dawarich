@@ -6,9 +6,63 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-Upgrade notes:
+### Added
 
-1. **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
+- New API endpoints `GET`/`POST`/`DELETE /api/v1/demo_data` to check, load and remove demo data, enabling demo-data onboarding in the mobile app.
+- New API endpoints `GET`/`PATCH /api/v1/settings/mobile` for syncing mobile app settings between devices: settings are stored per user with a server-stamped `updated_at` so the most recent write wins. The existing settings API now also accepts `maps.distance_unit` and merges the `maps` hash instead of replacing it, so partial updates no longer wipe other map settings.
+- Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
+- Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
+
+### Changed
+
+- Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
+- During replay, photos also stack up as a tilted, Polaroid-style pile in the top-left corner of the map as the playhead reaches each one (newest on top, up to five shown at once); click a photo in the pile to open it. The pile stays in sync with the on-map photo markers as you play, scrub, or rewind, and works on the map, trip, and public shared-trip replays.
+- Turning on the photos layer while a replay is already running now adds those photos to the replay (corner pile and map markers) and hides the static markers; turning it off removes them again — previously photos only appeared if the layer was enabled before starting replay.
+- Replay panel: a **recenter & follow** button. During playback the camera follows the moving marker; dragging the map turns following off so you can look around freely, and pressing the button re-centers on the marker and resumes following.
+- The replay panel no longer shows the per-day point count.
+- `GET /api/v1/points` is significantly faster over large date ranges: slim responses are built straight from a single SQL query (~5× faster than per-record serialization, byte-identical output), the map bounding-box filter runs as a single PostGIS predicate, and repeat requests answer `304 Not Modified` via ETags without rebuilding the response. Map v2 and the monthly stats map both ride this path (#3026).
+- Public shared-trip pages now query Immich/Photoprism once per view instead of twice: the photo search result is briefly cached and shared between the page render and the shared photos map endpoint.
+
+### Fixed
+
+- Raw data archival: reading archived `raw_data` back from encrypted archives works again (it silently returned nothing before), archive chunks are labeled with the points' actual month, and archives are verified at write time. Re-importing a duplicate point with different `raw_data` (same coordinates and timestamp) now detaches it from its stale archive so the newer data can't be cleared away. Clearing archived data now waits out a 7-day cooling window in the automated jobs and the `archive_full` rake task; the previously broken `points:raw_data:archive`/`archive_full` rake tasks work again. Restores are now reported under the `restored` metric label instead of `removed` — update dashboards reading `points_total{operation="removed"}` accordingly.
+- User data exports now include archived `raw_data` as plain gzip files, so an export can be imported on a different instance (previously the bundled archive files were encrypted with the exporting instance's key and unreadable anywhere else).
+- Creating, updating, or deleting a user in Settings no longer shows a blank "HTTP ERROR 422" page when validation fails — the admin is redirected back with a message explaining what went wrong (e.g. password too short) (#3051)
+- Email delivery no longer times out with providers that use implicit TLS (SMTP port 465, e.g. many hosted mail services): set `SMTP_SSL=true` to enable it, and it is enabled automatically when `SMTP_PORT=465`. STARTTLS remains the default for all other ports (#3068)
+- Points on Map v2 can no longer be moved by accident: dragging a point now requires enabling the new "Edit points" toggle in the layers panel. The toggle resets on every page load, so points stay put unless you deliberately turn editing on (#3060)
+- Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero, so no place visits were ever detected for them. Note for self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand on large databases if you want it gentler (#2963)
+- The nightly place-visit job now only processes points that don't yet belong to a visit, instead of recomputing every place's entire history each night, and pauses briefly between places — together these stop it from saturating the database and delaying incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
+- Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
+- Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
+- Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
+- Photoprism photo imports no longer fail with an HTTP 400: the `after` and `before` filters are now sent as plain `YYYY-MM-DD` dates, which Photoprism's search API requires (recent Photoprism rejects full timestamps, including the `before` value shipped in 1.9.2). Since a bare `before` date is coarser than the requested range, results are additionally bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
+- Cloud: for Lite users viewing a single import on the map, the points counter no longer includes unrelated points from the same date range (the `X-Total-Points-In-Range` header is now scoped to the import).
+
+
+## [1.9.2] - 2026-06-25
+
+### Added
+
+- A Flights toggle on the Map v2 trip view shows your AirTrail flights alongside the route and photo overlays, and hides the day-route segments that fall inside a flight so the two don't overlap. The button only appears when an AirTrail URL is configured.
+
+### Fixed
+
+- Photoprism photo imports with an end date no longer fail with an HTTP 400: the `before` filter is now sent as a full ISO8601 timestamp instead of a bare date (#1608).
+- Re-running visit detection no longer raises `ActiveModel::MissingAttributeError` when a cluster contains points already attached to a confirmed visit.
+
+## [1.9.1] - 2026-06-22
+
+### Added
+
+- Trip photos now appear on the Map v2 trip and replay views: thumbnails pop in one at a time as the replay playhead reaches each photo's timestamp, and the same photos are available on public shared-trip links. Photos that fall inside one of your privacy zones are masked from both the map and shared links.
+
+### Fixed
+
+- Re-running visit detection no longer creates duplicate suggestions for a visit you already confirmed, even after correcting its address moved the place marker away from the underlying points (#2952)
+- Adding a per-day trip note no longer fails with "Content missing" on instances upgraded from a pre-release build; a migration backfills the `notes` table columns that an earlier `if_not_exists` table creation could have skipped (#2987)
+- Reverse geocoding against the hosted `photon.dawarich.app` (and `photon.komoot.io`) now always uses HTTPS, even when `PHOTON_API_USE_HTTPS` is unset or not exactly `true`, fixing the `Geocoder::ResponseParseError` caused by Cloudflare's HTTP→HTTPS redirect (#2982)
+
+## [1.9.0] - 2026-06-21
 
 ### Added
 
@@ -17,12 +71,16 @@ Upgrade notes:
 - Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
 - Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
 - Trip cards on `/trips` and the trip create/edit form now render their map with MapLibre instead of Leaflet, matching Map v2. The form map live-updates the route preview when the trip dates change.
+- Public sharing of individual **tracks**: a Share button on each track card creates an expiring public link showing that track's route, stats and (optionally) photos.
+- Public **live-location sharing**: share your current position in real time from the Map v2 Tools tab. Viewers see a single live dot over a public, optionally phrase-protected link; the location updates over a token-gated public channel and respects your privacy zones.
+- Public shared **trip** pages now mirror the in-app trip layout — sticky day-colored map, a per-day accordion (hover a day to highlight it on the map, click to pin), stats, and a full **replay** scrubber. The trip share form gained per-section toggles to choose exactly what the public page exposes (route, stats, countries, description, day-by-day, per-day notes, photos).
+- Supporters can now verify by their **GitHub username** as well as email (Settings → General), so GitHub Sponsors whose sponsorship email is private can still get their supporter badge. (#2980)
 
 ### Changed
 
 - A trip's rich-text **notes** field is renamed to **description**; existing content is migrated automatically.
-- Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
 - Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
+- Trip replay now plays back proportional to the real time between points, and the map/trip/public-share pages all share one replay implementation.
 - Ruby version updated to 3.4.9
 
 ### Fixed
@@ -34,7 +92,9 @@ Upgrade notes:
 - Users signed in via Google will now be able to sign in with new password after setting it up, instead of being locked out by the old password being ignored.
 - Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
-- Signing in with Google resolves to a single account across web and mobile, and the account settings page shows which provider an OAuth account is connected with instead of offering a sign-in button. #2969
+- Dragging the map during replay no longer snaps the view back to the moving marker; auto-follow yields until you reopen the replay panel.
+- [Cloud] Signing in with Google resolves to a single account across web and mobile, and the account settings page shows which provider an OAuth account is connected with instead of offering a sign-in button. #2969
+
 
 ## [1.8.1] - 2026-06-11
 
@@ -44,6 +104,7 @@ Upgrade notes:
 
 ### Added
 
+- Map v2 settings panel: a **Visit Max Gap** slider to tune the stay-point visit detector's maximum gap (minutes) between points within a single visit. Only shown when the `stay_point_detection` feature flag is enabled (off by default).
 - Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)
 
 ### Changed
@@ -177,6 +238,7 @@ Upgrade notes:
 
 ### Added
 
+- Public location sharing — share a trip or a timeline date range via a revocable public link, with optional magic-phrase protection and an optional expiry date. Shared routes respect privacy zones; stats are opt-in (off by default) and OG previews are suppressed for phrase-protected links. #2804
 - Map v2 **Hexagons** layer (Pro) — H3 cell heatmap, zoom-adaptive resolution. #2568
 - Download a trip's points as GPX or GeoJSON from the trip page. #2400
 - OIDC PKCE support via `OIDC_PKCE_ENABLED=true` (off by default). #2282

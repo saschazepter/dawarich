@@ -196,6 +196,38 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(theme['tokens']['bg']).to eq('#000000')
       end
 
+      it 'updates stay_max_gap_minutes' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
+      end
+
+      it 'returns updated stay_max_gap_minutes in response' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
+
+        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(90)
+      end
+
+      it 'clamps stay_max_gap_minutes above the maximum on read' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1000 } }
+
+        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(720)
+      end
+
+      it 'clamps stay_max_gap_minutes below the minimum on read' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1 } }
+
+        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(5)
+      end
+
+      it 'preserves stay_max_gap_minutes when a patch omits it' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
+
+        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
+      end
+
       context 'when user is inactive' do
         before do
           user.update(status: :inactive, active_until: 1.day.ago)
@@ -312,6 +344,49 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(response.parsed_body['status']).to eq('processing')
       expect(response.parsed_body['total_tracks']).to eq(100)
       expect(response.parsed_body['processed_tracks']).to eq(50)
+    end
+  end
+
+  describe 'PATCH /update with maps.distance_unit' do
+    it 'updates the distance unit' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'mi' } } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('mi')
+      expect(response.parsed_body['settings']['distance_unit']).to eq('mi')
+    end
+
+    it 'preserves other maps subkeys' do
+      user.settings['maps'] = { 'distance_unit' => 'km', 'hidden_tile_categories' => ['poi'] }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'mi' } } }
+
+      expect(user.reload.settings.dig('maps', 'hidden_tile_categories')).to eq(['poi'])
+    end
+
+    it 'rejects invalid distance units' do
+      user.settings['maps'] = { 'distance_unit' => 'km' }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'banana' } } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('km')
+    end
+
+    it 'ignores maps sent as an array' do
+      user.settings['maps'] = { 'distance_unit' => 'km' }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: [{ distance_unit: 'mi' }] } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['maps']).to eq('distance_unit' => 'km')
     end
   end
 end

@@ -22,7 +22,7 @@ RSpec.describe '/trips', type: :request do
   let(:user) { create(:user) }
 
   before do
-    allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
+    allow_any_instance_of(Trip).to receive(:photos_by_day).and_return({})
 
     sign_in user
   end
@@ -66,6 +66,33 @@ RSpec.describe '/trips', type: :request do
       expect(response.body).to include('Delete this trip')
     end
 
+    context 'with photos grouped by day' do
+      let(:photo) do
+        { id: 7, url: '/api/v1/photos/7/thumbnail.jpg?api_key=x&source=immich',
+          source: 'immich', orientation: 'landscape' }
+      end
+
+      before do
+        allow_any_instance_of(Trip).to receive(:photos_by_day)
+          .and_return({ Date.new(2024, 11, 28) => [photo] })
+      end
+
+      it "renders a day's photos inside that day's collapse" do
+        get trip_url(trip)
+
+        day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2024-11-28']")
+        expect(day.at_css("img[src='#{photo[:url]}']")).to be_present
+      end
+
+      it 'renders photo thumbnails only inside day collapses (no flat bottom grid)' do
+        get trip_url(trip)
+
+        imgs = Nokogiri::HTML(response.body).css("img[src*='/api/v1/photos/']")
+        expect(imgs).to be_present
+        expect(imgs).to all(satisfy { |img| img.ancestors('details').any? })
+      end
+    end
+
     it 'computes day stats with PostGIS (no Ruby Geocoder fallback)' do
       allow(Geocoder::Calculations).to receive(:distance_between).and_call_original
 
@@ -73,6 +100,34 @@ RSpec.describe '/trips', type: :request do
 
       expect(response).to be_successful
       expect(Geocoder::Calculations).not_to have_received(:distance_between)
+    end
+
+    context 'when the user timezone is not UTC' do
+      before { user.update!(settings: user.settings.merge('timezone' => 'Europe/Berlin')) }
+
+      let(:boundary_trip) do
+        create(:trip, user:, started_at: Time.utc(2025, 1, 15), ended_at: Time.utc(2025, 1, 16, 23, 59, 59))
+      end
+
+      it 'buckets a point just after local midnight into its correct local day' do
+        create(:point, user:, timestamp: Time.utc(2025, 1, 15, 12, 0).to_i, latitude: 52.0, longitude: 13.0)
+        create(:point, user:, timestamp: Time.utc(2025, 1, 15, 23, 30).to_i, latitude: 52.6, longitude: 13.4)
+
+        get trip_url(boundary_trip)
+
+        day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2025-01-16']")
+        expect(day.text).to include('00:30')
+        expect(day.text).not_to include('No data')
+      end
+
+      it 'renders successfully when the timezone is a non-IANA ActiveSupport name' do
+        user.update!(settings: user.settings.merge('timezone' => 'Berlin'))
+        create(:point, user:, timestamp: Time.utc(2025, 1, 15, 12, 0).to_i, latitude: 52.0, longitude: 13.0)
+
+        get trip_url(boundary_trip)
+
+        expect(response).to be_successful
+      end
     end
   end
 

@@ -80,4 +80,15 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(response.body).to include('value="timeline"')
     end
   end
+
+  describe 'share hub entry' do
+    it 'renders a Share button opening the share hub in the share-link-modal frame' do
+      get map_v2_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(share_links_hub_path)
+      expect(response.body).to include('timeline-share-button')
+      expect(response.body).to include('share-link-modal')
+    end
+  end
 end
