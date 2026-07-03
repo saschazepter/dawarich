@@ -17,9 +17,8 @@ class Points::Create
     inserted_count = 0
 
     deduplicated_data.each_slice(1000) do |location_batch|
-      result = Point.upsert_all(
+      result = Point.archival_safe_upsert_all(
         location_batch,
-        unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql(
           'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
         )

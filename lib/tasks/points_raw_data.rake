@@ -397,10 +397,13 @@ def archive_all_users
   totals = { processed: 0, archived: 0, failed: 0 }
 
   User.find_each do |user|
-    ActiveRecord::Base.with_advisory_lock("archive_raw_data:#{user.id}", timeout_seconds: 0) do
+    lock_acquired = ActiveRecord::Base.with_advisory_lock("archive_raw_data:#{user.id}", timeout_seconds: 0) do
       stats = Points::RawData::Archiver.new.archive_user(user.id)
       totals.merge!(stats) { |_key, total, user_stat| total + user_stat }
+      true
     end
+
+    puts "  Skipping user #{user.id} — archival already in progress" unless lock_acquired
   end
 
   totals

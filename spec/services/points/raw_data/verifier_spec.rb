@@ -124,6 +124,26 @@ RSpec.describe Points::RawData::Verifier do
       expect(archive.reload.verified_at).to be_nil
     end
 
+    it 'keeps verified_at when a re-check fails only due to a download error' do
+      archive.update_column(:verified_at, 10.days.ago)
+      allow(Points::RawDataArchive).to receive(:find).with(archive.id).and_return(archive)
+      allow(archive.file.blob).to receive(:download).and_raise(StandardError, 'timeout')
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_present
+    end
+
+    it 'reports how many points were already cleared when a verified archive fails re-check' do
+      archive.update_column(:verified_at, 10.days.ago)
+      archive.update_column(:point_ids_checksum, 'invalid')
+      Point.where(id: points.map(&:id)).update_all(raw_data: {}, raw_data_archive_id: archive.id)
+
+      expect(ExceptionReporter).to receive(:call).with(anything, %r{5/5 linked points already cleared})
+
+      verifier.verify_specific_archive(archive.id)
+    end
+
     it 'skips raw_data comparison for points re-archived into a different archive' do
       archive_id = archive.id
       other_archive = create(:points_raw_data_archive, user: user, year: 2020, month: 1)

@@ -59,9 +59,12 @@ module Points
 
       private
 
-      # Returns false when a group fails, so the caller stops instead of
-      # re-fetching the same unarchived points forever.
+      # Returns false when any group failed, so the caller stops instead of
+      # re-fetching the same unarchived points forever. Sibling month groups in
+      # the same batch are independent and still attempted before stopping.
       def archive_month_groups(user_id, rows)
+        batch_succeeded = true
+
         rows.group_by { |_id, timestamp| utc_month(timestamp) }.each do |(year, month), group|
           point_ids = group.map(&:first)
 
@@ -76,11 +79,11 @@ module Points
               "(IDs #{point_ids.first}..#{point_ids.last}): #{e.message}"
             )
             ExceptionReporter.call(e, "Archive chunk failed for user #{user_id}")
-            return false
+            batch_succeeded = false
           end
         end
 
-        true
+        batch_succeeded
       end
 
       def utc_month(timestamp)

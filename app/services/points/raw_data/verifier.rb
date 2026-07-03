@@ -56,19 +56,19 @@ module Points
 
           report_verification_metric(start_time, 'success')
         else
+          check_name = extract_check_name_from_error(verification_result[:error])
+          context = failure_context(archive, check_name)
+
           # A previously verified archive failing a re-check may be corrupted in
           # storage — unset verified_at so clearing is blocked until investigated.
-          archive.update!(verified_at: nil) if archive.verified_at.present?
+          # Transient download errors are not integrity failures and keep the stamp.
+          archive.update!(verified_at: nil) if archive.verified_at.present? && check_name != 'download_failed'
           @stats[:failed] += 1
           Rails.logger.error("✗ Archive #{archive.id} verification failed: #{verification_result[:error]}")
-          ExceptionReporter.call(
-            StandardError.new(verification_result[:error]),
-            "Archive verification failed for archive #{archive.id}"
-          )
+          ExceptionReporter.call(StandardError.new(verification_result[:error]), context)
 
           Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
-          check_name = extract_check_name_from_error(verification_result[:error])
           report_verification_metric(start_time, 'failure', check_name)
         end
       rescue StandardError => e
@@ -79,6 +79,15 @@ module Points
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
         report_verification_metric(start_time, 'failure', 'exception')
+      end
+
+      def failure_context(archive, check_name)
+        context = "Archive verification failed for archive #{archive.id}"
+        return context unless archive.verified_at.present? && check_name != 'download_failed'
+
+        cleared = Point.where(raw_data_archive_id: archive.id, raw_data: {}).count
+        "#{context} (previously verified; #{cleared}/#{archive.point_count} linked points already cleared " \
+          'and recoverable only from this archive)'
       end
 
       def perform_verification(archive)

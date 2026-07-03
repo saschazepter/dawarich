@@ -41,9 +41,8 @@ class Overland::PointsCreator
     created_points = []
 
     locations.each_slice(1000) do |batch|
-      result = Point.upsert_all(
+      result = Point.archival_safe_upsert_all(
         batch,
-        unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql(RETURNING_COLUMNS)
       )
       created_points.concat(result) if result

@@ -44,9 +44,10 @@ RSpec.describe 'points:raw_data:archive' do
       allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
     end
 
-    it 'skips the locked user without archiving' do
+    it 'skips the locked user without archiving and says so' do
       expect do
-        expect { Rake::Task['points:raw_data:archive'].invoke }.to output(/Points archived: 0/).to_stdout
+        expect { Rake::Task['points:raw_data:archive'].invoke }
+          .to output(/Skipping user #{user.id}.*Points archived: 0/m).to_stdout
       end.not_to change(Points::RawDataArchive, :count)
     end
   end

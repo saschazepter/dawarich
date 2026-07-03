@@ -145,6 +145,57 @@ RSpec.describe Archivable, type: :model do
     end
   end
 
+  describe '.archival_safe_upsert_all' do
+    let(:base_row) do
+      {
+        lonlat: 'POINT(13.4 52.5)',
+        timestamp: 1_700_000_000,
+        user_id: user.id,
+        raw_data: { 'src' => 'original' }
+      }
+    end
+
+    let!(:archived_point) do
+      create(:point, user: user,
+                     lonlat: 'POINT(13.4 52.5)',
+                     timestamp: 1_700_000_000,
+                     raw_data: { 'src' => 'original' },
+                     raw_data_archived: true,
+                     raw_data_archive_id: create(:points_raw_data_archive, user: user).id)
+    end
+
+    it 'resets archival flags when a duplicate arrives with different raw_data' do
+      Point.archival_safe_upsert_all(
+        [base_row.merge(raw_data: { 'src' => 'reimport' })],
+        returning: Arel.sql('id, xmax')
+      )
+
+      archived_point.reload
+      expect(archived_point.raw_data).to eq({ 'src' => 'reimport' })
+      expect(archived_point.raw_data_archived).to be false
+      expect(archived_point.raw_data_archive_id).to be_nil
+    end
+
+    it 'keeps archival flags when a duplicate carries identical raw_data' do
+      Point.archival_safe_upsert_all([base_row], returning: Arel.sql('id, xmax'))
+
+      archived_point.reload
+      expect(archived_point.raw_data_archived).to be true
+      expect(archived_point.raw_data_archive_id).to be_present
+    end
+
+    it 'inserts new points with default archival flags' do
+      result = Point.archival_safe_upsert_all(
+        [base_row.merge(timestamp: 1_700_000_060)],
+        returning: Arel.sql('id, xmax')
+      )
+
+      point = Point.find(result.first['id'])
+      expect(point.raw_data_archived).to be false
+      expect(point.raw_data).to eq({ 'src' => 'original' })
+    end
+  end
+
   describe 'raw_data mutation guard' do
     let(:archive) { create(:points_raw_data_archive, user: user) }
     let(:archived_point) do

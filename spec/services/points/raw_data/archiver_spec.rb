@@ -122,6 +122,31 @@ RSpec.describe Points::RawData::Archiver do
       end
     end
 
+    context 'when one month group fails' do
+      let!(:newer_points) do
+        create_list(:point, 2, user: user,
+                              timestamp: 4.months.ago.beginning_of_month.to_i,
+                              raw_data: { lon: 14.0, lat: 53.0 })
+      end
+
+      it 'still archives the sibling months in the same batch, then stops' do
+        calls = 0
+        allow(Points::RawData::Encryption).to receive(:encrypt).and_wrap_original do |m, *args|
+          calls += 1
+          raise StandardError, 'boom' if calls == 1
+
+          m.call(*args)
+        end
+
+        result = archiver.archive_user(user.id)
+
+        expect(result[:failed]).to eq(1)
+        expect(result[:archived]).to eq(2)
+        expect(old_points.each(&:reload).map(&:raw_data_archived)).to all(be false)
+        expect(newer_points.each(&:reload).map(&:raw_data_archived)).to all(be true)
+      end
+    end
+
     it 'stores min and max point IDs in metadata' do
       archiver.archive_user(user.id)
 

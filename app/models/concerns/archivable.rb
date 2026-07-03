@@ -17,6 +17,35 @@ module Archivable
     before_save :reset_archival_on_raw_data_change
   end
 
+  UPSERT_CONFLICT_KEYS = %i[lonlat timestamp user_id].freeze
+  ARCHIVAL_RESET_CLAUSES = [
+    '"raw_data_archived" = CASE WHEN "points"."raw_data" IS DISTINCT FROM excluded."raw_data" ' \
+    'THEN FALSE ELSE "points"."raw_data_archived" END',
+    '"raw_data_archive_id" = CASE WHEN "points"."raw_data" IS DISTINCT FROM excluded."raw_data" ' \
+    'THEN NULL ELSE "points"."raw_data_archive_id" END'
+  ].freeze
+
+  class_methods do
+    # Bulk-ingest counterpart of the reset_archival_on_raw_data_change
+    # callback, which raw SQL upserts bypass: on conflict, archival flags are
+    # reset only when the incoming raw_data actually differs from the stored
+    # one, so a stale archive is never left pointing at diverged data.
+    def archival_safe_upsert_all(rows, returning:)
+      update_columns = rows.first.keys.map(&:to_sym) - UPSERT_CONFLICT_KEYS - %i[created_at]
+
+      set_clauses = update_columns.map { |column| %("#{column}" = excluded."#{column}") }
+      set_clauses << '"updated_at" = CURRENT_TIMESTAMP' unless update_columns.include?(:updated_at)
+      set_clauses.concat(ARCHIVAL_RESET_CLAUSES) if update_columns.include?(:raw_data)
+
+      upsert_all(
+        rows,
+        unique_by: UPSERT_CONFLICT_KEYS,
+        on_duplicate: Arel.sql(set_clauses.join(', ')),
+        returning: returning
+      )
+    end
+  end
+
   # Main method: Get raw_data with fallback to archive
   # Use this instead of point.raw_data when you need archived data
   def raw_data_with_archive
