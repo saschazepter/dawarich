@@ -25,19 +25,6 @@
   <div data-maps--maplibre-target="container"
        class="maps-maplibre-container<%= ' panel-open panel-timeline-expanded' if timeline_panel_open %>"
        style="width: 100%; height: 100%;">
-    <%# Poster overlays live INSIDE the canvas container: .panel-open shifts
-        and narrows it, so only here does centered markup match map.getCenter. %>
-    <% if DawarichSettings.poster_service_enabled? %>
-      <div id="poster-frame"
-           class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none border-2 border-primary z-10"
-           style="box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);"></div>
-      <div id="poster-crosshair"
-           class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
-        <div class="w-6 h-6 rounded-full border-2 border-primary opacity-70"></div>
-        <div class="absolute top-1/2 left-1/2 w-3 h-0.5 -translate-x-1/2 -translate-y-1/2 bg-primary opacity-70"></div>
-        <div class="absolute top-1/2 left-1/2 w-0.5 h-3 -translate-x-1/2 -translate-y-1/2 bg-primary opacity-70"></div>
-      </div>
-    <% end %>
   </div>
 
   <!-- Loading progress badge -->
@@ -61,6 +48,11 @@
 
   <!-- Settings panel -->
   <%= render 'map/maplibre/settings_panel' %>
+
+  <!-- Poster studio (full-screen WYSIWYG editor) -->
+  <% if DawarichSettings.poster_service_enabled? %>
+    <%= render 'map/maplibre/poster_studio' %>
+  <% end %>
 
   <!-- Replay panel -->
   <%= render 'map/maplibre/replay_panel' %>

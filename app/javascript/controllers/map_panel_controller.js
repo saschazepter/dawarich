@@ -22,7 +22,6 @@ export default class extends Controller {
     tools: "Tools",
     links: "Links",
     settings: "Settings",
-    poster: "Poster",
   }
 
   connect() {
@@ -165,6 +164,12 @@ export default class extends Controller {
     const tabName = button?.dataset?.tab
     if (!tabName) return
     this.openTabByName(tabName)
+  }
+
+  // The poster button skips the panel entirely — the full-screen studio
+  // (rendered outside the panel) listens for this event.
+  openPosterStudio() {
+    document.dispatchEvent(new CustomEvent("poster-studio:open"))
   }
 
   /**

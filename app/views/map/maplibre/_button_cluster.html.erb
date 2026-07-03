@@ -57,11 +57,10 @@
   <% if DawarichSettings.poster_service_enabled? %>
     <button type="button"
             class="map-button-cluster__btn"
-            data-action="click->map-panel#openTab"
-            data-tab="poster"
+            data-action="click->map-panel#openPosterStudio"
             data-testid="map-button-poster"
-            aria-label="Poster"
-            title="Poster">
+            aria-label="Poster Studio"
+            title="Poster Studio">
       <%= icon 'camera' %>
     </button>
   <% end %>

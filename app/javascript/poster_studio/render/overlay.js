@@ -1,3 +1,5 @@
+import { layoutPosterText } from "poster_studio/render/text_layout"
+
 function hexToRgba(hex, alpha) {
   const v = hex.replace("#", "")
   const n =
@@ -27,29 +29,65 @@ function drawFades(ctx, width, height, color, strength) {
   ctx.fillRect(0, height - bottom, width, bottom)
 }
 
-function drawTitle(ctx, width, height, color, title, subtitle, font) {
-  const citySize = Math.round(width * 0.075)
-  const subSize = Math.round(width * 0.03)
-  const baseY = height - Math.round(height * 0.055)
+// Centered fillText with wide tracking. ctx.letterSpacing adds the spacing
+// after every glyph including the last, which shifts the visual center left
+// by spacing/2 — compensate so the line stays centered.
+function fillSpaced(ctx, text, x, y, spacing) {
+  const supported = "letterSpacing" in ctx
+  if (supported && spacing > 0) {
+    ctx.letterSpacing = `${spacing}px`
+    ctx.fillText(text, x + spacing / 2, y)
+    ctx.letterSpacing = "0px"
+  } else {
+    ctx.fillText(text, x, y)
+  }
+}
+
+function drawTitle(ctx, width, height, color, text, font) {
+  const { title = "", subtitle = "", coords = "" } = text
+  const layout = layoutPosterText({ width, height, title, subtitle, coords })
   ctx.textAlign = "center"
   ctx.fillStyle = color
 
   if (title) {
-    ctx.font = `700 ${citySize}px ${font}`
-    ctx.fillText(title.toUpperCase(), width / 2, baseY)
+    ctx.font = `700 ${layout.titleSize}px ${font}`
+    fillSpaced(
+      ctx,
+      title.toUpperCase(),
+      width / 2,
+      layout.titleY,
+      layout.letterSpacing,
+    )
   }
   if (subtitle) {
-    const dividerY = baseY + Math.round(subSize * 0.9)
     ctx.strokeStyle = color
     ctx.globalAlpha = 0.6
-    ctx.lineWidth = Math.max(1, Math.round(width * 0.0015))
+    ctx.lineWidth = layout.dividerWidth
     ctx.beginPath()
-    ctx.moveTo(width / 2 - width * 0.12, dividerY)
-    ctx.lineTo(width / 2 + width * 0.12, dividerY)
+    ctx.moveTo(width / 2 - layout.dividerHalfWidth, layout.dividerY)
+    ctx.lineTo(width / 2 + layout.dividerHalfWidth, layout.dividerY)
     ctx.stroke()
     ctx.globalAlpha = 1
-    ctx.font = `400 ${subSize}px ${font}`
-    ctx.fillText(subtitle.toUpperCase(), width / 2, dividerY + subSize * 1.4)
+    ctx.font = `400 ${layout.subSize}px ${font}`
+    fillSpaced(
+      ctx,
+      subtitle.toUpperCase(),
+      width / 2,
+      layout.subY,
+      Math.round(layout.subSize * 0.25),
+    )
+  }
+  if (coords) {
+    ctx.globalAlpha = 0.75
+    ctx.font = `400 ${layout.coordsSize}px ${font}`
+    fillSpaced(
+      ctx,
+      coords,
+      width / 2,
+      layout.coordsY,
+      Math.round(layout.coordsSize * 0.2),
+    )
+    ctx.globalAlpha = 1
   }
 }
 
@@ -59,6 +97,7 @@ export function drawOverlay(
     theme,
     title = "",
     subtitle = "",
+    coords = "",
     font = "Helvetica, Arial, sans-serif",
     fadeStrength = 0.22,
     margin = 0,
@@ -77,7 +116,7 @@ export function drawOverlay(
   }
 
   drawFades(ctx, width, height, theme.gradientColor, fadeStrength)
-  if (title || subtitle)
-    drawTitle(ctx, width, height, theme.text, title, subtitle, font)
+  if (title || subtitle || coords)
+    drawTitle(ctx, width, height, theme.text, { title, subtitle, coords }, font)
   return canvas
 }
