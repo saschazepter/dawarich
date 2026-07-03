@@ -341,7 +341,7 @@ class Users::ExportData
     FileUtils.rm_f(dest_path)
     ExceptionReporter.call(e)
 
-    archive_hash['file_error'] = "Failed to download: #{e.message}"
+    archive_hash['file_error'] = "Failed to export archive file: #{e.message}"
   end
 
   def portable_archive_metadata(metadata, content)

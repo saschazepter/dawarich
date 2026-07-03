@@ -39,7 +39,7 @@ module Points
         @stats
       end
 
-      # Legacy: archive a specific month (used by rake tasks and ReArchiveMonthJob).
+      # Legacy: archive a specific month (used by rake tasks).
       def archive_specific_month(user_id, year, month)
         lock_key = "archive_points:#{user_id}:#{year}:#{month}"
 
