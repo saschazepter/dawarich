@@ -39,8 +39,14 @@
 
     <div class="flex min-h-0 flex-1">
       <!-- Poster preview -->
-      <div class="relative flex min-w-0 flex-1 flex-col items-center justify-center p-6"
+      <div class="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-6"
            data-poster-studio-editor-target="stage">
+        <%# Ambient backdrop: a blurred, dimmed snapshot of the poster map
+            fills the stage behind the frame (updated on map idle). %>
+        <img class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500"
+             style="filter: blur(22px) brightness(0.5) saturate(1.15); transform: scale(1.15)"
+             alt=""
+             data-poster-studio-editor-target="backdrop">
         <div class="relative overflow-hidden shadow-2xl"
              data-poster-studio-editor-target="frame">
           <%# Inline position: MapLibre's own .maplibregl-map class forces

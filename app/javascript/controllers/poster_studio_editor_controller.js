@@ -51,6 +51,7 @@ export default class extends Controller {
     "frame",
     "mapContainer",
     "overlay",
+    "backdrop",
     "layoutSelect",
     "layoutDims",
     "swatch",
@@ -105,6 +106,7 @@ export default class extends Controller {
   disconnect() {
     document.removeEventListener("poster-studio:open", this.onOpen)
     this.teardown()
+    if (this.backdropUrl) URL.revokeObjectURL(this.backdropUrl)
   }
 
   async open() {
@@ -132,6 +134,7 @@ export default class extends Controller {
   close() {
     window.removeEventListener("resize", this.onResize)
     this.teardown()
+    this.releaseBackdrop()
     this.element.classList.add("hidden")
   }
 
@@ -151,10 +154,40 @@ export default class extends Controller {
     })
     this.previewMap.on("move", () => this.redrawOverlay())
     this.previewMap.on("moveend", () => this.syncSaveAvailability())
+    this.previewMap.on("idle", () => this.updateBackdrop())
     this.previewMap.once("load", () => {
       this.redrawOverlay()
       this.syncSaveAvailability()
     })
+  }
+
+  // Blurred ambient backdrop behind the poster frame: a snapshot of the
+  // map canvas, refreshed whenever the map settles (idle covers pans,
+  // zooms, restyles, and tile loads). Blob + object URL instead of a data
+  // URL: async encode, no base64 strings, previous snapshot released
+  // deterministically.
+  updateBackdrop() {
+    if (!this.hasBackdropTarget || !this.previewMap) return
+    this.previewMap.getCanvas().toBlob(
+      (blob) => {
+        if (!blob || !this.hasBackdropTarget) return
+        const previous = this.backdropUrl
+        this.backdropUrl = URL.createObjectURL(blob)
+        this.backdropTarget.src = this.backdropUrl
+        this.backdropTarget.classList.remove("opacity-0")
+        if (previous) URL.revokeObjectURL(previous)
+      },
+      "image/jpeg",
+      0.5,
+    )
+  }
+
+  releaseBackdrop() {
+    if (!this.hasBackdropTarget) return
+    this.backdropTarget.classList.add("opacity-0")
+    this.backdropTarget.removeAttribute("src")
+    if (this.backdropUrl) URL.revokeObjectURL(this.backdropUrl)
+    this.backdropUrl = null
   }
 
   // ===== Live restyle =====

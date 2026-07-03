@@ -15,6 +15,8 @@ export function createPreviewMap({ container, style, bounds }) {
     fadeDuration: 0,
     dragRotate: false,
     pitchWithRotate: false,
+    // The studio snapshots the canvas for the blurred stage backdrop.
+    preserveDrawingBuffer: true,
   })
   map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
