@@ -1375,6 +1375,11 @@ export default class extends Controller {
   togglePoints(event) {
     return this.routesManager.togglePoints(event)
   }
+
+  togglePointsEditing(event) {
+    const pointsLayer = this.layerManager.getLayer("points")
+    pointsLayer?.setEditMode(event.currentTarget.checked)
+  }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)
   }
