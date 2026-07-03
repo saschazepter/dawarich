@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Creating, updating, or deleting a user in Settings no longer shows a blank "HTTP ERROR 422" page when validation fails — the admin is redirected back with a message explaining what went wrong (e.g. password too short) (#3051)
 - Email delivery no longer times out with providers that use implicit TLS (SMTP port 465, e.g. many hosted mail services): set `SMTP_SSL=true` to enable it, and it is enabled automatically when `SMTP_PORT=465`. STARTTLS remains the default for all other ports (#3068)
 - Points on Map v2 can no longer be moved by accident: dragging a point now requires enabling the new "Edit points" toggle in the layers panel. The toggle resets on every page load, so points stay put unless you deliberately turn editing on (#3060)
 - Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero, so no place visits were ever detected for them. Note for self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand on large databases if you want it gentler (#2963)
