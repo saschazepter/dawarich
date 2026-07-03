@@ -184,6 +184,10 @@ RSpec.describe Archivable, type: :model do
       expect(archived_point.raw_data_archive_id).to be_present
     end
 
+    it 'is a no-op for an empty batch' do
+      expect(Point.archival_safe_upsert_all([], returning: Arel.sql('id'))).to eq([])
+    end
+
     it 'inserts new points with default archival flags' do
       result = Point.archival_safe_upsert_all(
         [base_row.merge(timestamp: 1_700_000_060)],

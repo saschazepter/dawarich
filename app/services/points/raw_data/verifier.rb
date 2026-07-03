@@ -104,12 +104,20 @@ module Points
       def download_and_verify_content(archive)
         return { success: false, error: 'File not attached' } unless archive.file.attached?
 
-        raw_content = archive.file.blob.download
+        begin
+          raw_content = archive.file.blob.download
+        rescue StandardError => e
+          # Only I/O errors get the download_failed label — it exempts the
+          # archive from the verified_at unset, so decrypt/integrity errors
+          # must never be classified here.
+          return { success: false, error: "File download failed: #{e.message}" }
+        end
+
         return { success: false, error: 'File is empty' } if raw_content.bytesize.zero?
 
         verify_content_integrity(raw_content, archive)
       rescue StandardError => e
-        { success: false, error: "File download failed: #{e.message}" }
+        { success: false, error: "Decryption failed: #{e.message}" }
       end
 
       def verify_content_integrity(raw_content, archive)
@@ -254,6 +262,8 @@ module Points
           'empty_file'
         when /Content checksum mismatch/i
           'content_checksum_mismatch'
+        when /Decryption failed/i
+          'decryption_failed'
         when %r{Decompression/parsing failed}i
           'decompression_failed'
         when /Point count mismatch/i

@@ -134,6 +134,16 @@ RSpec.describe Points::RawData::Verifier do
       expect(archive.reload.verified_at).to be_present
     end
 
+    it 'unsets verified_at when a re-check fails to decrypt the archive' do
+      archive.update_column(:verified_at, 10.days.ago)
+      allow(Points::RawData::Encryption)
+        .to receive(:decrypt_if_needed).and_raise(OpenSSL::Cipher::CipherError, 'bad decrypt')
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_nil
+    end
+
     it 'reports how many points were already cleared when a verified archive fails re-check' do
       archive.update_column(:verified_at, 10.days.ago)
       archive.update_column(:point_ids_checksum, 'invalid')
