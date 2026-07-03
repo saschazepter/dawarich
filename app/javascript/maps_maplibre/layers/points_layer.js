@@ -17,6 +17,7 @@ export class PointsLayer extends BaseLayer {
     this.justDragged = false
     this.draggedFeature = null
     this.canvas = null
+    this.editModeEnabled = false
 
     // Bind event handlers once and store references for proper cleanup
     this._onMouseEnter = this.onMouseEnter.bind(this)
@@ -56,6 +57,19 @@ export class PointsLayer extends BaseLayer {
         },
       },
     ]
+  }
+
+  /**
+   * Toggle edit mode: points are draggable only while it is on
+   */
+  setEditMode(enabled) {
+    this.editModeEnabled = enabled
+
+    if (enabled) {
+      this.enableDragging()
+    } else {
+      this.disableDragging()
+    }
   }
 
   /**
@@ -239,10 +253,12 @@ export class PointsLayer extends BaseLayer {
   }
 
   /**
-   * Override add method to enable dragging when layer is added
+   * Override add method to restore edit mode when layer is re-added
    */
   add(data) {
     super.add(data)
+
+    if (!this.editModeEnabled) return
 
     // Wait for next tick to ensure layers are fully added before enabling dragging
     setTimeout(() => {
