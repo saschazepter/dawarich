@@ -260,9 +260,13 @@ export class PointsLayer extends BaseLayer {
 
     if (!this.editModeEnabled) return
 
-    // Wait for next tick to ensure layers are fully added before enabling dragging
+    // Wait for next tick to ensure layers are fully added before enabling dragging.
+    // Re-check the flag inside the callback: edit mode may have been turned off
+    // while the timeout was pending.
     setTimeout(() => {
-      this.enableDragging()
+      if (this.editModeEnabled) {
+        this.enableDragging()
+      }
     }, 100)
   }
 
