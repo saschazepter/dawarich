@@ -14,3 +14,6 @@ docs/
 .devcontainer/
 screenshots/
 .ruby-lsp/
+
+# Poster renderer deps are installed inside the image (platform binaries)
+vendor/poster_renderer/node_modules/

@@ -260,4 +260,36 @@ RSpec.describe Posters::Generate do
       expect(WebMock).to request_matcher
     end
   end
+  context 'when the native renderer is enabled' do
+    before do
+      allow(DawarichSettings).to receive(:poster_native_render_enabled?).and_return(true)
+      allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track)
+      allow(Posters::NativeRenderer).to receive(:new).and_return(
+        instance_double(Posters::NativeRenderer, call: { png: 'native-png', pdf: 'native-pdf' })
+      )
+    end
+
+    it 'attaches both outputs from the native renderer and completes' do
+      run_generate
+
+      expect(poster.reload).to be_completed
+      expect(poster.image.download).to eq('native-png')
+      expect(poster.print_pdf.download).to eq('native-pdf')
+    end
+
+    it 'never talks to the sidecar' do
+      run_generate
+
+      expect(WebMock).not_to have_requested(:post, 'http://localhost:8123/jobs')
+    end
+
+    it 'fails the poster when the native renderer errors' do
+      allow(Posters::NativeRenderer).to receive(:new).and_raise(Posters::NativeRenderer::Error, 'render exploded')
+
+      run_generate
+
+      expect(poster.reload).to be_failed
+      expect(poster.settings['error']).to be_present
+    end
+  end
 end

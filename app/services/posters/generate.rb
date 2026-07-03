@@ -25,9 +25,13 @@ module Posters
                          'Recenter the map or adjust the dates.')
       end
 
-      client = Posters::Client.new
-      attach_image(render_format(client, track, 'png'))
-      attach_print_pdf(render_format(client, track, 'pdf'))
+      if DawarichSettings.poster_native_render_enabled?
+        render_natively(track)
+      else
+        client = Posters::Client.new
+        attach_image(render_format(client, track, 'png'))
+        attach_print_pdf(render_format(client, track, 'pdf'))
+      end
       @poster.update!(status: :completed)
     rescue StandardError => e
       ExceptionReporter.call(e, "Poster render failed for poster #{@poster.id}")
@@ -44,6 +48,19 @@ module Posters
         start_at: Time.zone.parse(@poster.settings['start_at']),
         end_at: Time.zone.parse(@poster.settings['end_at'])
       ).call
+    end
+
+    def render_natively(track)
+      record_progress('drawing_map')
+      result = Posters::NativeRenderer.new(
+        poster: @poster,
+        track: track,
+        distance: distance,
+        route_opacity: route_opacity,
+        subtitle: subtitle
+      ).call
+      attach_image(result[:png])
+      attach_print_pdf(result[:pdf])
     end
 
     def render_format(client, track, format)
