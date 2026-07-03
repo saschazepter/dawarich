@@ -73,7 +73,13 @@ class Api::V1::Settings::MobileController < ApiController
     end
 
     BOOLEAN_KEYS.each do |key|
-      sanitized[key] = ActiveModel::Type::Boolean.new.cast(sanitized[key]) if sanitized.key?(key)
+      next unless sanitized.key?(key)
+
+      if sanitized[key].to_s.strip.empty?
+        sanitized.delete(key)
+      else
+        sanitized[key] = ActiveModel::Type::Boolean.new.cast(sanitized[key])
+      end
     end
 
     sanitized

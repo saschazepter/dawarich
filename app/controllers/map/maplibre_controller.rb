@@ -50,11 +50,13 @@ module Map
     # Client-side renderer fallback: the browser poster path needs no sidecar, so
     # when the sidecar is unreachable we serve the vendored theme tokens directly.
     def local_poster_themes
-      Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
-        data = JSON.parse(File.read(path))
-        data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
-      rescue JSON::ParserError
-        nil
+      Rails.cache.fetch('local_poster_themes', expires_in: 1.hour) do
+        Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
+          data = JSON.parse(File.read(path))
+          data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
+        rescue JSON::ParserError
+          nil
+        end
       end
     end
 
