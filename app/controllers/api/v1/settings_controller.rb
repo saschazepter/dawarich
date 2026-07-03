@@ -50,20 +50,34 @@ class Api::V1::SettingsController < ApiController
 
   PRO_ONLY_KEYS = %i[immich_url immich_api_key photoprism_url photoprism_api_key].freeze
 
+  # Map customization is preview-only on the Lite plan: the panel lets Lite
+  # users play with these live, but nothing persists (self-hosted and Pro
+  # users are unaffected — plan_restricted? is false for them).
+  MAP_CUSTOMIZATION_KEYS = %i[maps_maplibre_custom_theme maps_maplibre_tiles_url
+                              route_color track_color].freeze
+
   def settings_params
     permitted = params.require(:settings).permit(
       :timezone,
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
+      :route_color, :track_color,
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold, :fog_of_war_mode,
-      :maps_v2_style, :maps_maplibre_style, :globe_projection,
+      :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url, :globe_projection,
       :transportation_expert_mode,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
       :gps_filtering_enabled, :gps_accuracy_threshold,
       enabled_map_layers: [],
       enabled_transportation_modes: [],
+      maps_maplibre_custom_theme: [
+        :base,
+        { tokens: %i[bg water parks buildings railway boundaries
+                     road_motorway road_primary road_secondary
+                     road_tertiary road_residential road_default] }
+      ],
+      maps: [:distance_unit, { hidden_tile_categories: [], disabled_poi_groups: [] }],
       transportation_thresholds: %i[walking_max_speed cycling_max_speed driving_max_speed flying_min_speed],
       transportation_expert_thresholds: %i[stationary_max_speed running_vs_cycling_accel cycling_vs_driving_accel
                                            train_min_speed min_segment_duration time_gap_threshold
@@ -72,7 +86,10 @@ class Api::V1::SettingsController < ApiController
 
     # Strip Pro-only integration keys for Lite cloud users. Self-hosted
     # users always have full access (`plan_restricted?` returns false).
-    permitted = permitted.except(*PRO_ONLY_KEYS) if current_api_user.plan_restricted?
+    if current_api_user.plan_restricted?
+      permitted = permitted.except(*PRO_ONLY_KEYS, *MAP_CUSTOMIZATION_KEYS)
+      permitted = permitted.except(:maps_maplibre_style) if permitted[:maps_maplibre_style] == 'custom'
+    end
 
     permitted
   end
