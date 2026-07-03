@@ -278,10 +278,13 @@ namespace :points do
       end
       puts ''
 
-      # Step 3: Clear
-      puts '▸ Step 3/3: Clearing verified data...'
-      clearer_stats = Points::RawData::Clearer.new.call
+      # Step 3: Clear (only archives whose verification aged past the cooling
+      # window — freshly created archives become clearable on a later run)
+      puts '▸ Step 3/3: Clearing verified data older than the cooling period...'
+      clearer = Points::RawData::Clearer.new(cooling_period: Points::RawData::Clearer::COOLING_PERIOD)
+      clearer_stats = clearer.call
       puts "  ✓ Cleared #{clearer_stats[:cleared]} points"
+      puts "  Archives created this run become clearable after #{Points::RawData::Clearer::COOLING_PERIOD.inspect}."
       puts ''
 
       puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
@@ -394,8 +397,10 @@ def archive_all_users
   totals = { processed: 0, archived: 0, failed: 0 }
 
   User.find_each do |user|
-    stats = Points::RawData::Archiver.new.archive_user(user.id)
-    totals.merge!(stats) { |_key, total, user_stat| total + user_stat }
+    ActiveRecord::Base.with_advisory_lock("archive_raw_data:#{user.id}", timeout_seconds: 0) do
+      stats = Points::RawData::Archiver.new.archive_user(user.id)
+      totals.merge!(stats) { |_key, total, user_stat| total + user_stat }
+    end
   end
 
   totals

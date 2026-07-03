@@ -105,6 +105,37 @@ RSpec.describe Points::RawData::Verifier do
         verifier.verify_specific_archive(archive_id)
       end.to change { archive.reload.verified_at }.from(nil)
     end
+
+    it 'does not bump verified_at when re-verifying an already verified archive' do
+      original = 10.days.ago.change(usec: 0)
+      archive.update_column(:verified_at, original)
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to eq(original)
+    end
+
+    it 'unsets verified_at when a previously verified archive fails re-verification' do
+      archive.update_column(:verified_at, 10.days.ago)
+      archive.update_column(:point_ids_checksum, 'invalid')
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_nil
+    end
+
+    it 'skips raw_data comparison for points re-archived into a different archive' do
+      archive_id = archive.id
+      other_archive = create(:points_raw_data_archive, user: user, year: 2020, month: 1)
+
+      points.first.update_columns(
+        raw_data: { 'mutated' => true }, raw_data_archive_id: other_archive.id
+      )
+
+      expect do
+        verifier.verify_specific_archive(archive_id)
+      end.to change { archive.reload.verified_at }.from(nil)
+    end
   end
 
   describe 'encryption support' do
@@ -131,13 +162,13 @@ RSpec.describe Points::RawData::Verifier do
       expect(archive.verified_at).to be_present
     end
 
-    it 'detects content checksum tampering' do
+    it 'detects content checksum tampering and unsets verified_at' do
       archive.metadata['content_checksum'] = 'tampered_checksum'
       archive.save!
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to(change { archive.reload.verified_at })
+      end.to change { archive.reload.verified_at }.to(nil)
     end
   end
 

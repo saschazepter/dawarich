@@ -93,6 +93,34 @@ RSpec.describe Points::RawData::Clearer do
     end
   end
 
+  describe '#call with cooling_period' do
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+
+    before do
+      create_list(:point, 5, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+
+      Points::RawData::Archiver.new.archive_specific_month(user.id, test_date.year, test_date.month)
+    end
+
+    it 'does not clear archives verified within the cooling period' do
+      result = described_class.new(cooling_period: 7.days).call
+
+      expect(result[:cleared]).to eq(0)
+      expect(Point.where(user: user, raw_data: {}).count).to eq(0)
+    end
+
+    it 'clears archives verified before the cooling period' do
+      Points::RawDataArchive.for_month(user.id, test_date.year, test_date.month)
+                            .update_all(verified_at: 8.days.ago)
+
+      result = described_class.new(cooling_period: 7.days).call
+
+      expect(result[:cleared]).to eq(5)
+    end
+  end
+
   describe '#call' do
     let(:test_date) { 3.months.ago.beginning_of_month.utc }
 

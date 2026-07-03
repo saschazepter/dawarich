@@ -9,7 +9,7 @@ module Points
       queue_as :archival
 
       BATCH_SIZE = 5_000
-      COOLING_PERIOD = 7.days
+      COOLING_PERIOD = Clearer::COOLING_PERIOD
 
       def perform(user_id)
         user = find_user_or_skip(user_id) || return

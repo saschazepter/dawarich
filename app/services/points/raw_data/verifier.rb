@@ -46,7 +46,9 @@ module Points
         verification_result = perform_verification(archive)
 
         if verification_result[:success]
-          archive.update!(verified_at: Time.current)
+          # First verification stamps the archive; re-checks must not bump the
+          # timestamp, or spot checks would keep restarting the clear cooling window.
+          archive.update!(verified_at: Time.current) if archive.verified_at.blank?
           @stats[:verified] += 1
           Rails.logger.info("✓ Archive #{archive.id} verified successfully")
 
@@ -54,6 +56,9 @@ module Points
 
           report_verification_metric(start_time, 'success')
         else
+          # A previously verified archive failing a re-check may be corrupted in
+          # storage — unset verified_at so clearing is blocked until investigated.
+          archive.update!(verified_at: nil) if archive.verified_at.present?
           @stats[:failed] += 1
           Rails.logger.error("✗ Archive #{archive.id} verification failed: #{verification_result[:error]}")
           ExceptionReporter.call(
@@ -138,7 +143,7 @@ module Points
         end
 
         if existing_count.positive?
-          verification_result = verify_raw_data_matches(sampled_data)
+          verification_result = verify_raw_data_matches(archive, sampled_data)
           return verification_result unless verification_result[:success]
         else
           Rails.logger.info(
@@ -189,7 +194,7 @@ module Points
         (0...sample_size).map { |i| (i * stride).floor }.to_set
       end
 
-      def verify_raw_data_matches(sampled_data)
+      def verify_raw_data_matches(archive, sampled_data)
         existing_point_ids = Point.where(id: sampled_data.keys).pluck(:id)
 
         if existing_point_ids.empty?
@@ -202,6 +207,7 @@ module Points
         Point.where(id: existing_point_ids).find_each do |point|
           archived_raw_data = sampled_data[point.id]
           next if archived_raw_data.nil?
+          next if point.raw_data_archive_id != archive.id
           next if point.raw_data_archived? && point.raw_data.blank?
 
           mismatches << { point_id: point.id } if archived_raw_data != point.raw_data
