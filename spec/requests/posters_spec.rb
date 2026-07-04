@@ -6,9 +6,6 @@ RSpec.describe 'Posters', type: :request do
   let(:user) { create(:user) }
 
   before do
-    stub_const('POSTER_SERVICE_URL', 'http://localhost:8123')
-    stub_const('POSTER_SERVICE_TOKEN', nil)
-    Rails.cache.delete('poster_service_themes')
     Flipper.enable(:posters)
     sign_in user
   end
