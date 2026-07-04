@@ -8,6 +8,18 @@ RSpec.describe Points::AnomalyFilter do
   let(:end_time) { Time.current.to_i }
 
   describe '#call' do
+    it 'bumps updated_at when flagging an anomaly so cached point reads invalidate' do
+      point = create(:point, user: user, accuracy: 500, timestamp: 30.minutes.ago.to_i,
+                             latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+      point.update_column(:updated_at, 2.days.ago)
+      before_updated = point.reload.updated_at
+
+      described_class.new(user.id, start_time, end_time).call
+
+      expect(point.reload.anomaly).to be true
+      expect(point.updated_at).to be > before_updated
+    end
+
     context 'Pass 1: accuracy filter' do
       # Use nearby coordinates so Pass 2 speed filter does not interfere
       let(:base_lat) { 52.52 }
