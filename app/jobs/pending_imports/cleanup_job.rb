@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class PendingImports::CleanupJob < ApplicationJob
-  queue_as :default
+  queue_as :low_priority
 
   def perform
     expired = 0

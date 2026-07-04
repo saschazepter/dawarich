@@ -101,5 +101,5 @@ yearly_digest_scheduling_job:
 pending_imports_cleanup:
   cron: "15 3 * * *" # every day at 03:15 UTC
   class: "PendingImports::CleanupJob"
-  queue: default
+  queue: low_priority
   description: "Sweep expired or old-claimed pending imports"

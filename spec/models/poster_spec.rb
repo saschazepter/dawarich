@@ -19,7 +19,7 @@ RSpec.describe Poster, type: :model do
     it 'enqueues a generation job on create' do
       expect do
         create(:poster)
-      end.to have_enqueued_job(Posters::CreateJob)
+      end.to have_enqueued_job(Posters::CreateJob).on_queue('posters')
     end
   end
 
