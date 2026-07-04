@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
 - Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
 - Custom map colors: pick from theme presets or edit individual color tokens for the map, and a reorganized, collapsible Settings tab to manage them.
+- The classic map (v1) now shows a dismissible banner announcing it will be retired in August 2026, plus a second banner — shown when your family is sharing location — pointing out that family location history is only visible on the new map (v2). Both dismissals are remembered per browser.
 
 ### Changed
 
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Creating, updating, or deleting a user in Settings no longer shows a blank "HTTP ERROR 422" page when validation fails — the admin is redirected back with a message explaining what went wrong (e.g. password too short) (#3051)
 - Email delivery no longer times out with providers that use implicit TLS (SMTP port 465, e.g. many hosted mail services): set `SMTP_SSL=true` to enable it, and it is enabled automatically when `SMTP_PORT=465`. STARTTLS remains the default for all other ports (#3068)
 - Points on Map v2 can no longer be moved by accident: dragging a point now requires enabling the new "Edit points" toggle in the layers panel. The toggle resets on every page load, so points stay put unless you deliberately turn editing on (#3060)
+- Family location sharing now makes the separate "Location history" toggle clearer — the family settings page explains it is distinct from live location, that it powers the recent-track view on Map v2, and that only points recorded after you enable it are shared. The default history window is now 7 days instead of 24 hours, so newly-shared members show a useful track instead of an almost-empty one.
 - Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero, so no place visits were ever detected for them. Note for self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand on large databases if you want it gentler (#2963)
 - The nightly place-visit job now only processes points that don't yet belong to a visit, instead of recomputing every place's entire history each night, and pauses briefly between places — together these stop it from saturating the database and delaying incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
 - Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
