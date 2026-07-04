@@ -83,10 +83,13 @@ class Places::Visits::Create
     month_start = Time.utc(year, month_num, 1).to_i
     month_end = (Time.utc(year, month_num, 1) + 1.month).to_i - 1
 
+    editable_visit_ids = Visit.where(place_id: place.id, user_id: user.id, status: :suggested).pluck(:id)
+
     Point.where(user_id: user.id)
          .without_raw_data
          .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
          .where(timestamp: month_start..month_end)
+         .where(visit_id: [nil, *editable_visit_ids])
          .order(timestamp: :asc)
          .to_a
   end
