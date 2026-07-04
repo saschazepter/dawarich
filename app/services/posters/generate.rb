@@ -5,8 +5,6 @@ module Posters
     MAX_DISTANCE = 20_000
     MIN_DISTANCE = 500
     METERS_PER_DEGREE = 111_320.0
-    POLL_INTERVAL = 2
-    MAX_POLLS = 450
 
     def initialize(poster)
       @poster = poster
@@ -25,17 +23,11 @@ module Posters
                          'Recenter the map or adjust the dates.')
       end
 
-      if DawarichSettings.poster_native_render_enabled?
-        render_natively(track)
-      else
-        client = Posters::Client.new
-        attach_image(render_format(client, track, 'png'))
-        attach_print_pdf(render_format(client, track, 'pdf'))
-      end
+      render_natively(track)
       @poster.update!(status: :completed)
     rescue StandardError => e
       ExceptionReporter.call(e, "Poster render failed for poster #{@poster.id}")
-      fail_with('Poster service is unavailable. Please try again later.')
+      fail_with('Poster generation failed. Please try again later.')
     end
 
     private
@@ -61,31 +53,6 @@ module Posters
       ).call
       attach_image(result[:png])
       attach_print_pdf(result[:pdf])
-    end
-
-    def render_format(client, track, format)
-      job_id = client.start_render(render_payload(track, format))
-      await_render(client, job_id)
-    end
-
-    def render_payload(track, format)
-      settings = @poster.settings
-      {
-        lat: settings['lat'].to_f,
-        lon: settings['lon'].to_f,
-        distance: distance,
-        theme: settings.fetch('theme', 'terracotta'),
-        title: @poster.name,
-        subtitle: subtitle,
-        format: format,
-        route_geojson: track,
-        route_fill: route_fill?,
-        route_opacity: route_opacity
-      }
-    end
-
-    def route_fill?
-      ActiveModel::Type::Boolean.new.cast(@poster.settings['route_fill']) || false
     end
 
     def route_opacity
@@ -138,22 +105,6 @@ module Posters
 
     def fail_with(message)
       @poster.update!(status: :failed, settings: @poster.settings.merge('error' => message))
-    end
-
-    def await_render(client, job_id)
-      MAX_POLLS.times do
-        status = client.job_status(job_id)
-
-        case status['status']
-        when 'done' then return client.job_result(job_id)
-        when 'failed' then raise Posters::Client::Error, status['error'].to_s
-        end
-
-        record_progress(status['phase'])
-        sleep(POLL_INTERVAL)
-      end
-
-      raise Posters::Client::Error, 'render timed out'
     end
 
     def record_progress(phase)

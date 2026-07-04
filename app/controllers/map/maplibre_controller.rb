@@ -29,7 +29,7 @@ module Map
 
       # Theme tokens power both the poster tab and the Appearance section's
       # custom map colors, so they load regardless of the posters feature gate.
-      @poster_themes = cached_poster_themes
+      @poster_themes = local_poster_themes
 
       return unless posters_enabled?
 
@@ -38,17 +38,8 @@ module Map
 
     private
 
-    def cached_poster_themes
-      return local_poster_themes unless DawarichSettings.poster_service_enabled?
-
-      remote = Rails.cache.fetch('poster_service_themes', expires_in: 1.hour, skip_nil: true) do
-        Posters::Client.new.themes.presence
-      end
-      remote.presence || local_poster_themes
-    end
-
-    # Client-side renderer fallback: the browser poster path needs no sidecar, so
-    # when the sidecar is unreachable we serve the vendored theme tokens directly.
+    # Poster theme tokens are vendored under public/poster_themes and read
+    # directly — they also power the map's custom-colour editor.
     def local_poster_themes
       Rails.cache.fetch('local_poster_themes', expires_in: 1.hour) do
         Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
