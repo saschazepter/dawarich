@@ -275,6 +275,7 @@
           <%= form_with url: posters_path, scope: :poster, method: :post, class: 'hidden',
                 data: { poster_studio_editor_target: 'saveForm' } do |f| %>
             <%= f.hidden_field :name, data: { poster_studio_editor_target: 'saveName' } %>
+            <%= f.hidden_field :title, data: { poster_studio_editor_target: 'saveTitle' } %>
             <%= f.hidden_field :theme, data: { poster_studio_editor_target: 'saveTheme' } %>
             <%= f.hidden_field :lat, data: { poster_studio_editor_target: 'saveLat' } %>
             <%= f.hidden_field :lon, data: { poster_studio_editor_target: 'saveLon' } %>

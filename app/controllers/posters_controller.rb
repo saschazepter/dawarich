@@ -8,7 +8,7 @@ class PostersController < ApplicationController
 
   def create
     poster = current_user.posters.create!(
-      name: poster_params[:name].presence || 'My Poster',
+      name: poster_params[:name].presence || 'Untitled poster',
       status: :created,
       settings: poster_params.except(:name).to_h
     )
@@ -51,7 +51,7 @@ class PostersController < ApplicationController
   private
 
   def poster_params
-    params.require(:poster).permit(:name, :lat, :lon, :distance, :theme, :start_at, :end_at, :source,
+    params.require(:poster).permit(:name, :title, :lat, :lon, :distance, :theme, :start_at, :end_at, :source,
                                    :route_fill, :route_opacity)
   end
 

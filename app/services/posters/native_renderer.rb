@@ -51,7 +51,7 @@ module Posters
           distance: @distance
         },
         size: SIZE,
-        text: { title: @poster.name, subtitle: @subtitle, coords: true },
+        text: { title: poster_title, subtitle: @subtitle, coords: true },
         output: {
           png: png_path,
           pdf: pdf_path,
@@ -60,6 +60,13 @@ module Posters
           dpi: PRINT[:dpi]
         }
       }
+    end
+
+    # The on-poster title is decoupled from the gallery name: an untitled
+    # poster stores a blank settings['title'] and renders no title. Posters
+    # saved before this split have no 'title' key and fall back to the name.
+    def poster_title
+      @poster.settings.fetch('title') { @poster.name }
     end
 
     def theme_tokens

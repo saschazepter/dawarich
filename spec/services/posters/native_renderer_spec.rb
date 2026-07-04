@@ -41,6 +41,22 @@ RSpec.describe Posters::NativeRenderer do
       expect(result[:pdf]).to eq('PDF:Berlin')
     end
 
+    it 'renders the explicit settings title when present' do
+      poster.settings['title'] = 'My Trip'
+
+      job = JSON.parse(build_renderer.call[:png])
+
+      expect(job['text']['title']).to eq('My Trip')
+    end
+
+    it 'renders a blank title when the settings title is blank (untitled poster)' do
+      poster.update!(name: 'Untitled poster', settings: poster.settings.merge('title' => ''))
+
+      job = JSON.parse(build_renderer.call[:png])
+
+      expect(job['text']['title']).to eq('')
+    end
+
     it 'raises when the renderer process fails' do
       renderer = build_renderer(command: ['ruby', '-e', 'warn "boom"; exit 1'])
 
