@@ -15,7 +15,7 @@
     data-points-target="map"
     data-api_key="<%= current_user.api_key %>"
     data-self_hosted="<%= @self_hosted %>"
-    data-user_plan="<%= current_user.plan %>"
+    data-user_plan="<%= current_user.effective_plan %>"
     data-start_date="<%= @start_at.iso8601 %>"
     data-upgrade_url="<%= upgrade_url(utm_medium: 'map', utm_content: 'leaflet') %>"
     data-user_settings='<%= current_user.safe_settings.settings.to_json %>'

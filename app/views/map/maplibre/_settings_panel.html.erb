@@ -586,7 +586,7 @@
             </div>
           </details>
 
-          <% can_customize_layers = DawarichSettings.self_hosted? || current_user.pro? %>
+          <% can_customize_layers = current_user.full_access? %>
           <details class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
