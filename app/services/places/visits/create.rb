@@ -46,7 +46,15 @@ class Places::Visits::Create
       end
     end
 
+    cleanup_orphaned_visits(place) if months.any?
+
     months.any?
+  end
+
+  def cleanup_orphaned_visits(place)
+    Visit.where(place_id: place.id, user_id: user.id, status: :suggested)
+         .where.missing(:points)
+         .destroy_all
   end
 
   def throttle
