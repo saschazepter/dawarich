@@ -29,7 +29,7 @@ class Rack::Attack
   class << self
     attr_accessor :api_rate_limits, :shared_links_viewer_limit
   end
-  self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000 }
+  self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000, 'family' => 1_000 }
   self.shared_links_viewer_limit = 120
 end
 
@@ -46,7 +46,7 @@ Rack::Attack.throttle('api/token',
   next if api_key.blank?
 
   user_plan = Rails.cache.fetch("rack_attack/plan/#{api_key}", expires_in: 2.minutes) do
-    User.where(api_key: api_key).pick(:plan)
+    User.find_by(api_key: api_key)&.effective_plan&.to_s
   end
   next if user_plan.nil?
 

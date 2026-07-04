@@ -586,7 +586,7 @@
             </div>
           </details>
 
-          <% can_customize_layers = DawarichSettings.self_hosted? || current_user.pro? %>
+          <% can_customize_layers = current_user.full_access? %>
           <details class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
@@ -1506,7 +1506,7 @@
               <span class="text-xs">Replay</span>
             </button>
 
-            <% if DawarichSettings.self_hosted? || current_user.pro? %>
+            <% if current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       onclick="document.dispatchEvent(new CustomEvent('residency:open'))">
@@ -1515,7 +1515,7 @@
               </button>
             <% end %>
 
-            <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+            <% if current_user.immich_integration_configured? && current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       id="immich-enrich-toggle-btn">
@@ -1526,7 +1526,7 @@
           </div>
 
           <!-- Immich Enrich Panel -->
-          <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+          <% if current_user.immich_integration_configured? && current_user.full_access? %>
             <div class="hidden mt-4"
                  data-controller="maps--immich-enrich"
                  data-maps--immich-enrich-api-key-value="<%= current_user.api_key %>"

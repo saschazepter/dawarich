@@ -66,7 +66,7 @@ class Api::V1::PointsController < ApiController
 
     # For Lite users on Cloud: include the unscoped count and scoped count
     # so the frontend can show how many points fall outside the 12-month data window.
-    if !DawarichSettings.self_hosted? && current_api_user.lite?
+    if current_api_user.plan_restricted?
       total_in_range = current_api_user.points
                                        .where(timestamp: start_at..end_at)
       total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?

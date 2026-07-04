@@ -66,7 +66,7 @@ module Users
         end
       end
 
-      sanitize_gated_layers if @user.lite?
+      sanitize_gated_layers if @user.plan_restricted?
     end
 
     # The `maps` hash also carries V1 keys (name, url, preferred_version)
