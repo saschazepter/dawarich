@@ -9,6 +9,7 @@ RSpec.describe 'Posters', type: :request do
     stub_const('POSTER_SERVICE_URL', 'http://localhost:8123')
     stub_const('POSTER_SERVICE_TOKEN', nil)
     Rails.cache.delete('poster_service_themes')
+    Flipper.enable(:posters)
     sign_in user
   end
 
@@ -47,8 +48,8 @@ RSpec.describe 'Posters', type: :request do
       expect(user.posters.last.name).to eq('My Poster')
     end
 
-    it 'redirects when the poster service is not configured' do
-      stub_const('POSTER_SERVICE_URL', nil)
+    it 'redirects when posters are not enabled' do
+      Flipper.disable(:posters)
 
       post posters_path, params: { poster: poster_attributes }
 
