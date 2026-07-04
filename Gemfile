@@ -7,16 +7,19 @@ ruby File.read('.ruby-version').strip
 
 gem 'activerecord-postgis-adapter', '11.1.1'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
+gem 'addressable', '>= 2.9.0'
 gem 'apple_id', '~> 1.2'
 gem 'aws-sdk-core', '~> 3.252', require: false
 gem 'aws-sdk-kms', '~> 1.129', require: false
 gem 'aws-sdk-s3', '~> 1.226', require: false
+gem 'bcrypt', '>= 3.1.22'
 gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'connection_pool', '< 4' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
 gem 'devise', '>= 5.0.4'
 gem 'devise-two-factor'
+gem 'faraday', '>= 2.14.2'
 gem 'fit4ruby', '~> 3.13'
 gem 'flipper', '~> 1.4'
 gem 'flipper-active_record', '~> 1.4'
@@ -29,9 +32,11 @@ gem 'groupdate'
 gem 'h3', '~> 3.7'
 gem 'httparty', '>= 0.24.0'
 gem 'importmap-rails'
+gem 'json', '>= 2.19.2'
 gem 'jwt', '~> 2.10.3'
 gem 'kaminari'
 gem 'lograge'
+gem 'net-imap', '>= 0.5.14'
 gem 'oj'
 gem 'omniauth-github', '~> 2.0.0'
 gem 'omniauth-google-oauth2'
@@ -47,12 +52,6 @@ gem 'rack-attack'
 gem 'rack-cors'
 gem 'rack-session', '>= 2.1.2'
 gem 'rails', '~> 8.1.3'
-gem 'addressable', '>= 2.9.0'
-gem 'bcrypt', '>= 3.1.22'
-gem 'faraday', '>= 2.14.2'
-gem 'json', '>= 2.19.2'
-gem 'net-imap', '>= 0.5.14'
-gem 'zlib', '>= 3.2.3'
 gem 'rails_icons'
 gem 'redis'
 gem 'resolv-replace', '~> 0.2.0'
@@ -82,6 +81,7 @@ gem 'yabeda-prometheus'
 gem 'yabeda-puma-plugin'
 gem 'yabeda-rails'
 gem 'yabeda-sidekiq'
+gem 'zlib', '>= 3.2.3'
 
 group :development, :test, :staging do
   gem 'brakeman', require: false

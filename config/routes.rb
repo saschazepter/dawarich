@@ -305,7 +305,7 @@ Rails.application.routes.draw do
       namespace :imports do
         post :pending, to: 'pending#create'
       end
-      resources :places,    only: %i[index show create update destroy] do
+      resources :places, only: %i[index show create update destroy] do
         collection do
           get 'nearby'
           get 'search'
