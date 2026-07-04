@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Declining the "Move the visit here?" prompt when picking a distant place for a Map v2 visit no longer renames the visit to that place.
 - Re-evaluating anomalous points now refreshes the map immediately instead of occasionally serving a cached copy of the points until the next change.
 - Raw data archival: reading archived `raw_data` back from encrypted archives works again (it silently returned nothing before), archive chunks are labeled with the points' actual month, and archives are verified at write time. Re-importing a duplicate point with different `raw_data` (same coordinates and timestamp) now detaches it from its stale archive so the newer data can't be cleared away. Clearing archived data now waits out a 7-day cooling window in the automated jobs and the `archive_full` rake task; the previously broken `points:raw_data:archive`/`archive_full` rake tasks work again. Restores are now reported under the `restored` metric label instead of `removed` — update dashboards reading `points_total{operation="removed"}` accordingly.
 - User data exports now include archived `raw_data` as plain gzip files, so an export can be imported on a different instance (previously the bundled archive files were encrypted with the exporting instance's key and unreadable anywhere else).

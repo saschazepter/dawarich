@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe PendingImports::CleanupJob do
+  it 'runs on the low_priority queue' do
+    expect(described_class.new.queue_name).to eq('low_priority')
+  end
+
   describe '#perform' do
     it 'destroys expired unclaimed pending imports' do
       expired = create(:pending_import, :with_file, expires_at: 1.day.ago)
