@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - New API endpoints `GET`/`PATCH /api/v1/settings/mobile` for syncing mobile app settings between devices: settings are stored per user with a server-stamped `updated_at` so the most recent write wins. The existing settings API now also accepts `maps.distance_unit` and merges the `maps` hash instead of replacing it, so partial updates no longer wipe other map settings.
 - Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
 - Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
+- Custom map colors: pick from theme presets or edit individual color tokens for the map, and a reorganized, collapsible Settings tab to manage them.
 
 ### Changed
 

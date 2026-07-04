@@ -28,10 +28,10 @@ module Map
       @timeline_tags = current_user.tags.order(:name).limit(8)
 
       # Theme tokens power both the poster tab and the Appearance section's
-      # custom map colors, so they load regardless of the poster service gate.
+      # custom map colors, so they load regardless of the posters feature gate.
       @poster_themes = cached_poster_themes
 
-      return unless DawarichSettings.poster_service_enabled?
+      return unless posters_enabled?
 
       @recent_posters = current_user.posters.with_attached_image.order(created_at: :desc).limit(10)
     end
@@ -50,11 +50,13 @@ module Map
     # Client-side renderer fallback: the browser poster path needs no sidecar, so
     # when the sidecar is unreachable we serve the vendored theme tokens directly.
     def local_poster_themes
-      Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
-        data = JSON.parse(File.read(path))
-        data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
-      rescue JSON::ParserError
-        nil
+      Rails.cache.fetch('local_poster_themes', expires_in: 1.hour) do
+        Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
+          data = JSON.parse(File.read(path))
+          data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
+        rescue JSON::ParserError
+          nil
+        end
       end
     end
 

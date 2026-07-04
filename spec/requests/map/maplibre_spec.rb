@@ -15,22 +15,16 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
   end
 
   describe 'poster tab gating' do
-    it 'renders the poster tab button when the poster service is configured' do
-      stub_const('POSTER_SERVICE_URL', 'http://localhost:8123')
-      stub_const('POSTER_SERVICE_TOKEN', nil)
-      Rails.cache.delete('poster_service_themes')
-      stub_request(:get, 'http://localhost:8123/themes')
-        .to_return(status: 200, body: [{ key: 'blueprint', name: 'Blueprint', bg: '#1A3A5C',
-                                         text: '#E8F4FF', route: '#FF6B4A' }].to_json)
+    it 'renders the poster tab button when the posters flag is enabled' do
+      Flipper.enable(:posters)
 
       get map_v2_path
 
       expect(response.body).to include('map-button-poster')
-      expect(response.body).to include('Blueprint')
     end
 
-    it 'omits the poster tab when the poster service is not configured' do
-      stub_const('POSTER_SERVICE_URL', nil)
+    it 'omits the poster tab when the posters flag is disabled' do
+      Flipper.disable(:posters)
 
       get map_v2_path
 

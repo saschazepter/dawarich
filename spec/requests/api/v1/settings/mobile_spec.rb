@@ -100,6 +100,15 @@ RSpec.describe 'Api::V1::Settings::Mobile', type: :request do
       expect(user.reload.settings['mobile']['upload_automatically']).to eq(true)
     end
 
+    it 'does not overwrite a stored boolean with a blank value' do
+      patch "/api/v1/settings/mobile?api_key=#{api_key}",
+            params: { settings: { upload_automatically: 'true' } }
+      patch "/api/v1/settings/mobile?api_key=#{api_key}",
+            params: { settings: { upload_automatically: '' } }
+
+      expect(user.reload.settings['mobile']['upload_automatically']).to eq(true)
+    end
+
     it 'does not touch non-mobile settings' do
       user.settings['route_opacity'] = 0.9
       user.save!

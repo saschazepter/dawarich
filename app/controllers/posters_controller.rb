@@ -4,7 +4,7 @@ class PostersController < ApplicationController
   include FlashStreamable
 
   before_action :authenticate_user!
-  before_action :ensure_poster_service_enabled
+  before_action :ensure_posters_enabled
 
   def create
     poster = current_user.posters.create!(
@@ -55,9 +55,9 @@ class PostersController < ApplicationController
                                    :route_fill, :route_opacity)
   end
 
-  def ensure_poster_service_enabled
-    return if DawarichSettings.poster_service_enabled?
+  def ensure_posters_enabled
+    return if posters_enabled?
 
-    redirect_to root_path, alert: 'Poster service is not configured.'
+    redirect_to root_path, alert: 'Posters are not available.'
   end
 end

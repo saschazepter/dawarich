@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Points conditional GET caching', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:range) { "slim=true&start_at=#{2.days.ago.to_i}&end_at=#{Time.current.to_i}" }
 
@@ -51,6 +53,32 @@ RSpec.describe 'Api::V1::Points conditional GET caching', type: :request do
 
     get "/api/v1/points?api_key=#{user.api_key}&#{range}",
         headers: { 'If-None-Match' => etag }
+
+    expect(response).to have_http_status(:ok)
+  end
+
+  it 'returns a fresh 200 when a point is deleted' do
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}"
+    etag = response.headers['ETag']
+
+    user.points.order(:timestamp).first.destroy
+
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}",
+        headers: { 'If-None-Match' => etag }
+
+    expect(response).to have_http_status(:ok)
+  end
+
+  it 'returns a fresh 200 when a point is edited without changing its timestamp' do
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}"
+    etag = response.headers['ETag']
+
+    travel_to(1.minute.from_now) do
+      user.points.order(:timestamp).first.update!(lonlat: 'POINT(1.5 1.5)')
+
+      get "/api/v1/points?api_key=#{user.api_key}&#{range}",
+          headers: { 'If-None-Match' => etag }
+    end
 
     expect(response).to have_http_status(:ok)
   end
