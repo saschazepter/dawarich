@@ -52,6 +52,47 @@ RSpec.describe Places::Visits::Create do
     expect { run }.not_to change(Visit, :count)
   end
 
+  it 'removes a suggested visit orphaned when a later point merges it into an earlier one' do
+    near_point(base_ts, seq: 1)
+    near_point(base_ts + 10.minutes, seq: 2)
+    near_point(base_ts + 20.minutes, seq: 3)
+    near_point(base_ts + 80.minutes, seq: 4)
+    near_point(base_ts + 90.minutes, seq: 5)
+    near_point(base_ts + 100.minutes, seq: 6)
+    run
+
+    expect(Visit.count).to eq(2)
+
+    near_point(base_ts + 50.minutes, seq: 7)
+    run
+
+    expect(Visit.count).to eq(1)
+    surviving = Visit.first
+    expect(Point.where(user_id: user.id, visit_id: surviving.id).count).to eq(7)
+    expect(Visit.where(place_id: place.id).where.missing(:points)).to be_empty
+  end
+
+  it 'does not steal points from a confirmed visit when a later point merges nearby visits' do
+    near_point(base_ts, seq: 1)
+    near_point(base_ts + 10.minutes, seq: 2)
+    near_point(base_ts + 20.minutes, seq: 3)
+    near_point(base_ts + 80.minutes, seq: 4)
+    near_point(base_ts + 90.minutes, seq: 5)
+    near_point(base_ts + 100.minutes, seq: 6)
+    run
+
+    confirmed = Visit.order(:started_at).last
+    confirmed.update!(status: :confirmed)
+    confirmed_point_ids = Point.where(visit_id: confirmed.id).pluck(:id).sort
+    expect(confirmed_point_ids.size).to eq(3)
+
+    near_point(base_ts + 50.minutes, seq: 7)
+    run
+
+    expect(confirmed.reload.status).to eq('confirmed')
+    expect(Point.where(visit_id: confirmed.id).pluck(:id).sort).to eq(confirmed_point_ids)
+  end
+
   it 'does not reload month points for a place whose nearby points are all already visited' do
     near_point(base_ts, seq: 1)
     near_point(base_ts + 5.minutes, seq: 2)
