@@ -11,6 +11,7 @@ import {
   layoutById,
   resolveLayoutGeometry,
 } from "poster_studio/data/layouts"
+import { printProductFor } from "poster_studio/data/print_products"
 import {
   extendTokens,
   loadThemeTokens,
@@ -21,6 +22,7 @@ import { drawOverlay } from "poster_studio/render/overlay"
 import { buildPosterStyle } from "poster_studio/render/style_builder"
 import { formatCoords } from "poster_studio/render/text_layout"
 import { exportPoster, studioFilename } from "poster_studio/ui/exporter"
+import { submitPrintOrder } from "poster_studio/ui/order_client"
 import {
   collectCoords,
   createPreviewMap,
@@ -85,8 +87,15 @@ export default class extends Controller {
     "saveOpacity",
     "dateStart",
     "dateEnd",
+    "orderButton",
+    "orderHint",
+    "orderDialog",
+    "orderSummary",
+    "orderStatus",
+    "orderError",
+    "orderConfirmButton",
   ]
-  static values = { fonts: Object }
+  static values = { fonts: Object, printOrderUrl: String }
 
   connect() {
     // The map page wraps content in a z-index:20 stacking context that would
@@ -125,6 +134,7 @@ export default class extends Controller {
       await this.loadFonts()
       this.createMap()
       this.updateSummary()
+      this.syncOrderAvailability()
     } catch (error) {
       Flash.show("error", `Poster studio failed to open: ${error.message}`)
       this.close()
@@ -293,6 +303,7 @@ export default class extends Controller {
   layoutChanged() {
     this.resizeFrame()
     this.updateSummary()
+    this.syncOrderAvailability()
   }
 
   resizeFrame() {
@@ -546,6 +557,92 @@ export default class extends Controller {
       this.setStatus("")
     } finally {
       this.setBusy(false)
+    }
+  }
+
+  syncOrderAvailability() {
+    const product = printProductFor(this.layout?.id)
+    const available = Boolean(product) && this.printOrderUrlValue.length > 0
+    this.orderButtonTarget.classList.toggle("hidden", !available)
+    this.orderHintTarget.classList.toggle(
+      "hidden",
+      !(this.printOrderUrlValue.length > 0 && !product),
+    )
+    if (!available) this.orderDialogTarget.classList.add("hidden")
+  }
+
+  openOrder() {
+    const product = printProductFor(this.layout.id)
+    if (!product) return
+    this.orderSummaryTarget.textContent = `${this.layout.name} poster — ${product.priceLabel}`
+    this.orderErrorTarget.classList.add("hidden")
+    this.orderStatusTarget.textContent = ""
+    this.orderDialogTarget.classList.remove("hidden")
+  }
+
+  closeOrder() {
+    this.orderDialogTarget.classList.add("hidden")
+  }
+
+  async confirmOrder() {
+    if (this.busy || !this.previewMap) return
+    const layout = this.layout
+    const product = printProductFor(layout.id)
+    if (!product) return
+
+    const checkoutTab = window.open("", "_blank")
+    try {
+      this.setBusy(true)
+      this.orderConfirmButtonTarget.disabled = true
+      this.orderErrorTarget.classList.add("hidden")
+      this.orderStatusTarget.textContent = "Rendering print PDF…"
+
+      const mapBounds = this.previewMap.getBounds()
+      const { blob } = await exportPoster({
+        style: this.posterStyle(),
+        bounds: [
+          [mapBounds.getWest(), mapBounds.getSouth()],
+          [mapBounds.getEast(), mapBounds.getNorth()],
+        ],
+        layout,
+        dpi: 300,
+        format: "pdf",
+        theme: this.resolvedTheme,
+        text: this.posterText(),
+        font: this.fontFamily,
+        cssSize: {
+          width: this.frameTarget.clientWidth,
+          height: this.frameTarget.clientHeight,
+        },
+      })
+
+      this.orderStatusTarget.textContent = "Uploading…"
+      const { checkoutUrl } = await submitPrintOrder({
+        url: this.printOrderUrlValue,
+        blob,
+        sku: product.sku,
+        title: this.titleInputTarget.value.trim(),
+        themeBase: this.themeBase,
+        layoutId: layout.id,
+      })
+
+      this.orderStatusTarget.textContent = "Redirecting to checkout…"
+      if (checkoutTab) {
+        checkoutTab.location = checkoutUrl
+      } else {
+        window.location.assign(checkoutUrl)
+      }
+      this.closeOrder()
+      this.setStatus("Order started — finish payment in the checkout tab.")
+    } catch (error) {
+      checkoutTab?.close()
+      this.orderDialogTarget.classList.remove("hidden")
+      this.orderErrorTarget.textContent = error.message
+      this.orderErrorTarget.classList.remove("hidden")
+      this.orderStatusTarget.textContent = ""
+    } finally {
+      this.setBusy(false)
+      this.orderConfirmButtonTarget.disabled = false
     }
   }
 

@@ -55,6 +55,35 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
     end
   end
 
+  describe 'print ordering' do
+    before do
+      stub_const('POSTER_SERVICE_URL', 'http://localhost:8123')
+      stub_const('POSTER_SERVICE_TOKEN', nil)
+      Rails.cache.delete('poster_service_themes')
+      stub_request(:get, 'http://localhost:8123/themes')
+        .to_return(status: 200, body: [{ key: 'blueprint', name: 'Blueprint', bg: '#1A3A5C',
+                                         text: '#E8F4FF', route: '#FF6B4A' }].to_json)
+    end
+
+    it 'exposes the production order endpoint by default' do
+      get map_v2_path
+
+      expect(response.body)
+        .to include('data-poster-studio-editor-print-order-url-value="https://prints.dawarich.app/api/orders"')
+    end
+
+    it 'lets PRINT_ORDER_URL override the default' do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('PRINT_ORDER_URL', anything)
+                                   .and_return('http://localhost:3001/api/orders')
+
+      get map_v2_path
+
+      expect(response.body)
+        .to include('data-poster-studio-editor-print-order-url-value="http://localhost:3001/api/orders"')
+    end
+  end
+
   describe 'GET /map/v2 date window (C1)' do
     it 'derives the data window from ?date= when start_at/end_at are absent' do
       get map_v2_path(date: '2026-05-28', panel: 'timeline')
