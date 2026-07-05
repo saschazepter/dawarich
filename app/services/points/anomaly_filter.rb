@@ -40,7 +40,7 @@ class Points::AnomalyFilter
          .not_anomaly
          .where.not(accuracy: nil)
          .where('accuracy > ?', accuracy_threshold)
-         .update_all(anomaly: true)
+         .update_all(anomaly: true, updated_at: Time.current)
   end
 
   # Pass 2: Speed-based sandwich test (chunked by month to handle large imports)
@@ -99,7 +99,7 @@ class Points::AnomalyFilter
 
     return 0 if anomaly_ids.empty?
 
-    Point.where(id: anomaly_ids).update_all(anomaly: true)
+    Point.where(id: anomaly_ids).update_all(anomaly: true, updated_at: Time.current)
   end
 
   def fetch_points_with_context(start_time, end_time)

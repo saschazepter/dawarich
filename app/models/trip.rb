@@ -11,6 +11,8 @@ class Trip < ApplicationRecord
   has_rich_text :description
 
   belongs_to :user
+  has_many :shared_links, -> { where(resource_type: SharedLink.resource_types[:trip]) },
+           foreign_key: :resource_id, inverse_of: false, dependent: :destroy
 
   validates :name, :started_at, :ended_at, presence: true
   validate :started_at_before_ended_at
@@ -38,6 +40,17 @@ class Trip < ApplicationRecord
     @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
+  def photos_by_day(timezone)
+    zone = Time.find_zone(timezone) || Time.find_zone('UTC')
+
+    photos.each_with_object({}) do |photo, acc|
+      date = parse_photo_date(photo[:taken_at], zone)
+      next if date.nil?
+
+      (acc[date] ||= []) << photo
+    end
+  end
+
   def calculate_countries
     self.visited_countries = points.pluck(:country_name).uniq.compact
   end
@@ -52,6 +65,14 @@ class Trip < ApplicationRecord
 
   def photos
     @photos ||= Trips::Photos.new(self, user).call
+  end
+
+  def parse_photo_date(raw, zone)
+    return nil if raw.blank?
+
+    zone.parse(raw.to_s)&.to_date
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def select_dominant_orientation(photos)

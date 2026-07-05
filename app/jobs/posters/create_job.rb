@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Posters::CreateJob < ApplicationJob
-  queue_as :default
+  queue_as :posters
   sidekiq_options retry: 1
 
   def perform(poster_id)

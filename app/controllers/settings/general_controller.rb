@@ -19,14 +19,20 @@ class Settings::GeneralController < ApplicationController
 
   def verify_supporter
     email = params[:supporter_email]&.downcase&.strip
+    github_username = params[:supporter_github_username]&.strip
 
-    return redirect_to settings_general_index_path, alert: 'Please enter an email address' if email.blank?
+    if email.blank? && github_username.blank?
+      return redirect_to settings_general_index_path,
+                         alert: 'Please enter an email address or GitHub username'
+    end
 
-    current_user.settings['supporter_email'] = email
+    current_user.settings['supporter_email'] = email if email.present?
+    current_user.settings['supporter_github_username'] = github_username if github_username.present?
     current_user.save!
 
     # Clear cached verification so we get a fresh result
-    Rails.cache.delete(Supporter::VerifyEmail.new(email).cache_key)
+    Rails.cache.delete(Supporter::VerifyEmail.new(email).cache_key) if email.present?
+    Rails.cache.delete(Supporter::VerifyGithubUsername.new(github_username).cache_key) if github_username.present?
 
     if current_user.reload.supporter?
       platform = current_user.supporter_platform&.titleize
@@ -34,8 +40,8 @@ class Settings::GeneralController < ApplicationController
                   notice: "Verified! Thank you for supporting Dawarich via #{platform}."
     else
       redirect_to settings_general_index_path,
-                  alert: 'Email not found in supporter list. '\
-                         'Make sure you\'re using the same email as your donation platform.'
+                  alert: 'Not found in supporter list. '\
+                         'Make sure you\'re using the same email or GitHub username as your donation platform.'
     end
   end
 
@@ -72,6 +78,9 @@ class Settings::GeneralController < ApplicationController
 
   def update_supporter_settings
     current_user.settings['supporter_email'] = params[:supporter_email] if params.key?(:supporter_email)
+    if params.key?(:supporter_github_username)
+      current_user.settings['supporter_github_username'] = params[:supporter_github_username]
+    end
     return unless params.key?(:show_supporter_badge)
 
     current_user.settings['show_supporter_badge'] =

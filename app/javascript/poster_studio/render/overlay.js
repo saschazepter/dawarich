@@ -1,5 +1,9 @@
 import { layoutPosterText } from "poster_studio/render/text_layout"
 
+// Map data + product credit, drawn small and subtle along the bottom edge.
+export const POSTER_ATTRIBUTION =
+  "© OpenStreetMap contributors · https://dawarich.app"
+
 function hexToRgba(hex, alpha) {
   const v = hex.replace("#", "")
   const n =
@@ -91,6 +95,26 @@ function drawTitle(ctx, width, height, color, text, font) {
   }
 }
 
+// A small, low-key credit line hugging the bottom edge — sits below the
+// title/coords stack, inside the bottom fade so it stays legible.
+function drawAttribution(ctx, width, height, color, text, font) {
+  if (!text) return
+  const size = Math.round(width * 0.013)
+  ctx.save()
+  ctx.textAlign = "center"
+  ctx.fillStyle = color
+  ctx.globalAlpha = 0.5
+  ctx.font = `400 ${size}px ${font}`
+  fillSpaced(
+    ctx,
+    text,
+    width / 2,
+    height - Math.round(height * 0.017),
+    Math.round(size * 0.15),
+  )
+  ctx.restore()
+}
+
 export function drawOverlay(
   canvas,
   {
@@ -101,6 +125,7 @@ export function drawOverlay(
     font = "Helvetica, Arial, sans-serif",
     fadeStrength = 0.22,
     margin = 0,
+    attribution = POSTER_ATTRIBUTION,
   },
 ) {
   const ctx = canvas.getContext("2d")
@@ -118,5 +143,6 @@ export function drawOverlay(
   drawFades(ctx, width, height, theme.gradientColor, fadeStrength)
   if (title || subtitle || coords)
     drawTitle(ctx, width, height, theme.text, { title, subtitle, coords }, font)
+  drawAttribution(ctx, width, height, theme.text, attribution, font)
   return canvas
 }

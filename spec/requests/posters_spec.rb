@@ -6,9 +6,7 @@ RSpec.describe 'Posters', type: :request do
   let(:user) { create(:user) }
 
   before do
-    stub_const('POSTER_SERVICE_URL', 'http://localhost:8123')
-    stub_const('POSTER_SERVICE_TOKEN', nil)
-    Rails.cache.delete('poster_service_themes')
+    Flipper.enable(:posters)
     sign_in user
   end
 
@@ -44,11 +42,27 @@ RSpec.describe 'Posters', type: :request do
     it 'falls back to a default name' do
       post posters_path, params: { poster: poster_attributes.merge(name: '') }, as: :turbo_stream
 
-      expect(user.posters.last.name).to eq('My Poster')
+      expect(user.posters.last.name).to eq('Untitled poster')
     end
 
-    it 'redirects when the poster service is not configured' do
-      stub_const('POSTER_SERVICE_URL', nil)
+    it 'stores the typed title in settings' do
+      post posters_path, params: { poster: poster_attributes.merge(title: 'Summer 2025') }, as: :turbo_stream
+
+      expect(user.posters.last.settings['title']).to eq('Summer 2025')
+    end
+
+    it 'stores a blank title for an untitled poster so no title is rendered' do
+      post posters_path,
+           params: { poster: poster_attributes.merge(name: 'Untitled poster', title: '') },
+           as: :turbo_stream
+
+      poster = user.posters.last
+      expect(poster.name).to eq('Untitled poster')
+      expect(poster.settings['title']).to eq('')
+    end
+
+    it 'redirects when posters are not enabled' do
+      Flipper.disable(:posters)
 
       post posters_path, params: { poster: poster_attributes }
 

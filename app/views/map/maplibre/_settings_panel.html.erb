@@ -70,6 +70,13 @@
               <span class="label-text font-medium">Points</span>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show individual location points</p>
+            <label class="label cursor-pointer justify-start gap-3 ml-14 mt-1">
+              <input type="checkbox"
+                     class="toggle toggle-primary toggle-sm"
+                     data-action="change->maps--maplibre#togglePointsEditing" />
+              <span class="label-text">Edit points</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-24">Allow dragging points to correct their position</p>
           </div>
 
           <div class="divider"></div>
@@ -579,7 +586,7 @@
             </div>
           </details>
 
-          <% can_customize_layers = DawarichSettings.self_hosted? || current_user.pro? %>
+          <% can_customize_layers = current_user.full_access? %>
           <details class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
@@ -923,6 +930,32 @@
             </div>
             <p class="text-xs text-base-content/60 mt-1">Max gap between points before assuming you left the city</p>
           </div>
+
+          <% if Flipper.enabled?(:stay_point_detection, current_user) %>
+            <div class="divider"></div>
+
+            <!-- Visit Detection Settings -->
+            <div class="form-control w-full">
+              <label class="label">
+                <span class="label-text font-medium">Visit Max Gap</span>
+                <span class="label-text-alt" data-maps--maplibre-target="stayMaxGapMinutesValue">60 min</span>
+              </label>
+              <input type="range"
+                     name="stayMaxGapMinutes"
+                     min="5"
+                     max="720"
+                     step="5"
+                     value="60"
+                     class="range range-sm"
+                     data-action="input->maps--maplibre#updateStayMaxGapMinutesDisplay" />
+              <div class="w-full flex justify-between text-xs px-2 mt-1">
+                <span>5min</span>
+                <span>360min</span>
+                <span>720min</span>
+              </div>
+              <p class="text-xs text-base-content/60 mt-1">Max time gap between points within one visit. Longer gaps (e.g. dead battery) split it into separate visits. Default 60.</p>
+            </div>
+          <% end %>
             </div>
           </details>
 
@@ -1473,7 +1506,7 @@
               <span class="text-xs">Replay</span>
             </button>
 
-            <% if DawarichSettings.self_hosted? || current_user.pro? %>
+            <% if current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       onclick="document.dispatchEvent(new CustomEvent('residency:open'))">
@@ -1482,7 +1515,7 @@
               </button>
             <% end %>
 
-            <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+            <% if current_user.immich_integration_configured? && current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       id="immich-enrich-toggle-btn">
@@ -1493,7 +1526,7 @@
           </div>
 
           <!-- Immich Enrich Panel -->
-          <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+          <% if current_user.immich_integration_configured? && current_user.full_access? %>
             <div class="hidden mt-4"
                  data-controller="maps--immich-enrich"
                  data-maps--immich-enrich-api-key-value="<%= current_user.api_key %>"

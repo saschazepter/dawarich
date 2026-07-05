@@ -209,5 +209,58 @@ RSpec.describe Points::LiveBroadcaster do
         described_class.new(user.id, upserted_results, payloads).call
       end
     end
+
+    context 'with an active live share' do
+      let!(:live_share) { create(:shared_link, :live, user: user) }
+
+      before do
+        user.settings['live_map_enabled'] = false
+        user.save!
+      end
+
+      it 'broadcasts the latest point to the live share even when live_map is off' do
+        expect(SharedLocationChannel).to receive(:broadcast_to).with(
+          live_share, { lat: 52.52, lon: 13.405, ts: 1_700_000_000 }
+        )
+
+        described_class.new(user.id, upserted_results, payloads).call
+      end
+
+      it 'broadcasts only the single latest point for a batch of upserts' do
+        multi = [
+          { 'id' => 1, 'timestamp' => 1_700_000_000, 'latitude' => 52.52, 'longitude' => 13.405 },
+          { 'id' => 2, 'timestamp' => 1_700_000_060, 'latitude' => 52.53, 'longitude' => 13.41 }
+        ]
+
+        expect(SharedLocationChannel).to receive(:broadcast_to).once.with(
+          live_share, { lat: 52.53, lon: 13.41, ts: 1_700_000_060 }
+        )
+
+        described_class.new(user.id, multi, payloads).call
+      end
+
+      it 'masks a live point inside a privacy zone' do
+        home = create(:place, user: user, latitude: 52.52, longitude: 13.405)
+        tag = create(:tag, user: user, privacy_radius_meters: 500)
+        create(:tagging, tag: tag, taggable: home)
+
+        expect(SharedLocationChannel).to receive(:broadcast_to).with(live_share, { masked: true })
+
+        described_class.new(user.id, upserted_results, payloads).call
+      end
+    end
+
+    context 'with no active live share' do
+      before do
+        user.settings['live_map_enabled'] = false
+        user.save!
+      end
+
+      it 'does not broadcast to SharedLocationChannel' do
+        expect(SharedLocationChannel).not_to receive(:broadcast_to)
+
+        described_class.new(user.id, upserted_results, payloads).call
+      end
+    end
   end
 end

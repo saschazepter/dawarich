@@ -17,13 +17,13 @@ class CreateNotesAndRenameTripsRichText < ActiveRecord::Migration[8.0]
     add_index :notes, :lonlat, using: :gist, if_not_exists: true
     add_index :notes, %i[user_id noted_at], if_not_exists: true
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       CREATE UNIQUE INDEX IF NOT EXISTS index_notes_on_attachable_and_noted_date
       ON notes (attachable_type, attachable_id, (CAST(noted_at AS date)))
       WHERE attachable_id IS NOT NULL
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       UPDATE action_text_rich_texts
       SET name = 'description'
       WHERE record_type = 'Trip' AND name = 'notes'
@@ -31,7 +31,7 @@ class CreateNotesAndRenameTripsRichText < ActiveRecord::Migration[8.0]
   end
 
   def down
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       UPDATE action_text_rich_texts
       SET name = 'notes'
       WHERE record_type = 'Trip' AND name = 'description'

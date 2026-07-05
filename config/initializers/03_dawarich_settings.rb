@@ -13,19 +13,20 @@ class DawarichSettings
       @photon_enabled ||= PHOTON_API_HOST.present?
     end
 
-    def poster_service_enabled?
-      POSTER_SERVICE_URL.present?
-    end
-
-    # In-container maplibre-native poster rendering (vendor/poster_renderer).
-    # When on, gallery posters render locally in seconds instead of going
-    # through the sidecar service.
-    def poster_native_render_enabled?
-      ActiveModel::Type::Boolean.new.cast(ENV.fetch('POSTER_NATIVE_RENDERER', nil)) || false
-    end
-
     def photon_uses_komoot_io?
       @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
+    end
+
+    def photon_https_only_host?
+      @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
+    end
+
+    def normalized_photon_host
+      PHOTON_API_HOST.to_s.strip.downcase.split(':').first
+    end
+
+    def photon_use_https?
+      @photon_use_https ||= PHOTON_API_USE_HTTPS || photon_https_only_host?
     end
 
     def geoapify_enabled?

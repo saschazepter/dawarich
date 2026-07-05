@@ -77,6 +77,7 @@ export default class extends Controller {
     "saveNotice",
     "saveForm",
     "saveName",
+    "saveTitle",
     "saveTheme",
     "saveLat",
     "saveLon",
@@ -655,8 +656,12 @@ export default class extends Controller {
     const center = this.previewMap.getCenter()
     const distance = this.sidecarDistance()
 
-    this.saveNameTarget.value =
-      this.titleInputTarget.value.trim() || "My Poster"
+    // The typed title is what gets drawn on the poster (blank ⇒ no title);
+    // the gallery name is a separate required label that falls back to a
+    // neutral placeholder so an untitled poster never reads "MY POSTER".
+    const title = this.titleInputTarget.value.trim()
+    this.saveTitleTarget.value = title
+    this.saveNameTarget.value = title || "Untitled poster"
     this.saveThemeTarget.value = this.themeBase || "blueprint"
     this.saveLatTarget.value = center.lat
     this.saveLonTarget.value = center.lng

@@ -11,6 +11,7 @@ module Map
     def index
       @start_at = parsed_start_at
       @end_at = parsed_end_at
+      @import_id = import_record&.id
 
       # Status counts shown in the Timeline tab's FILTER section — scoped to
       # the calendar's currently-visible month so the numbers reflect "what
@@ -27,33 +28,26 @@ module Map
       @timeline_tags = current_user.tags.order(:name).limit(8)
 
       # Theme tokens power both the poster tab and the Appearance section's
-      # custom map colors, so they load regardless of the poster service gate.
-      @poster_themes = cached_poster_themes
+      # custom map colors, so they load regardless of the posters feature gate.
+      @poster_themes = local_poster_themes
 
-      return unless DawarichSettings.poster_service_enabled?
+      return unless posters_enabled?
 
       @recent_posters = current_user.posters.with_attached_image.order(created_at: :desc).limit(10)
     end
 
     private
 
-    def cached_poster_themes
-      return local_poster_themes unless DawarichSettings.poster_service_enabled?
-
-      remote = Rails.cache.fetch('poster_service_themes', expires_in: 1.hour, skip_nil: true) do
-        Posters::Client.new.themes.presence
-      end
-      remote.presence || local_poster_themes
-    end
-
-    # Client-side renderer fallback: the browser poster path needs no sidecar, so
-    # when the sidecar is unreachable we serve the vendored theme tokens directly.
+    # Poster theme tokens are vendored under public/poster_themes and read
+    # directly — they also power the map's custom-colour editor.
     def local_poster_themes
-      Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
-        data = JSON.parse(File.read(path))
-        data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
-      rescue JSON::ParserError
-        nil
+      Rails.cache.fetch('local_poster_themes', expires_in: 1.hour) do
+        Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
+          data = JSON.parse(File.read(path))
+          data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
+        rescue JSON::ParserError
+          nil
+        end
       end
     end
 

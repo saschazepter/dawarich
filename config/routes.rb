@@ -99,6 +99,12 @@ Rails.application.routes.draw do
   resources :imports
   resources :tracks, only: [] do
     resources :segments, controller: 'tracks/segments', only: %i[index update]
+
+    resource :share_link, only: %i[new create destroy], controller: 'tracks/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
   end
   # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
   # once the redesign is known-stable so browsers cache the redirect.
@@ -128,8 +134,35 @@ Rails.application.routes.draw do
       post :export
     end
     resources :notes, controller: 'trips/notes', only: %i[create update destroy]
+
+    resource :share_link, only: %i[new create destroy], controller: 'trips/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+  end
+
+  namespace :share_links do
+    resource :hub, only: :show, controller: 'hubs'
+    resources :shares, only: [] do
+      member { patch :revoke }
+    end
+    resource :timeline, only: %i[new create destroy], controller: 'timelines' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+    resource :live, only: %i[new create destroy], controller: 'lives' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
   end
   resources :tags, except: [:show]
+
+  # Public shared-link viewer
+  get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link
+  post '/s/:id/unlock',  to: 'shared/links#unlock',   as: :unlock_public_shared_link
 
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?
@@ -252,6 +285,8 @@ Rails.application.routes.draw do
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
+      get   'settings/mobile', to: 'settings/mobile#show'
+      patch 'settings/mobile', to: 'settings/mobile#update'
       get   'users/me', to: 'users#me'
       delete 'users/me', to: 'users/destroy#destroy'
 
@@ -267,7 +302,10 @@ Rails.application.routes.draw do
 
       resources :areas,     only: %i[index show create update destroy]
       resources :imports,   only: %i[index show create]
-      resources :places,    only: %i[index show create update destroy] do
+      namespace :imports do
+        post :pending, to: 'pending#create'
+      end
+      resources :places, only: %i[index show create update destroy] do
         collection do
           get 'nearby'
           get 'search'
@@ -294,6 +332,7 @@ Rails.application.routes.draw do
       end
       resource :plan, only: [:show], controller: 'plan'
       resource :residency, only: [:show], controller: 'residency'
+      resource :demo_data, only: %i[show create destroy], controller: 'demo_data'
       resources :recalculations, only: [:create]
       resources :stats, only: :index
       resources :insights, only: :index do
@@ -367,6 +406,13 @@ Rails.application.routes.draw do
       end
 
       resources :notes, only: %i[index show create update destroy]
+      namespace :shared do
+        get ':id/trip',   to: 'trips#show'
+        get ':id/points', to: 'points#index'
+        get ':id/route',  to: 'points#route'
+        get ':id/photos', to: 'photos#index'
+        get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
+      end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
       post 'users/exist', to: 'users#exist'

@@ -35,6 +35,7 @@ class User < ApplicationRecord
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
   has_many :notes, dependent: :destroy
+  has_many :shared_links, dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
@@ -58,7 +59,7 @@ class User < ApplicationRecord
   # `User#none?` predicate that collides with NilClass semantics in
   # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
-  enum :plan, { lite: 0, pro: 1 }, default: :pro
+  enum :plan, { lite: 0, pro: 1, family: 2 }, default: :pro
   # No default: nil means the user has not yet been prompted about the
   # changelog widget. prefix avoids `granted?`/`declined?` collisions.
   attribute :changelog_consent, :integer
@@ -295,9 +296,16 @@ class User < ApplicationRecord
   end
 
   def supporter_info
-    return { supporter: false } if safe_settings.supporter_email.blank?
+    if safe_settings.supporter_email.present?
+      email_info = Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+      return email_info if email_info[:supporter]
+    end
 
-    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+    if safe_settings.supporter_github_username.present?
+      return Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+    end
+
+    { supporter: false }
   end
 
   private

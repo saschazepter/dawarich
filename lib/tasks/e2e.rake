@@ -40,26 +40,26 @@ namespace :e2e do
     { lat: 52.6000, lon: 13.5000, hour: 15.0, country: 'Germany' }
   ].freeze
 
-  E2E_ANOMALY_TRIP_NAME = 'E2E Anomaly Day'.freeze
-  E2E_ANOMALY_TRIP_START = '2025-10-15 11:00:00'.freeze
-  E2E_ANOMALY_TRIP_END   = '2025-10-15 18:00:00'.freeze
+  E2E_ANOMALY_TRIP_NAME = 'E2E Anomaly Day'
+  E2E_ANOMALY_TRIP_START = '2025-10-15 11:00:00'
+  E2E_ANOMALY_TRIP_END   = '2025-10-15 18:00:00'
 
   # Tag fixtures for timeline-filters spec "Tag chips" describe. Three tags
   # plus one "tag-holder" place that carries all three — so the e2e suite
   # can look up tag IDs via /api/v1/places (which exposes place.tags),
   # avoiding the need for a separate tags-index API endpoint.
   E2E_TAG_NAMES = %w[e2e-Home e2e-Work e2e-Travel].freeze
-  E2E_TAG_HOLDER_PLACE_NAME = 'E2E Tag Holder'.freeze
+  E2E_TAG_HOLDER_PLACE_NAME = 'E2E Tag Holder'
 
   # Fixed Track windows used by the timeline-replay and timeline-journey-leg
   # specs. These live deep in the past so they don't collide with other
   # fixtures or the demo data (which clusters around 2025-10-15).
-  E2E_REPLAY_TRACK_DAY     = '2020-10-03'.freeze
-  E2E_REPLAY_TRACK_START   = '2020-10-03 09:30:00 UTC'.freeze
-  E2E_REPLAY_TRACK_END     = '2020-10-03 10:30:00 UTC'.freeze
-  E2E_JOURNEY_TRACK_DAY    = '2020-06-06'.freeze
-  E2E_JOURNEY_TRACK_START  = '2020-06-06 09:00:00 UTC'.freeze
-  E2E_JOURNEY_TRACK_END    = '2020-06-06 10:00:00 UTC'.freeze
+  E2E_REPLAY_TRACK_DAY     = '2020-10-03'
+  E2E_REPLAY_TRACK_START   = '2020-10-03 09:30:00 UTC'
+  E2E_REPLAY_TRACK_END     = '2020-10-03 10:30:00 UTC'
+  E2E_JOURNEY_TRACK_DAY    = '2020-06-06'
+  E2E_JOURNEY_TRACK_START  = '2020-06-06 09:00:00 UTC'
+  E2E_JOURNEY_TRACK_END    = '2020-06-06 10:00:00 UTC'
 
   # Normal (non-anomaly) Berlin points that sit inside the anomaly trip
   # window. Demo data has many points but most carry country_name=nil, so
@@ -142,7 +142,7 @@ namespace :e2e do
     user = User.find_by!(email: 'demo@dawarich.app')
     base_day = Time.zone.parse('2025-10-15')
 
-    user.points.where(tracker_id: ['e2e-anomaly', 'e2e-backbone']).delete_all
+    user.points.where(tracker_id: %w[e2e-anomaly e2e-backbone]).delete_all
 
     E2E_TRIP_BACKBONE_FIXTURE.each do |row|
       ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
@@ -299,7 +299,7 @@ namespace :e2e do
     distance_meters = Point.total_distance(points, :m)
     builder = Class.new do
       include Tracks::TrackBuilder
-      def initialize(user); @user = user; end
+      def initialize(user) = @user = user
       attr_reader :user
     end.new(user)
     track = builder.create_track_from_points(
@@ -308,7 +308,9 @@ namespace :e2e do
 
     raise "Failed to create fixture track for tracker_id=#{tracker_id}" if track.nil?
 
-    puts "  ↪ fixture track ##{track.id} tracker=#{tracker_id} #{track.start_at.iso8601}..#{track.end_at.iso8601} (#{points.size} pts, #{distance_meters.to_i}m)"
+    puts "  ↪ fixture track ##{track.id} tracker=#{tracker_id} " \
+         "#{track.start_at.iso8601}..#{track.end_at.iso8601} " \
+         "(#{points.size} pts, #{distance_meters.to_i}m)"
   end
 
   desc 'Wipe data for the e2e users (demo, lite, family members) without deleting the users themselves'
