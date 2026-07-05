@@ -271,9 +271,17 @@
                   data-poster-studio-editor-target="orderButton"
                   data-action="poster-studio-editor#openOrder">
             <%= icon 'package', class: 'h-4 w-4' %>
-            Order print
+            Order a printed poster
           </button>
-          <p class="text-xs opacity-60 hidden" data-poster-studio-editor-target="orderHint">Switch to a print format (30 × 40, 50 × 70, 70 × 100 cm) to order a printed poster.</p>
+
+          <div class="hidden rounded-lg border border-base-300 bg-base-100 p-3 space-y-2"
+               data-poster-studio-editor-target="sizePicker">
+            <p class="text-sm font-semibold">Choose a print size</p>
+            <p class="text-xs opacity-70">Printed &amp; shipped in the EU, shipping included.</p>
+            <div class="space-y-1" data-poster-studio-editor-target="sizePickerOptions"></div>
+            <button type="button" class="btn btn-ghost btn-xs w-full"
+                    data-action="poster-studio-editor#closeSizePicker">Cancel</button>
+          </div>
 
           <div class="hidden rounded-lg border border-base-300 bg-base-100 p-3 space-y-2"
                data-poster-studio-editor-target="orderDialog">

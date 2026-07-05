@@ -11,7 +11,11 @@ import {
   layoutById,
   resolveLayoutGeometry,
 } from "poster_studio/data/layouts"
-import { printProductFor } from "poster_studio/data/print_products"
+import {
+  ORDERABLE_LAYOUT_IDS,
+  PRINT_PRODUCTS,
+  printProductFor,
+} from "poster_studio/data/print_products"
 import {
   extendTokens,
   loadThemeTokens,
@@ -37,7 +41,11 @@ const METERS_PER_DEGREE = 111320
 // Sidecar frame semantics: it renders ±distance/3 vertically, so covering
 // the studio's visible height needs distance = 3 × half-height in meters.
 const SIDECAR_DISTANCE_FACTOR = 1.5
-const SIDECAR_DISTANCE_RANGE = [500, 20000]
+// Max lifted so any single-view framing is saveable: the distance box is
+// calibrated to the visible frame, so a low cap made zoomed-out routes read as
+// "outside the frame" even while visible. The upper bound stays finite to keep
+// degenerate whole-globe requests off the sidecar.
+const SIDECAR_DISTANCE_RANGE = [500, 5_000_000]
 function toLocalInput(date) {
   const pad = (n) => String(n).padStart(2, "0")
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
@@ -89,7 +97,8 @@ export default class extends Controller {
     "dateStart",
     "dateEnd",
     "orderButton",
-    "orderHint",
+    "sizePicker",
+    "sizePickerOptions",
     "orderDialog",
     "orderSummary",
     "orderStatus",
@@ -110,6 +119,7 @@ export default class extends Controller {
     document.addEventListener("poster-studio:open", this.onOpen)
     this.onResize = () => this.resizeFrame()
     this.populateLayouts()
+    this.populateSizePicker()
     this.populateFonts()
   }
 
@@ -297,6 +307,27 @@ export default class extends Controller {
     select.value = DEFAULT_LAYOUT_ID
   }
 
+  populateSizePicker() {
+    const container = this.sizePickerOptionsTarget
+    container.innerHTML = ""
+    ORDERABLE_LAYOUT_IDS.forEach((id) => {
+      const layout = layoutById(id)
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "btn btn-outline btn-sm w-full justify-between"
+      button.dataset.layoutId = id
+      button.dataset.action = "poster-studio-editor#pickPrintSize"
+
+      const name = document.createElement("span")
+      name.textContent = layout.name
+      const price = document.createElement("span")
+      price.className = "opacity-70"
+      price.textContent = PRINT_PRODUCTS[id].priceLabel
+      button.append(name, price)
+      container.appendChild(button)
+    })
+  }
+
   get layout() {
     return layoutById(this.layoutSelectTarget.value)
   }
@@ -305,6 +336,17 @@ export default class extends Controller {
     this.resizeFrame()
     this.updateSummary()
     this.syncOrderAvailability()
+    // Keep an open order view in sync with the new size: an orderable size
+    // refreshes the dialog (and its price); a non-orderable one falls back to
+    // the size picker.
+    if (this.orderViewOpen) this.openOrder()
+  }
+
+  get orderViewOpen() {
+    return (
+      !this.orderDialogTarget.classList.contains("hidden") ||
+      !this.sizePickerTarget.classList.contains("hidden")
+    )
   }
 
   resizeFrame() {
@@ -562,19 +604,28 @@ export default class extends Controller {
   }
 
   syncOrderAvailability() {
-    const product = printProductFor(this.layout?.id)
-    const available = Boolean(product) && this.printOrderUrlValue.length > 0
-    this.orderButtonTarget.classList.toggle("hidden", !available)
-    this.orderHintTarget.classList.toggle(
-      "hidden",
-      !(this.printOrderUrlValue.length > 0 && !product),
-    )
-    if (!available) this.orderDialogTarget.classList.add("hidden")
+    // The Order button is always available when ordering is configured — the
+    // current layout no longer gates it. A non-orderable layout routes through
+    // the size picker instead of being hidden.
+    const configured = this.printOrderUrlValue.length > 0
+    this.orderButtonTarget.classList.toggle("hidden", !configured)
+    if (!configured) {
+      this.orderDialogTarget.classList.add("hidden")
+      this.sizePickerTarget.classList.add("hidden")
+    }
   }
 
   openOrder() {
     const product = printProductFor(this.layout.id)
-    if (!product) return
+    if (product) {
+      this.showOrderDialog(product)
+    } else {
+      this.openSizePicker()
+    }
+  }
+
+  showOrderDialog(product) {
+    this.closeSizePicker()
     this.orderSummaryTarget.textContent = `${this.layout.name} poster — ${product.priceLabel}`
     this.orderErrorTarget.classList.add("hidden")
     this.orderStatusTarget.textContent = ""
@@ -583,6 +634,22 @@ export default class extends Controller {
 
   closeOrder() {
     this.orderDialogTarget.classList.add("hidden")
+  }
+
+  openSizePicker() {
+    this.orderDialogTarget.classList.add("hidden")
+    this.sizePickerTarget.classList.remove("hidden")
+  }
+
+  closeSizePicker() {
+    this.sizePickerTarget.classList.add("hidden")
+  }
+
+  pickPrintSize(event) {
+    const id = event.currentTarget.dataset.layoutId
+    this.layoutSelectTarget.value = id
+    // layoutChanged reopens the order view for the now-orderable size.
+    this.layoutChanged()
   }
 
   async confirmOrder() {
