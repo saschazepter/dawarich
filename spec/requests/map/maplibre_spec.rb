@@ -33,6 +33,7 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   describe 'print ordering' do
     before do
+      Flipper.enable(:posters)
       stub_const('POSTER_SERVICE_URL', 'http://localhost:8123')
       stub_const('POSTER_SERVICE_TOKEN', nil)
       Rails.cache.delete('poster_service_themes')
