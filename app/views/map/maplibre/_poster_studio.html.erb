@@ -5,7 +5,8 @@
      class="fixed inset-0 hidden bg-base-300"
      style="z-index: 60"
      data-controller="poster-studio-editor"
-     data-poster-studio-editor-fonts-value="<%= poster_font_urls.to_json %>">
+     data-poster-studio-editor-fonts-value="<%= poster_font_urls.to_json %>"
+     data-poster-studio-editor-print-order-url-value="<%= ENV.fetch('PRINT_ORDER_URL', 'https://prints.dawarich.app/api/orders') %>">
   <div class="flex h-full flex-col">
     <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
       <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2 shrink-0">
@@ -47,7 +48,7 @@
              style="filter: blur(22px) brightness(0.5) saturate(1.15); transform: scale(1.15)"
              alt=""
              data-poster-studio-editor-target="backdrop">
-        <div class="relative overflow-hidden shadow-2xl"
+        <div class="relative shrink-0 overflow-hidden shadow-2xl"
              data-poster-studio-editor-target="frame">
           <%# Inline position: MapLibre's own .maplibregl-map class forces
               position: relative, which would override the utility class and
@@ -265,6 +266,32 @@
             <%= icon 'camera', class: 'h-4 w-4' %>
             Save to gallery
           </button>
+
+          <button type="button" class="btn btn-secondary btn-sm w-full hidden"
+                  data-poster-studio-editor-target="orderButton"
+                  data-action="poster-studio-editor#openOrder">
+            <%= icon 'package', class: 'h-4 w-4' %>
+            Order print
+          </button>
+          <p class="text-xs opacity-60 hidden" data-poster-studio-editor-target="orderHint">Switch to a print format (30 × 40, 50 × 70, 70 × 100 cm) to order a printed poster.</p>
+
+          <div class="hidden rounded-lg border border-base-300 bg-base-100 p-3 space-y-2"
+               data-poster-studio-editor-target="orderDialog">
+            <p class="text-sm font-semibold" data-poster-studio-editor-target="orderSummary"></p>
+            <p class="text-xs opacity-70">
+              Printed on premium matte paper by Gelato, exactly as previewed.
+              Ships within the EU, shipping included. Payment via Stripe.
+            </p>
+            <p class="text-xs" data-poster-studio-editor-target="orderStatus"></p>
+            <p class="text-xs text-error hidden" data-poster-studio-editor-target="orderError"></p>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-primary btn-sm flex-1"
+                      data-poster-studio-editor-target="orderConfirmButton"
+                      data-action="poster-studio-editor#confirmOrder">Continue to checkout</button>
+              <button type="button" class="btn btn-ghost btn-sm"
+                      data-action="poster-studio-editor#closeOrder">Cancel</button>
+            </div>
+          </div>
           <p class="text-xs text-warning hidden" data-poster-studio-editor-target="saveNotice"></p>
           <p class="text-xs opacity-70" data-poster-studio-editor-target="status"></p>
 
