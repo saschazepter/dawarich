@@ -406,10 +406,10 @@ GEM
     pg (1.6.3-arm64-darwin)
     pg (1.6.3-x86_64-darwin)
     pg (1.6.3-x86_64-linux)
-    posthog-rails (3.14.4)
-      posthog-ruby (= 3.14.3)
+    posthog-rails (3.16.1)
+      posthog-ruby (= 3.17.0)
       railties (>= 5.2.0)
-    posthog-ruby (3.14.3)
+    posthog-ruby (3.17.0)
       concurrent-ruby (~> 1)
     pp (0.6.4)
       prettyprint
