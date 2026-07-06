@@ -96,6 +96,11 @@ export default class extends Controller {
     "saveOpacity",
     "dateStart",
     "dateEnd",
+    "loadButton",
+    "loadSpinner",
+    "loadLabel",
+    "orderSection",
+    "orderCta",
     "orderButton",
     "sizePicker",
     "sizePickerOptions",
@@ -121,6 +126,7 @@ export default class extends Controller {
     this.populateLayouts()
     this.populateSizePicker()
     this.populateFonts()
+    this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
   }
 
   disconnect() {
@@ -471,19 +477,32 @@ export default class extends Controller {
 
     const subtitleWasAuto =
       this.subtitleInputTarget.value === this.dateRangeLabel()
+    this.setLoadBusy(true)
     this.setStatus("Loading tracks for the new range…")
-    document.dispatchEvent(
-      new CustomEvent("timeline-feed:date-navigated", {
-        detail: { startAt: start, endAt: end },
-      }),
-    )
-    await this.waitForTrackReload()
+    try {
+      document.dispatchEvent(
+        new CustomEvent("timeline-feed:date-navigated", {
+          detail: { startAt: start, endAt: end },
+        }),
+      )
+      await this.waitForTrackReload()
 
-    if (subtitleWasAuto) this.subtitleInputTarget.value = this.dateRangeLabel()
-    this.previewMap?.setStyle(this.posterStyle())
-    this.recenter()
-    this.syncSaveAvailability()
-    this.setStatus("")
+      if (subtitleWasAuto)
+        this.subtitleInputTarget.value = this.dateRangeLabel()
+      this.previewMap?.setStyle(this.posterStyle())
+      this.recenter()
+      this.syncSaveAvailability()
+    } finally {
+      this.setLoadBusy(false)
+      this.setStatus("")
+    }
+  }
+
+  setLoadBusy(value) {
+    if (!this.hasLoadButtonTarget) return
+    this.loadButtonTarget.disabled = value
+    this.loadSpinnerTarget.classList.toggle("hidden", !value)
+    this.loadLabelTarget.textContent = value ? "Loading…" : "Load"
   }
 
   // The reload replaces the layer data objects; wait for the identity to
@@ -604,45 +623,44 @@ export default class extends Controller {
   }
 
   syncOrderAvailability() {
-    // The Order button is always available when ordering is configured — the
-    // current layout no longer gates it. A non-orderable layout routes through
-    // the size picker instead of being hidden.
-    const configured = this.printOrderUrlValue.length > 0
-    this.orderButtonTarget.classList.toggle("hidden", !configured)
-    if (!configured) {
-      this.orderDialogTarget.classList.add("hidden")
-      this.sizePickerTarget.classList.add("hidden")
-    }
+    // The whole "Order a print" zone appears only when ordering is configured.
+    this.orderSectionTarget.classList.toggle(
+      "hidden",
+      this.printOrderUrlValue.length === 0,
+    )
+  }
+
+  // Exactly one of the three order views shows at a time, so the panel never
+  // stacks the CTA, the size picker and the dialog on top of each other.
+  showOrderView(which) {
+    this.orderCtaTarget.classList.toggle("hidden", which !== "cta")
+    this.sizePickerTarget.classList.toggle("hidden", which !== "picker")
+    this.orderDialogTarget.classList.toggle("hidden", which !== "dialog")
   }
 
   openOrder() {
     const product = printProductFor(this.layout.id)
-    if (product) {
-      this.showOrderDialog(product)
-    } else {
-      this.openSizePicker()
-    }
+    if (product) this.showOrderDialog(product)
+    else this.openSizePicker()
   }
 
   showOrderDialog(product) {
-    this.closeSizePicker()
     this.orderSummaryTarget.textContent = `${this.layout.name} poster — ${product.priceLabel}`
     this.orderErrorTarget.classList.add("hidden")
     this.orderStatusTarget.textContent = ""
-    this.orderDialogTarget.classList.remove("hidden")
+    this.showOrderView("dialog")
   }
 
   closeOrder() {
-    this.orderDialogTarget.classList.add("hidden")
+    this.showOrderView("cta")
   }
 
   openSizePicker() {
-    this.orderDialogTarget.classList.add("hidden")
-    this.sizePickerTarget.classList.remove("hidden")
+    this.showOrderView("picker")
   }
 
   closeSizePicker() {
-    this.sizePickerTarget.classList.add("hidden")
+    this.showOrderView("cta")
   }
 
   pickPrintSize(event) {
