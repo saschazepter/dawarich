@@ -97,8 +97,8 @@ COPY ../. ./
 
 # Poster renderer dependencies — prebuilt maplibre-native binaries exist for
 # x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
-# armv7 the renderer is skipped; the POSTER_NATIVE_RENDERER feature simply
-# stays off there.
+# armv7 the renderer is skipped; server-side poster rendering is unavailable
+# there.
 RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     cd vendor/poster_renderer \
     && npm ci --no-audit --no-fund \

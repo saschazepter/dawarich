@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Poster Studio (behind the `posters` feature flag): design a printable poster of your travels in a full-screen studio opened from Map v2 — live MapLibre preview, theme presets with editable color tokens, layout/paper-size presets, text controls, and PNG/PDF export rendered in the browser. Posters can be saved to a gallery (rendered server-side via a bundled maplibre-native renderer) or ordered as a print via Stripe Checkout (printed and shipped by Gelato). Note for self-hosters: the Docker image grows by roughly 100 MB uncompressed for the renderer's headless GL stack, and gallery rendering is unavailable on 32-bit ARM (armv7) hosts.
 - New API endpoints `GET`/`POST`/`DELETE /api/v1/demo_data` to check, load and remove demo data, enabling demo-data onboarding in the mobile app.
 - New API endpoints `GET`/`PATCH /api/v1/settings/mobile` for syncing mobile app settings between devices: settings are stored per user with a server-stamped `updated_at` so the most recent write wins. The existing settings API now also accepts `maps.distance_unit` and merges the `maps` hash instead of replacing it, so partial updates no longer wipe other map settings.
 - Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
