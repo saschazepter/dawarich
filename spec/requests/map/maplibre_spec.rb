@@ -7,21 +7,11 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
-  describe 'poster tab gating' do
-    it 'renders the poster tab button when the posters flag is enabled' do
-      Flipper.enable(:posters)
-
+  describe 'poster studio' do
+    it 'renders the poster tab button' do
       get map_v2_path
 
       expect(response.body).to include('map-button-poster')
-    end
-
-    it 'omits the poster tab when the posters flag is disabled' do
-      Flipper.disable(:posters)
-
-      get map_v2_path
-
-      expect(response.body).not_to include('map-button-poster')
     end
 
     it 'renders the vendored poster theme tokens for the map colour editor' do
@@ -33,7 +23,6 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   describe 'print ordering' do
     before do
-      Flipper.enable(:posters)
       stub_const('POSTER_SERVICE_URL', 'http://localhost:8123')
       stub_const('POSTER_SERVICE_TOKEN', nil)
       Rails.cache.delete('poster_service_themes')
@@ -58,6 +47,22 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
       expect(response.body)
         .to include('data-poster-studio-editor-print-order-url-value="http://localhost:3001/api/orders"')
+    end
+
+    it 'renders the order section when the poster_ordering flag is enabled' do
+      Flipper.enable(:poster_ordering)
+
+      get map_v2_path
+
+      expect(response.body).to include('Order a printed poster')
+    end
+
+    it 'omits the order section when the poster_ordering flag is disabled' do
+      Flipper.disable(:poster_ordering)
+
+      get map_v2_path
+
+      expect(response.body).not_to include('Order a printed poster')
     end
   end
 

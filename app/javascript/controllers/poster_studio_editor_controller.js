@@ -314,6 +314,8 @@ export default class extends Controller {
   }
 
   populateSizePicker() {
+    if (!this.hasSizePickerOptionsTarget) return
+
     const container = this.sizePickerOptionsTarget
     container.innerHTML = ""
     ORDERABLE_LAYOUT_IDS.forEach((id) => {
@@ -349,6 +351,8 @@ export default class extends Controller {
   }
 
   get orderViewOpen() {
+    if (!this.hasOrderDialogTarget) return false
+
     return (
       !this.orderDialogTarget.classList.contains("hidden") ||
       !this.sizePickerTarget.classList.contains("hidden")
@@ -623,7 +627,10 @@ export default class extends Controller {
   }
 
   syncOrderAvailability() {
-    // The whole "Order a print" zone appears only when ordering is configured.
+    // The "Order a print" zone is server-rendered only behind the
+    // poster_ordering flag, and appears only when ordering is configured.
+    if (!this.hasOrderSectionTarget) return
+
     this.orderSectionTarget.classList.toggle(
       "hidden",
       this.printOrderUrlValue.length === 0,
