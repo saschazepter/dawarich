@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Family location history now actually shows up on Map v2: the history endpoint read coordinates from the legacy `latitude`/`longitude` point columns, which are empty on instances where points only store the PostGIS `lonlat` value — every shared history point came back without coordinates, so nothing was drawn. Coordinates are now derived from `lonlat` (#2977)
 - Declining the "Move the visit here?" prompt when picking a distant place for a Map v2 visit no longer renames the visit to that place.
 - Place visit detection no longer leaves an empty duplicate visit behind when a newly added point bridges the gap between two previously separate visits at the same place (the two are now merged into one instead of orphaning the earlier suggestion). Confirmed visits are also left untouched by the nightly re-scan, so a new nearby point can no longer pull points out of a visit you have already confirmed.
 - Re-evaluating anomalous points now refreshes the map immediately instead of occasionally serving a cached copy of the points until the next change.
