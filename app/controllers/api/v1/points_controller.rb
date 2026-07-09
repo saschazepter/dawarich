@@ -4,6 +4,7 @@ class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
   BULK_DESTROY_MAX = 5_000
+  MAX_PER_PAGE = 10_000
 
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
@@ -41,17 +42,20 @@ class Api::V1::PointsController < ApiController
       )
     end
 
-    cache_count, cache_max_ts, cache_max_updated =
-      points.pick(Arel.sql('COUNT(*)'), Arel.sql('MAX(timestamp)'), Arel.sql('MAX(updated_at)'))
-    fresh_when(
-      etag: points_index_etag(start_at, end_at, order, cache_max_ts, cache_count, cache_max_updated),
-      last_modified: cache_max_ts && Time.zone.at(cache_max_ts),
-      public: false
-    )
-    return if performed?
+    if include_metadata?
+      cache_count, cache_max_ts, cache_max_updated =
+        points.pick(Arel.sql('COUNT(*)'), Arel.sql('MAX(timestamp)'), Arel.sql('MAX(updated_at)'))
+      fresh_when(
+        etag: points_index_etag(start_at, end_at, order, cache_max_ts, cache_count, cache_max_updated),
+        last_modified: cache_max_ts && Time.zone.at(cache_max_ts),
+        public: false
+      )
+      return if performed?
+    end
 
     per_page = params[:per_page].to_i
     per_page = 100 unless per_page.positive?
+    per_page = [per_page, MAX_PER_PAGE].min
     points = points
              .order(timestamp: order)
              .page(params[:page])
@@ -63,20 +67,23 @@ class Api::V1::PointsController < ApiController
                           points.map { |point| point_serializer.new(point).call }
                         end
 
-    total_count = cache_count.to_i
-    total_pages = (total_count.to_f / per_page).ceil
     response.set_header('X-Current-Page', points.current_page.to_s)
-    response.set_header('X-Total-Pages', total_pages.to_s)
 
-    # For Lite users on Cloud: include the unscoped count and scoped count
-    # so the frontend can show how many points fall outside the 12-month data window.
-    if current_api_user.plan_restricted?
-      total_in_range = current_api_user.points
-                                       .where(timestamp: start_at..end_at)
-      total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?
-      total_in_range = total_in_range.count
-      response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
-      response.set_header('X-Scoped-Points', total_count.to_s)
+    if include_metadata?
+      total_count = cache_count.to_i
+      total_pages = (total_count.to_f / per_page).ceil
+      response.set_header('X-Total-Pages', total_pages.to_s)
+
+      # For Lite users on Cloud: include the unscoped count and scoped count
+      # so the frontend can show how many points fall outside the 12-month data window.
+      if current_api_user.plan_restricted?
+        total_in_range = current_api_user.points
+                                         .where(timestamp: start_at..end_at)
+        total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?
+        total_in_range = total_in_range.count
+        response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
+        response.set_header('X-Scoped-Points', total_count.to_s)
+      end
     end
 
     render json: serialized_points
@@ -205,6 +212,10 @@ class Api::V1::PointsController < ApiController
 
   def slim_points?
     params[:slim] == 'true'
+  end
+
+  def include_metadata?
+    ActiveModel::Type::Boolean.new.cast(params.fetch(:include_metadata, true))
   end
 
   def points_index_etag(start_at, end_at, order, max_timestamp, count, max_updated)

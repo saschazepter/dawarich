@@ -64,6 +64,51 @@ RSpec.describe 'Api::V1::Points conditional GET caching', type: :request do
     expect(response.headers['X-Total-Pages']).to eq('2')
   end
 
+  it 'skips range aggregates and total headers when metadata is disabled' do
+    queries = []
+    callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+      get "/api/v1/points?api_key=#{user.api_key}&#{range}&include_metadata=false"
+    end
+
+    expect(response).to have_http_status(:ok)
+    expect(response.headers['X-Current-Page']).to eq('1')
+    expect(response.headers['X-Total-Pages']).to be_nil
+    expect(response.headers['X-Total-Points-In-Range']).to be_nil
+    expect(response.headers['X-Scoped-Points']).to be_nil
+    expect(queries.none? { |sql| sql.match?(/SELECT COUNT/i) }).to be(true)
+    expect(queries.none? { |sql| sql.match?(/COUNT\(\*\).*MAX\(timestamp\)/i) }).to be(true)
+  end
+
+  it 'keeps metadata enabled by default' do
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}"
+
+    expect(response.headers['ETag']).to be_present
+    expect(response.headers['X-Total-Pages']).to eq('1')
+  end
+
+  it 'caps oversized page requests at 10,000 points' do
+    base_timestamp = 2.days.ago.to_i + 1
+    now = Time.current
+    rows = 9_998.times.map do |offset|
+      {
+        user_id: user.id,
+        timestamp: base_timestamp + offset,
+        lonlat: 'POINT(13.4 52.5)',
+        created_at: now,
+        updated_at: now
+      }
+    end
+    Point.insert_all!(rows)
+
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}&per_page=999999"
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.size).to eq(10_000)
+    expect(response.headers['X-Total-Pages']).to eq('2')
+  end
+
   it 'falls back to the default page size when per_page is zero' do
     get "/api/v1/points?api_key=#{user.api_key}&#{range}&per_page=0"
 
