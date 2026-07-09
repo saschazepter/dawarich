@@ -6,7 +6,6 @@ class TripsController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
-  before_action :set_coordinates, only: %i[show edit]
 
   def index
     @trips = current_user.trips.order(started_at: :desc).page(params[:page]).per(6)
@@ -134,13 +133,6 @@ class TripsController < ApplicationController
 
   def set_trip
     @trip = current_user.trips.find(params[:id])
-  end
-
-  def set_coordinates
-    @coordinates = @trip.points.pluck(
-      :latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id,
-      :country
-    ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
   end
 
   def trip_params
