@@ -160,14 +160,6 @@ export class DataLoader {
           onProgress: counter
             ? ({ loaded }) => counter.update("points", loaded)
             : null,
-          onBatch: onLayerData
-            ? (accumulatedPoints) => {
-                const geoJSON = pointsToGeoJSON(accumulatedPoints)
-                onLayerData("points", geoJSON)
-                onLayerData("heatmap", geoJSON)
-                if (counter) counter.update("points", accumulatedPoints.length)
-              }
-            : null,
         })
       : Promise.resolve({ points: [], totalPointsInRange: 0 })
 

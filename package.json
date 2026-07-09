@@ -12,6 +12,9 @@
     "node": "18.17.1",
     "npm": "9.6.7"
   },
+  "scripts": {
+    "test:js": "node --test spec/javascript/maps_maplibre/api_client_test.mjs"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
     "@playwright/test": "^1.56.1",

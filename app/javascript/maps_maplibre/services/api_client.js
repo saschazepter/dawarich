@@ -11,10 +11,17 @@ export class ApiClient {
 
   /**
    * Fetch points for date range (paginated)
-   * @param {Object} options - { start_at, end_at, page, per_page }
+   * @param {Object} options - { start_at, end_at, page, per_page, include_metadata }
    * @returns {Promise<Object>} { points, currentPage, totalPages }
    */
-  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000, signal }) {
+  async fetchPoints({
+    start_at,
+    end_at,
+    page = 1,
+    per_page = 1000,
+    include_metadata = true,
+    signal,
+  }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
@@ -24,6 +31,7 @@ export class ApiClient {
       order: "asc",
     })
 
+    if (!include_metadata) params.append("include_metadata", "false")
     if (this.importId) params.append("import_id", this.importId)
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
@@ -79,15 +87,13 @@ export class ApiClient {
 
   /**
    * Fetch all points for date range (handles pagination with parallel requests)
-   * @param {Object} options - { start_at, end_at, onProgress, onBatch, maxConcurrent }
-   * @param {Function} options.onBatch - Called with accumulated points array after each batch
+   * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
    * @returns {Promise<{points: Array, totalPointsInRange: number}>}
    */
   async fetchAllPoints({
     start_at,
     end_at,
     onProgress = null,
-    onBatch = null,
     maxConcurrent = 3,
   }) {
     // Report that fetching has started
@@ -120,9 +126,6 @@ export class ApiClient {
           progress: 1.0,
         })
       }
-      if (onBatch) {
-        onBatch(firstPage.points)
-      }
       return { points: firstPage.points, totalPointsInRange }
     }
 
@@ -139,10 +142,6 @@ export class ApiClient {
         progress: 1 / totalPages,
       })
     }
-    if (onBatch) {
-      onBatch(firstPage.points)
-    }
-
     // Create array of remaining page numbers
     const remainingPages = Array.from(
       { length: totalPages - 1 },
@@ -155,9 +154,13 @@ export class ApiClient {
 
       // Fetch batch in parallel
       const batchPromises = batch.map((page) =>
-        this.fetchPoints({ start_at, end_at, page, per_page: 1000 }).then(
-          (result) => ({ page, points: result.points }),
-        ),
+        this.fetchPoints({
+          start_at,
+          end_at,
+          page,
+          per_page: 1000,
+          include_metadata: false,
+        }).then((result) => ({ page, points: result.points })),
       )
 
       const batchResults = await Promise.all(batchPromises)
@@ -173,12 +176,6 @@ export class ApiClient {
           totalPages,
           progress,
         })
-      }
-
-      // Call batch callback with all accumulated points so far (sorted)
-      if (onBatch) {
-        const sorted = [...pageResults].sort((a, b) => a.page - b.page)
-        onBatch(sorted.flatMap((r) => r.points))
       }
     }
 
