@@ -94,6 +94,19 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
             .with('Point', point_without_geocoding3.id, force: true)
         end
 
+        it 'selects only point IDs and user IDs while enqueueing' do
+          queries = []
+          callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+          ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+            described_class.perform_now
+          end
+
+          point_query = queries.find { |sql| sql.include?('FROM "points"') && sql.include?('reverse_geocoded_at') }
+          expect(point_query).to include('"points"."id", "points"."user_id"')
+          expect(point_query).not_to include('"points".*')
+        end
+
         it 'enqueues even when dedup keys already exist (rescue path)' do
           Sidekiq.redis do |r|
             [point_without_geocoding1, point_without_geocoding2, point_without_geocoding3].each do |p|
@@ -108,10 +121,12 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         it 'uses find_each with correct batch size' do
           relation_mock = double('ActiveRecord::Relation')
           allow(Point).to receive(:not_reverse_geocoded).and_return(relation_mock)
+          allow(relation_mock).to receive(:select).with(:id, :user_id).and_return(relation_mock)
           allow(relation_mock).to receive(:find_each).with(batch_size: 1000)
 
           described_class.perform_now
 
+          expect(relation_mock).to have_received(:select).with(:id, :user_id)
           expect(relation_mock).to have_received(:find_each).with(batch_size: 1000)
         end
 
