@@ -95,6 +95,18 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
+    context 'when email_type is a legacy trial lifecycle email' do
+      %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |email_type|
+        it "skips #{email_type}" do
+          expect(UsersMailer).not_to receive(:with)
+
+          expect do
+            described_class.perform_now(user.id, email_type)
+          end.not_to raise_error
+        end
+      end
+    end
+
     context 'registry coverage' do
       # Prove every entry in MAILER_REGISTRY actually resolves to a real mailer
       # action. A typo in the registry would otherwise silently break production.

@@ -47,4 +47,31 @@ class UsersMailer < ApplicationMailer
 
     mail(to: @user.email, subject: 'Dawarich account temporarily locked')
   end
+
+  def trial_expired
+    legacy_manager_email
+  end
+
+  def trial_expires_soon
+    legacy_manager_email
+  end
+
+  def post_trial_reminder_early
+    legacy_manager_email
+  end
+
+  def post_trial_reminder_late
+    legacy_manager_email
+  end
+
+  private
+
+  def legacy_manager_email
+    @user = params[:user]
+    message = mail(to: @user&.email, subject: 'Dawarich trial lifecycle email') do |format|
+      format.text { render plain: '' }
+    end
+    message.perform_deliveries = false
+    message
+  end
 end

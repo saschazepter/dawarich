@@ -51,4 +51,20 @@ RSpec.describe UsersMailer, type: :mailer do
       expect(mail.text_part.body.encoded).to include('password')
     end
   end
+
+  describe 'legacy trial lifecycle emails' do
+    %i[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |action|
+      it "accepts stale #{action} delivery jobs without sending mail" do
+        mail = UsersMailer.with(user: user).public_send(action)
+
+        expect(mail.perform_deliveries).to be(false)
+      end
+    end
+
+    it 'accepts stale delivery jobs without user params' do
+      mail = UsersMailer.with({}).trial_expired
+
+      expect(mail.perform_deliveries).to be(false)
+    end
+  end
 end
