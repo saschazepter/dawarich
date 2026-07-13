@@ -176,6 +176,10 @@ export default class extends Controller {
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
 
+    if (!this.pointMatchesActiveDateRange(timestamp, mapsController)) {
+      return
+    }
+
     const pointsLayer = mapsController.layerManager?.getLayer("points")
     if (!pointsLayer) {
       console.warn("[Realtime Controller] Points layer not found")
@@ -254,7 +258,43 @@ export default class extends Controller {
     }
   }
 
-  // Note: Notifications are handled by notifications_controller.js in the navbar
+  pointMatchesActiveDateRange(timestamp, mapsController) {
+    const pointTime = this.parseTimestamp(timestamp)
+    const startTime = this.parseTimestamp(mapsController.startDateValue)
+    const endTime = this.parseTimestamp(mapsController.endDateValue)
+
+    if (pointTime === null) {
+      return false
+    }
+
+    if (startTime !== null && pointTime < startTime) {
+      return false
+    }
+
+    if (endTime !== null && pointTime > endTime) {
+      return false
+    }
+
+    return true
+  }
+
+  parseTimestamp(timestamp) {
+    if (timestamp === null || timestamp === undefined || timestamp === "") {
+      return null
+    }
+
+    const numericTimestamp = Number(timestamp)
+
+    if (Number.isFinite(numericTimestamp)) {
+      return numericTimestamp < 10000000000
+        ? numericTimestamp * 1000
+        : numericTimestamp
+    }
+
+    const parsedTimestamp = Date.parse(timestamp)
+
+    return Number.isNaN(parsedTimestamp) ? null : parsedTimestamp
+  }
 
   /**
    * Update the recent point marker
@@ -285,7 +325,7 @@ export default class extends Controller {
    */
   zoomToPoint(longitude, latitude) {
     const mapsController = this.mapsV2Controller
-    if (!mapsController || !mapsController.map) {
+    if (!mapsController?.map) {
       console.warn("[Realtime Controller] Map not available for zooming")
       return
     }
