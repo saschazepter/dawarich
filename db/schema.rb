@@ -16,6 +16,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_212634) do
   enable_extension "pgcrypto"
   enable_extension "postgis"
 
+  create_table "achievement_progresses", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.boolean "sharing_enabled", default: false, null: false
+    t.string "sharing_uuid"
+    t.jsonb "state", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["sharing_uuid"], name: "index_achievement_progresses_on_sharing_uuid", unique: true
+    t.index ["user_id", "achievement_key"], name: "index_achievement_progresses_on_user_id_and_achievement_key", unique: true
+    t.index ["user_id"], name: "index_achievement_progresses_on_user_id"
+  end
+
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -539,6 +552,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_212634) do
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
+  create_table "user_achievements", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "earned_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "achievement_key"], name: "index_user_achievements_on_user_id_and_achievement_key", unique: true
+    t.index ["user_id"], name: "index_user_achievements_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "active_until"
     t.boolean "admin", default: false
@@ -619,6 +643,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_212634) do
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
+  add_foreign_key "achievement_progresses", "users"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
@@ -649,6 +674,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_212634) do
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
+  add_foreign_key "user_achievements", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
