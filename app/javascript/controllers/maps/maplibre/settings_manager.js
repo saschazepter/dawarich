@@ -1242,14 +1242,17 @@ export class SettingsController {
   }
 
   resetLayerColors() {
+    Object.values(this.layerColorTimers || {}).forEach(clearTimeout)
+    this.layerColorTimers = {}
+
     Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, color]) => {
       const input = this.controller.element.querySelector(
         `input[name="${key}"]`,
       )
       if (input) input.value = color
       this.syncLayerColorLabel(key, color)
-      SettingsManager.updateSetting(key, color)
     })
+    SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
     this.applyRouteColor(LAYER_COLOR_DEFAULTS.routeColor)
     this.applyTrackColor(LAYER_COLOR_DEFAULTS.trackColor)
   }
@@ -1350,7 +1353,7 @@ export class SettingsController {
   updateVectorTilesUrl(event) {
     const raw = event.target.value.trim()
 
-    if (raw && !/\{z\}/.test(raw)) {
+    if (!SettingsManager.validVectorTilesUrl(raw)) {
       Toast.error("Tile URL must include {z}, {x}, and {y} placeholders")
       return
     }
