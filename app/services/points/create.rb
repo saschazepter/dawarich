@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Points::Create
+  UPSERT_MAX_RETRIES = 3
+
   attr_reader :user, :params
 
   def initialize(user, params)
@@ -17,12 +19,14 @@ class Points::Create
     inserted_count = 0
 
     deduplicated_data.each_slice(1000) do |location_batch|
-      result = Point.archival_safe_upsert_all(
-        location_batch,
-        returning: Arel.sql(
-          'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+      result = with_upsert_retry do
+        Point.archival_safe_upsert_all(
+          location_batch,
+          returning: Arel.sql(
+            'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+          )
         )
-      )
+      end
       inserted_count += result.count { |row| row['xmax'].to_i.zero? }
       created_points.concat(result)
     end
@@ -38,5 +42,21 @@ class Points::Create
     end
 
     created_points
+  end
+
+  private
+
+  def with_upsert_retry
+    retries = 0
+
+    begin
+      yield
+    rescue ActiveRecord::Deadlocked => e
+      retries += 1
+      raise e if retries > UPSERT_MAX_RETRIES
+
+      sleep(0.1 * retries)
+      retry
+    end
   end
 end

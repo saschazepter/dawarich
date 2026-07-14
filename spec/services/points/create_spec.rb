@@ -77,6 +77,22 @@ RSpec.describe Points::Create do
         result = described_class.new(user, point_params).call
         expect(result).to eq(upsert_result)
       end
+
+      it 'retries a point upsert after a transient database deadlock' do
+        attempts = 0
+        service = described_class.new(user, point_params)
+        allow(service).to receive(:sleep)
+        allow(Point).to receive(:archival_safe_upsert_all) do
+          attempts += 1
+          raise ActiveRecord::Deadlocked, 'deadlock detected' if attempts == 1
+
+          upsert_result
+        end
+
+        expect(service.call).to eq(upsert_result)
+        expect(attempts).to eq(2)
+        expect(service).to have_received(:sleep).with(0.1).once
+      end
     end
 
     context 'with duplicate points' do
