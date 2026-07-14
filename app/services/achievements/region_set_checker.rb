@@ -70,7 +70,7 @@ module Achievements
     end
 
     def award(definition)
-      achievement = UserAchievement.create_or_find_by!(user: user, achievement_key: definition.key) do |ua|
+      achievement = UserAchievement.find_or_create_by!(user: user, achievement_key: definition.key) do |ua|
         ua.earned_at = Time.current
       end
 
