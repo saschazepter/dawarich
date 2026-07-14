@@ -8,6 +8,8 @@ module Achievements
       user = User.find_by(id: user_id)
       return unless user
 
+      notify &&= Flipper.enabled?(:achievements)
+
       Achievements::RegionSetChecker.new(user, notify: notify, oldest_timestamp: oldest_timestamp).call
     end
   end
