@@ -1,0 +1,39 @@
+<div class="card bg-base-200 shadow-md">
+  <div class="card-body">
+    <h2 class="card-title">
+      <%= set.definition.name %>
+      <% if set.completed? %><span class="badge badge-success">Completed</span><% end %>
+    </h2>
+
+    <div class="flex items-center gap-3">
+      <progress class="progress progress-primary w-full" value="<%= set.earned_count %>" max="<%= set.total %>"></progress>
+      <span class="whitespace-nowrap font-mono"><%= set.earned_count %>/<%= set.total %></span>
+    </div>
+
+    <div class="collapse collapse-arrow bg-base-100 mt-2">
+      <input type="checkbox" />
+      <div class="collapse-title">Regions</div>
+      <div class="collapse-content">
+        <ul>
+          <% set.regions.each do |region| %>
+            <li class="flex justify-between py-1 <%= 'opacity-40' unless region[:earned_at] %>">
+              <span><%= region[:name] %></span>
+              <span><%= region[:earned_at] ? Date.parse(region[:earned_at]).strftime('%d %b %Y') : '—' %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+
+    <% if set.progress %>
+      <div class="card-actions justify-end mt-2">
+        <%= button_to set.sharing_enabled? ? 'Disable sharing' : 'Share',
+                      toggle_sharing_achievement_path(set.definition.key),
+                      method: :patch, class: 'btn btn-sm' %>
+        <% if set.sharing_enabled? %>
+          <%= link_to 'Public link', shared_achievement_path(set.sharing_uuid), class: 'btn btn-sm btn-primary' %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
