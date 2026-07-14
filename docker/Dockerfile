@@ -75,6 +75,10 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
     fi
 
+# Return freed pages to the OS quickly instead of holding them in the
+# allocator, and cap arena count — keeps idle RSS low on small hosts.
+ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
+
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
 
