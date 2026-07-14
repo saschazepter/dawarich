@@ -83,6 +83,20 @@ RSpec.describe Achievements::RegionSetChecker do
         progress = user.achievement_progresses.find_by!(achievement_key: 'explorer_test')
         expect(progress.state['dwell']['TT-01']).to eq(4200)
       end
+
+      it 'never revokes an earned region when recomputed dwell falls below the threshold' do
+        create_dwell_points(count: 8)
+        run_checker
+        user.points.order(timestamp: :desc).limit(5).destroy_all
+
+        expect { described_class.new(user, oldest_timestamp: base_ts - 3600).call }
+          .not_to change(Notification, :count)
+
+        progress = user.achievement_progresses.find_by!(achievement_key: 'explorer_test')
+        expect(progress.state['dwell']['TT-01']).to eq(1200)
+        expect(progress.state['earned']).to have_key('TT-01')
+        expect(user.user_achievements.where(achievement_key: 'explorer_test').count).to eq(1)
+      end
     end
   end
 end
