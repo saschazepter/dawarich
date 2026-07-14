@@ -1,0 +1,26 @@
+<div class="container mx-auto px-4 py-12 max-w-xl">
+  <div class="card bg-base-200 shadow-xl">
+    <div class="card-body items-center text-center">
+      <h1 class="card-title text-2xl">
+        <%= @set.definition.name %>
+        <% if @set.completed? %><span class="badge badge-success">Completed</span><% end %>
+      </h1>
+
+      <div class="flex items-center gap-3 w-full">
+        <progress class="progress progress-primary w-full" value="<%= @set.earned_count %>" max="<%= @set.total %>"></progress>
+        <span class="whitespace-nowrap font-mono"><%= @set.earned_count %>/<%= @set.total %></span>
+      </div>
+
+      <ul class="w-full mt-4 text-left">
+        <% @set.regions.each do |region| %>
+          <li class="flex justify-between py-1 <%= 'opacity-40' unless region[:earned_at] %>">
+            <span><%= region[:name] %></span>
+            <span><%= region[:earned_at] ? '✓' : '—' %></span>
+          </li>
+        <% end %>
+      </ul>
+
+      <p class="text-xs opacity-60 mt-6">Tracked with <%= link_to 'Dawarich', 'https://dawarich.app' %></p>
+    </div>
+  </div>
+</div>
