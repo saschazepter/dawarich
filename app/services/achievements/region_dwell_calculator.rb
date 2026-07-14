@@ -38,7 +38,7 @@ module Achievements
     end
 
     def call
-      new_cursor = @user.points.maximum(:timestamp)
+      new_cursor = @user.points.not_anomaly.where.not(lonlat: nil).maximum(:timestamp)
       return nil if new_cursor.nil?
       return nil if @since.positive? && new_cursor <= @since
 

@@ -68,5 +68,15 @@ RSpec.describe Achievements::RegionDwellCalculator do
 
       expect(first.deltas.fetch('TT-01', 0) + second.deltas.fetch('TT-01', 0)).to eq(1200)
     end
+
+    it 'ignores excluded points when computing the cursor' do
+      create_point(0.5, 0.5, 0)
+      create_point(0.6, 0.5, 600)
+      create_point(0.7, 0.5, 1200, anomaly: true)
+
+      result = described_class.new(user, codes: ['TT-01']).call
+
+      expect(result.new_cursor).to eq(base_ts + 600)
+    end
   end
 end
