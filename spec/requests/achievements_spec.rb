@@ -26,6 +26,27 @@ RSpec.describe 'Achievements' do
         expect(response.body).to include('1/16')
         expect(response.body).to include('0/50')
       end
+
+      describe 'PATCH /achievements/:key/toggle_sharing' do
+        it 'enables sharing and generates a uuid once' do
+          progress = create(:achievement_progress, user:, achievement_key: 'explorer_germany')
+
+          patch toggle_sharing_achievement_path('explorer_germany')
+          expect(progress.reload.sharing_enabled).to be(true)
+          uuid = progress.sharing_uuid
+          expect(uuid).to be_present
+
+          patch toggle_sharing_achievement_path('explorer_germany')
+          expect(progress.reload.sharing_enabled).to be(false)
+          expect(progress.sharing_uuid).to eq(uuid)
+        end
+
+        it 'returns 404 when no progress row exists' do
+          patch toggle_sharing_achievement_path('explorer_germany')
+
+          expect(response).to have_http_status(:not_found)
+        end
+      end
     end
 
     context 'when the feature flag is disabled' do
