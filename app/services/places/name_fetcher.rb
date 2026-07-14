@@ -41,6 +41,9 @@ module Places
         place.visits.where(name: Place::DEFAULT_NAME).update_all(name: name) if name.present?
         place
       end
+    rescue Geocoder::Error, Geocoder::LookupTimeout => e
+      Rails.logger.warn("Geocoding provider error in NameFetcher for place #{place.id}: #{e.message}")
+      nil
     rescue StandardError => e
       Rails.logger.error("Geocoding error in NameFetcher for place #{place.id}: #{e.message}")
       ExceptionReporter.call(e)

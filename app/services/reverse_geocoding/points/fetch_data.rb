@@ -45,6 +45,15 @@ class ReverseGeocoding::Points::FetchData
         reverse_geocoded_at: Time.current
       )
     end
+  rescue Geocoder::Error, Geocoder::LookupTimeout => e
+    Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
+  rescue OpenSSL::SSL::SSLError => e
+    if e.message.include?('unexpected eof while reading')
+      Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
+    else
+      Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
+      ExceptionReporter.call(e)
+    end
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)

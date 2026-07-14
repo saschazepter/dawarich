@@ -22,6 +22,10 @@ module Visits
         @geocoder_results ||= Geocoder.search(
           center, limit: 10, distance_sort: true, radius: 1, units: :km
         )
+      rescue Geocoder::Error, Geocoder::LookupTimeout => e
+        Rails.logger.warn("Geocoding provider error while fetching a visit name: #{e.message}")
+
+        []
       rescue StandardError => e
         ExceptionReporter.call(e)
 
