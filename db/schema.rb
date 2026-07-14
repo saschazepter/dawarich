@@ -26,7 +26,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_224647) do
     t.bigint "user_id", null: false
     t.index ["sharing_uuid"], name: "index_achievement_progresses_on_sharing_uuid", unique: true
     t.index ["user_id", "achievement_key"], name: "index_achievement_progresses_on_user_id_and_achievement_key", unique: true
-    t.index ["user_id"], name: "index_achievement_progresses_on_user_id"
   end
 
   create_table "action_text_rich_texts", force: :cascade do |t|
@@ -560,7 +559,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_224647) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id", "achievement_key"], name: "index_user_achievements_on_user_id_and_achievement_key", unique: true
-    t.index ["user_id"], name: "index_user_achievements_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|

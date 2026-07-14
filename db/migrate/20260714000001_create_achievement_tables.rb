@@ -4,7 +4,7 @@ class CreateAchievementTables < ActiveRecord::Migration[8.0]
   def up
     unless table_exists?(:achievement_progresses)
       create_table :achievement_progresses do |t|
-        t.references :user, null: false, foreign_key: true
+        t.references :user, null: false, foreign_key: true, index: false
         t.string :achievement_key, null: false
         t.jsonb :state, null: false, default: {}
         t.boolean :sharing_enabled, null: false, default: false
@@ -16,17 +16,17 @@ class CreateAchievementTables < ActiveRecord::Migration[8.0]
       add_index :achievement_progresses, :sharing_uuid, unique: true
     end
 
-    unless table_exists?(:user_achievements)
-      create_table :user_achievements do |t|
-        t.references :user, null: false, foreign_key: true
-        t.string :achievement_key, null: false
-        t.datetime :earned_at, null: false
-        t.jsonb :metadata, null: false, default: {}
-        t.timestamps
-      end
+    return if table_exists?(:user_achievements)
 
-      add_index :user_achievements, %i[user_id achievement_key], unique: true
+    create_table :user_achievements do |t|
+      t.references :user, null: false, foreign_key: true, index: false
+      t.string :achievement_key, null: false
+      t.datetime :earned_at, null: false
+      t.jsonb :metadata, null: false, default: {}
+      t.timestamps
     end
+
+    add_index :user_achievements, %i[user_id achievement_key], unique: true
   end
 
   def down
