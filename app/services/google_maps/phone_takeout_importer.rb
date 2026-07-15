@@ -4,7 +4,6 @@ class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
-  include Imports::ActivityTypeMapping
 
   attr_reader :import, :user_id, :file_path
 
@@ -83,7 +82,6 @@ class GoogleMaps::PhoneTakeoutImporter
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
       motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
-      raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: altitude_value,
       velocity: raw_data['speedMetersPerSecond']
@@ -157,16 +155,9 @@ class GoogleMaps::PhoneTakeoutImporter
     end_lat, end_lon, end_alt = end_coords
     end_timestamp = DateTime.parse(segment['endTime']).utc.to_i
 
-    source_type = segment.dig('activity', 'topCandidate', 'type')
-    enriched = segment
-    if source_type
-      mapped = map_activity_type(source_type)
-      enriched = segment.merge('activity_type' => mapped) if mapped
-    end
-
     [
-      point_hash(start_lat, start_lon, start_timestamp, enriched, altitude: start_alt),
-      point_hash(end_lat, end_lon, end_timestamp, enriched, altitude: end_alt)
+      point_hash(start_lat, start_lon, start_timestamp, segment, altitude: start_alt),
+      point_hash(end_lat, end_lon, end_timestamp, segment, altitude: end_alt)
     ]
   end
 
