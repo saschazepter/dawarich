@@ -2,7 +2,7 @@
 
 module Achievements
   class CheckJob < ApplicationJob
-    queue_as :default
+    queue_as :achievements
 
     def perform(user_id, notify: true, oldest_timestamp: nil)
       user = User.find_by(id: user_id)

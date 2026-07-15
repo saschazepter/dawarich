@@ -2,14 +2,12 @@
 
 module Achievements
   class BulkCheckJob < ApplicationJob
-    queue_as :default
+    queue_as :achievements
 
     def perform
       user_ids = (User.active.pluck(:id) + User.trial.pluck(:id)).uniq
 
-      user_ids.each do |user_id|
-        Achievements::CheckJob.perform_later(user_id)
-      end
+      ActiveJob.perform_all_later(user_ids.map { |user_id| Achievements::CheckJob.new(user_id) })
     end
   end
 end
