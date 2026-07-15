@@ -57,8 +57,7 @@ class Geojson::Params
       accuracy:           find_field(properties, :accuracy),
       vertical_accuracy:  find_field(properties, :vertical_accuracy),
       course:             find_field(properties, :heading),
-      motion_data:        Points::MotionDataExtractor.from_overland_properties(properties),
-      raw_data:           feature
+      motion_data:        Points::MotionDataExtractor.from_overland_properties(properties)
     }
     attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
     attrs
@@ -81,8 +80,7 @@ class Geojson::Params
   def build_line_point(point)
     {
       lonlat: "POINT(#{point[0]} #{point[1]})",
-      timestamp: timestamp(point),
-      raw_data:  point
+      timestamp: timestamp(point)
     }
   end
 

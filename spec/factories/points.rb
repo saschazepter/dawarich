@@ -7,7 +7,6 @@ FactoryBot.define do
     battery         { 1 }
     topic           { 'MyString' }
     altitude        { 1 }
-    longitude       { FFaker::Geolocation.lng }
     velocity        { 0 }
     trigger         { 1 }
     bssid           { 'MyString' }
@@ -16,7 +15,6 @@ FactoryBot.define do
     vertical_accuracy { 1 }
     accuracy        { 1 }
     timestamp       { DateTime.new(2024, 5, 1).to_i + rand(1_000).minutes }
-    latitude        { FFaker::Geolocation.lat }
     mode            { 1 }
     inrids          { 'MyString' }
     in_regions      { 'MyString' }
@@ -32,9 +30,10 @@ FactoryBot.define do
     user
     country_id { nil }
 
-    # Add transient attribute to handle country strings
     transient do
-      country { nil } # Allow country to be passed as string
+      country { nil }
+      longitude { FFaker::Geolocation.lng }
+      latitude  { FFaker::Geolocation.lat }
     end
 
     # Keep user.points_count in sync (counter_cache was removed from belongs_to :user)
