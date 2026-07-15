@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'zip'
-
 module Imports
   class ZipExtractor
     SUPPORTED_EXTENSIONS = %w[.gpx .json .geojson .kml .kmz .csv .tcx .fit .rec].freeze
@@ -23,6 +21,7 @@ module Imports
     end
 
     def call
+      require 'zip'
       temp_dir = Rails.root.join("tmp/imports/zip_extract_#{SecureRandom.hex(8)}").to_s
 
       begin

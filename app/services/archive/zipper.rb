@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'zip'
-
 module Archive
   class Zipper
     # Wraps the contents of `source_tempfile` in a single-entry zip archive.
@@ -13,6 +11,7 @@ module Archive
     # the ObjectSpace finalizer will unlink the file when the object is
     # garbage-collected.
     def self.wrap(source_tempfile, entry_name:)
+      require 'zip'
       source_tempfile.rewind
       output = Tempfile.new(['archive', '.zip'], binmode: true)
 

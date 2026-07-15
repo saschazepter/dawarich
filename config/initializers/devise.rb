@@ -271,11 +271,13 @@ Devise.setup do |config|
   # Cloud version: only GitHub, Google (when env vars present)
   unless SELF_HOSTED
     if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
+      require 'omniauth-github'
       config.omniauth :github, ENV['GITHUB_OAUTH_CLIENT_ID'], ENV['GITHUB_OAUTH_CLIENT_SECRET'], scope: 'user:email'
       Rails.logger.info 'OAuth: GitHub configured'
     end
 
     if ENV['GOOGLE_OAUTH_CLIENT_ID'].present? && ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+      require 'omniauth-google-oauth2'
       config.omniauth :google_oauth2, ENV['GOOGLE_OAUTH_CLIENT_ID'], ENV['GOOGLE_OAUTH_CLIENT_SECRET'],
                       scope: 'userinfo.email,userinfo.profile'
       Rails.logger.info 'OAuth: Google configured'
@@ -283,6 +285,7 @@ Devise.setup do |config|
   end
 
   if SELF_HOSTED && OidcConfig.enabled?
+    require 'omniauth_openid_connect'
     oidc_config = OidcConfig.build
 
     if oidc_config[:discovery]

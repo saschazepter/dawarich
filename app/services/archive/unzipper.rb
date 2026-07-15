@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'zip'
-
 module Archive
   class Unzipper
     class ArchiveTooLarge < StandardError; end
@@ -12,6 +10,7 @@ module Archive
     Result = Struct.new(:kind, :entry_name, keyword_init: true)
 
     def self.inspect_archive(path)
+      require 'zip'
       return Result.new(kind: :not_a_zip) unless zip_magic?(path)
 
       entries = nil

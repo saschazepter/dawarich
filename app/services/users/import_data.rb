@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'zip'
 require 'oj'
 
 # Users::ImportData - Imports complete user data from exported archive
@@ -58,6 +57,7 @@ class Users::ImportData
   end
 
   def import
+    require 'zip'
     @import_directory = Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{Time.current.to_i}")
     FileUtils.mkdir_p(@import_directory)
 

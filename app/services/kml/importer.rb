@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'rexml/document'
-require 'zip'
-
 class Kml::Importer
   include Imports::Broadcaster
   include Imports::BulkInsertable
@@ -17,6 +14,8 @@ class Kml::Importer
   end
 
   def call
+    require 'rexml/document'
+    require 'zip'
     doc = load_and_parse_kml_document
     points_data = extract_all_points(doc)
 

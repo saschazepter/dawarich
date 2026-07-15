@@ -26,6 +26,8 @@ class ResponsiveQrSvg
   end
 
   def call
+    require 'rqrcode'
+
     qrcode = RQRCode::QRCode.new(@content)
     svg = qrcode.as_svg(
       color: '000',

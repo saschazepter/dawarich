@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'fit4ruby'
-
 class Fit::Importer
   include Imports::Broadcaster
   include Imports::BulkInsertable
@@ -18,7 +16,19 @@ class Fit::Importer
     @file_path = file_path
   end
 
+  # fit4ruby is only loaded when a FIT file is actually imported; the
+  # check-silencing patches must be applied together with the require.
+  def self.load_fit4ruby!
+    return if @fit4ruby_loaded
+
+    require 'fit4ruby'
+    Fit4Ruby::HeartRateZones.class_eval { def check(_index); end }
+    Fit4Ruby::DeviceInfo.class_eval { def check(_index); end }
+    @fit4ruby_loaded = true
+  end
+
   def call
+    self.class.load_fit4ruby!
     path = resolve_file_path
 
     begin

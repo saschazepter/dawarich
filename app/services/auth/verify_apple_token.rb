@@ -4,6 +4,17 @@ module Auth
   class VerifyAppleToken
     class InvalidToken < StandardError; end
 
+    # apple_id is only loaded when an Apple token is actually verified.
+    # The JWKS cache wiring lives here (not in an initializer) for the
+    # same reason.
+    def self.load_apple_id!
+      return if @apple_id_loaded
+
+      require 'apple_id'
+      AppleID::JWKS.cache = Rails.cache
+      @apple_id_loaded = true
+    end
+
     def initialize(id_token, nonce: nil, client_id: nil)
       @id_token = id_token
       @nonce = nonce
@@ -11,6 +22,10 @@ module Auth
     end
 
     def call
+      # Must load before anything can raise: the rescue clause below names
+      # AppleID/JSON::JWT constants, which only exist once the gem is loaded.
+      self.class.load_apple_id!
+
       raise InvalidToken, 'blank token' if @id_token.blank?
       raise InvalidToken, 'client_id not configured' if effective_client_id.blank?
 
