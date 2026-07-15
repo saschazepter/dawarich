@@ -42,6 +42,7 @@ module TransportationModes
       'CYCLING' => :cycling,
       'IN_VEHICLE' => :driving,
       'IN_ROAD_VEHICLE' => :driving,
+      'DRIVING' => :driving,
       'IN_RAIL_VEHICLE' => :train,
       'IN_BUS' => :bus,
       'IN_SUBWAY' => :train,

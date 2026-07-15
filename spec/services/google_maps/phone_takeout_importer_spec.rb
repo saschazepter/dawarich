@@ -109,23 +109,25 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         expect(raw_signal_point.lon).to eq(2.3522)
       end
 
-      it 'parses frequentPlaces from userLocationProfile' do
+      it 'does not persist raw_data for imported points' do
         parser
 
-        frequent_points = Point.where(user_id: user.id).select { |p| p.raw_data&.key?('frequent_place_label') }
-        expect(frequent_points.size).to eq(2)
-
-        labels = frequent_points.map { |p| p.raw_data['frequent_place_label'] }
-        expect(labels).to contain_exactly('HOME', 'WORK')
+        expect(Point.where(user_id: user.id).pluck(:raw_data).uniq).to eq([{}])
       end
 
-      it 'stores activity type in raw_data for activity segments' do
+      it 'persists motion_data extracted from activity segments' do
         parser
 
         start_timestamp = DateTime.parse('2024-06-15T10:00:00.000+02:00').utc.to_i
         activity_point = Point.find_by(timestamp: start_timestamp, user_id: user.id)
 
-        expect(activity_point.raw_data).to include('activity_type' => 'driving')
+        expect(activity_point.motion_data.dig('activity', 'topCandidate', 'type')).to eq('IN_PASSENGER_VEHICLE')
+      end
+
+      it 'creates two points from the userLocationProfile frequentPlaces branch' do
+        parser
+
+        expect(Point.where(user_id: user.id).count).to eq(8)
       end
 
       it 'parses timelinePath points with timestamps' do

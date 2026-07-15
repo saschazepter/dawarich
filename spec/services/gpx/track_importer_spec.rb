@@ -66,10 +66,10 @@ RSpec.describe Gpx::TrackImporter do
         expect(point.velocity).to eq('2.9')
       end
 
-      it 'stores raw_data from GPX point' do
+      it 'does not persist raw_data for imported points' do
         parser
 
-        expect(user.points.first.raw_data).to be_present
+        expect(user.points.pluck(:raw_data).uniq).to eq([{}])
       end
     end
 

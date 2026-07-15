@@ -99,6 +99,23 @@ RSpec.describe TransportationModes::SourceDataExtractor do
       end
     end
 
+    context 'with mapped activity_type in motion_data' do
+      let(:points) do
+        [
+          build(:point, user: user, timestamp: 1000, motion_data: { 'activity_type' => 'driving' }),
+          build(:point, user: user, timestamp: 1060, motion_data: { 'activity_type' => 'driving' })
+        ]
+      end
+
+      it 'maps driving activity type to driving mode' do
+        extractor = described_class.new(points)
+        segments = extractor.call
+
+        expect(segments.length).to eq(1)
+        expect(segments[0][:mode]).to eq(:driving)
+      end
+    end
+
     context 'with Google semantic history format' do
       let(:points) do
         [
