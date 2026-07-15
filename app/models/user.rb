@@ -43,6 +43,7 @@ class User < ApplicationRecord
   after_commit :trigger_creation_webhook, on: :create,
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
+  after_update :stamp_lite_transition, if: :saved_change_to_plan?
 
   before_save :sanitize_input
 
@@ -342,5 +343,12 @@ class User < ApplicationRecord
   def invalidate_plan_rate_limit_cache
     key = api_key_previously_was || api_key_was || api_key
     Rails.cache.delete("rack_attack/plan/#{key}") if key.present?
+  end
+
+  def stamp_lite_transition
+    updated_settings = (settings || {}).except('lite_since', 'archival_warnings')
+    updated_settings['lite_since'] = Time.zone.now.iso8601 if lite?
+
+    update_column(:settings, updated_settings)
   end
 end
