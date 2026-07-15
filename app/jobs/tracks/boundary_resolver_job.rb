@@ -5,6 +5,8 @@
 class Tracks::BoundaryResolverJob < ApplicationJob
   queue_as :tracks
 
+  retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5
+
   MAX_RETRIES = 5
 
   def perform(user_id, session_id, retry_count = 0)
@@ -17,6 +19,8 @@ class Tracks::BoundaryResolverJob < ApplicationJob
 
     boundary_tracks_resolved = resolve_boundary_tracks
     finalize_session(boundary_tracks_resolved)
+  rescue Tracks::PerUserLock::AcquisitionTimeout
+    raise
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to resolve boundaries for user #{user_id}")
 
