@@ -95,6 +95,11 @@ RUN bundle config set --local path 'vendor/bundle' \
 
 COPY ../. ./
 
+# Node deps (tailwind plugins like daisyui) are needed by assets:precompile.
+# Install them here so the build does not depend on a host-side `npm install`
+# having populated node_modules in the build context.
+RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
+
 # Poster renderer dependencies — prebuilt maplibre-native binaries exist for
 # x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
 # armv7 the renderer is skipped; server-side poster rendering is unavailable
