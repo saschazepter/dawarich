@@ -4,6 +4,7 @@ class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
+  include Imports::ActivityTypeMapping
 
   attr_reader :import, :user_id, :file_path
 
@@ -75,13 +76,15 @@ class GoogleMaps::PhoneTakeoutImporter
     altitude ? [lat, lon, altitude] : [lat, lon]
   end
 
-  def point_hash(lat, lon, timestamp, raw_data, altitude: nil)
+  def point_hash(lat, lon, timestamp, raw_data, altitude: nil, activity_type: nil)
     altitude_value = altitude || raw_data['altitudeMeters']
+    motion_data = Points::MotionDataExtractor.from_google_phone_takeout(raw_data)
+    motion_data['activity_type'] = activity_type if activity_type
 
     attrs = {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
-      motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
+      motion_data: motion_data,
       accuracy: raw_data['accuracyMeters'],
       altitude: altitude_value,
       velocity: raw_data['speedMetersPerSecond']
@@ -155,9 +158,11 @@ class GoogleMaps::PhoneTakeoutImporter
     end_lat, end_lon, end_alt = end_coords
     end_timestamp = DateTime.parse(segment['endTime']).utc.to_i
 
+    activity_type = map_activity_type(segment.dig('activity', 'topCandidate', 'type'))
+
     [
-      point_hash(start_lat, start_lon, start_timestamp, segment, altitude: start_alt),
-      point_hash(end_lat, end_lon, end_timestamp, segment, altitude: end_alt)
+      point_hash(start_lat, start_lon, start_timestamp, segment, altitude: start_alt, activity_type: activity_type),
+      point_hash(end_lat, end_lon, end_timestamp, segment, altitude: end_alt, activity_type: activity_type)
     ]
   end
 

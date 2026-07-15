@@ -124,6 +124,15 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         expect(activity_point.motion_data.dig('activity', 'topCandidate', 'type')).to eq('IN_PASSENGER_VEHICLE')
       end
 
+      it 'persists the mapped activity type in motion_data for activity segments' do
+        parser
+
+        start_timestamp = DateTime.parse('2024-06-15T10:00:00.000+02:00').utc.to_i
+        activity_point = Point.find_by(timestamp: start_timestamp, user_id: user.id)
+
+        expect(activity_point.motion_data['activity_type']).to eq('driving')
+      end
+
       it 'creates two points from the userLocationProfile frequentPlaces branch' do
         parser
 
