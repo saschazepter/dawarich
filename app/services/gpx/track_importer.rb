@@ -69,7 +69,6 @@ class Gpx::TrackImporter
       tracker_id: tracker_id,
       import_id: import.id,
       velocity: speed(point),
-      raw_data: point,
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current
