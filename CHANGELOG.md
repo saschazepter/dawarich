@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- File imports no longer store a copy of each source record in the point's `raw_data` — the uploaded file stays attached to the import as the source of truth. API responses return `raw_data: {}` for newly imported points, and FIT health fields (heart rate, cadence, power, temperature) as well as Google phone takeout HOME/WORK place labels are no longer stored.
+- File imports no longer store a copy of each source record in the point's `raw_data` — the uploaded file stays attached to the import as the source of truth. API responses return `raw_data: {}` for newly imported points, and FIT/TCX health fields (heart rate, cadence, power, temperature) as well as Google phone takeout HOME/WORK place labels are no longer stored.
 - TCX and FIT imports now store their activity type in `motion_data`: transportation-mode detection works for TCX imports for the first time, and FIT driving activities are classified correctly.
 
 ## [1.10.0] - 2026-07-15
