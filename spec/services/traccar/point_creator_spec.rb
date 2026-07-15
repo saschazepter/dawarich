@@ -38,6 +38,19 @@ RSpec.describe Traccar::PointCreator do
     expect { call_service }.not_to(change { Point.where(user:).count })
   end
 
+  it 'detaches an archived point from its stale archive when a duplicate arrives with different raw_data' do
+    call_service
+    point = Point.where(user:).last
+    archive = create(:points_raw_data_archive, user: user)
+    point.update_columns(raw_data_archived: true, raw_data_archive_id: archive.id)
+
+    described_class.new(point_params.merge(battery: { level: 0.5, is_charging: false }), user.id).call
+
+    point.reload
+    expect(point.raw_data_archived).to be false
+    expect(point.raw_data_archive_id).to be_nil
+  end
+
   it 'updates points_count to match actual point count' do
     call_service
     user.reload

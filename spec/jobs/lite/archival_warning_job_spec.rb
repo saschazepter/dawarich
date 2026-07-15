@@ -33,6 +33,22 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
       end
     end
 
+    context 'when a Lite user is a member of a family-plan family' do
+      let!(:family_owner) { create(:user).tap { |u| u.update_column(:plan, User.plans[:family]) } }
+      let!(:family) { create(:family, creator: family_owner) }
+
+      before do
+        create(:family_membership, :owner, family: family, user: family_owner)
+        create(:family_membership, family: family, user: lite_user)
+        create(:point, user: lite_user, timestamp: 12.months.ago.to_i)
+      end
+
+      it 'does not create an archival warning for the family member' do
+        expect { described_class.perform_now }
+          .not_to(change { Notification.where(user: lite_user).count })
+      end
+    end
+
     context 'when a Lite user has data approaching 11 months old' do
       before do
         create(:point, user: lite_user, timestamp: 11.months.ago.to_i)

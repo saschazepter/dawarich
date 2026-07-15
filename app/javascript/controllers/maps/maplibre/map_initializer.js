@@ -20,11 +20,15 @@ export class MapInitializer {
       globeProjection = false,
       hiddenTileCategories = [],
       disabledPoiGroups = [],
+      customTheme = null,
+      vectorTilesUrl = null,
     } = settings
 
     const style = await getMapStyle(mapStyle, {
       hiddenTileCategories,
       disabledPoiGroups,
+      customTheme,
+      vectorTilesUrl,
     })
 
     const mapOptions = {

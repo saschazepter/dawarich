@@ -3,6 +3,9 @@
  * Loads and configures local map styles with dynamic tile source
  */
 
+import { resolveTheme } from "poster_studio/data/theme_loader"
+import { buildBasemapStyle } from "poster_studio/render/style_builder"
+
 const TILE_SOURCE_URL = "https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"
 
 // Cache for loaded styles
@@ -321,6 +324,23 @@ function hiddenLayerIds(hiddenCategories) {
  */
 export async function getMapStyle(styleName = "light", options = {}) {
   try {
+    const tilesUrl = options.vectorTilesUrl || TILE_SOURCE_URL
+
+    // Custom themes are built client-side from the user's stored color
+    // tokens (poster-minimal basemap) — no vendored JSON to fetch. Base-map
+    // categories map onto the minimal layer set; label/POI options have no
+    // counterpart there and are ignored.
+    if (styleName === "custom") {
+      const tokens = options.customTheme?.tokens
+      if (!tokens) throw new Error("Custom map style has no theme tokens")
+      return buildBasemapStyle({
+        theme: resolveTheme(tokens),
+        tileUrl: tilesUrl,
+        extras: true,
+        hiddenCategories: options.hiddenTileCategories || [],
+      })
+    }
+
     // Load the style file
     const style = await loadStyleFile(styleName)
 
@@ -331,7 +351,7 @@ export async function getMapStyle(styleName = "light", options = {}) {
     if (clonedStyle.sources?.protomaps) {
       clonedStyle.sources.protomaps = {
         type: "vector",
-        tiles: [TILE_SOURCE_URL],
+        tiles: [tilesUrl],
         minzoom: 0,
         maxzoom: 15,
         attribution:

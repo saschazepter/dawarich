@@ -11,6 +11,7 @@ module Map
     def index
       @start_at = parsed_start_at
       @end_at = parsed_end_at
+      @import_id = import_record&.id
 
       # Status counts shown in the Timeline tab's FILTER section — scoped to
       # the calendar's currently-visible month so the numbers reflect "what
@@ -25,9 +26,28 @@ module Map
 
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
+
+      # Theme tokens power both the poster tab and the Appearance section's
+      # custom map colors.
+      @poster_themes = local_poster_themes
+
+      @recent_posters = current_user.posters.with_attached_image.order(created_at: :desc).limit(10)
     end
 
     private
+
+    # Poster theme tokens are vendored under public/poster_themes and read
+    # directly — they also power the map's custom-colour editor.
+    def local_poster_themes
+      Rails.cache.fetch('local_poster_themes', expires_in: 1.hour) do
+        Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
+          data = JSON.parse(File.read(path))
+          data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
+        rescue JSON::ParserError
+          nil
+        end
+      end
+    end
 
     # Reuses the same month-resolution rule as the calendar helper so the
     # filter pills are aligned with whatever month the calendar lands on

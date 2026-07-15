@@ -22,6 +22,7 @@ class User < ApplicationRecord
   has_many :imports,        dependent: :destroy
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
+  has_many :posters,        dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
@@ -58,7 +59,7 @@ class User < ApplicationRecord
   # `User#none?` predicate that collides with NilClass semantics in
   # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
-  enum :plan, { lite: 0, pro: 1 }, default: :pro
+  enum :plan, { lite: 0, pro: 1, family: 2 }, default: :pro
   # No default: nil means the user has not yet been prompted about the
   # changelog widget. prefix avoids `granted?`/`declined?` collisions.
   attribute :changelog_consent, :integer
