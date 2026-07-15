@@ -66,8 +66,8 @@ RSpec.describe Visits::Suggest do
       expect { subject }.to change(Place, :count).by(1)
     end
 
-    it 'creates a single visit bridging the same-location time gap' do
-      expect { subject }.to change(Visit, :count).by(1)
+    it 'creates separate visits across a same-location time gap above the configured maximum' do
+      expect { subject }.to change(Visit, :count).by(2)
     end
 
     it 'creates visits notification' do
