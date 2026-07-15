@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- The default self-hosted stack now idles about 20% lighter (measured: app container 452 → 325 MB, whole stack 843 → 690 MB). `docker-compose.yml` defaults to one Puma web worker (`WEB_CONCURRENCY=1`, plenty for a household instance) and 3 background job threads (`BACKGROUND_PROCESSING_CONCURRENCY=3`) — set the env vars to raise either for busier instances or large imports — and the Docker image now tunes jemalloc to return freed memory to the OS promptly instead of holding it. Existing installations that already set these variables are unaffected (#3119).
 - Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
 - During replay, photos also stack up as a tilted, Polaroid-style pile in the top-left corner of the map as the playhead reaches each one (newest on top, up to five shown at once); click a photo in the pile to open it. The pile stays in sync with the on-map photo markers as you play, scrub, or rewind, and works on the map, trip, and public shared-trip replays.
 - Turning on the photos layer while a replay is already running now adds those photos to the replay (corner pile and map markers) and hides the static markers; turning it off removes them again — previously photos only appeared if the layer was enabled before starting replay.
