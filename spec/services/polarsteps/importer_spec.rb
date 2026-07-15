@@ -45,8 +45,6 @@ RSpec.describe Polarsteps::Importer do
       end
 
       it 'does not persist raw_data for imported points' do
-        importer.call
-
         expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
     end
