@@ -59,6 +59,20 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
         expect(Geocoder).to have_received(:search).with([point.lat, point.lon])
       end
 
+      it 'retries when the point update times out waiting for a lock' do
+        attempts = 0
+        allow(Point).to receive(:find).with(point.id).and_return(point)
+        allow(point).to receive(:update!).and_wrap_original do |method, *args|
+          attempts += 1
+          raise ActiveRecord::QueryCanceled, 'canceling statement due to statement timeout' if attempts == 1
+
+          method.call(*args)
+        end
+
+        expect { fetch_data }.to change { point.reload.city }.from(nil).to('Berlin')
+        expect(attempts).to eq(2)
+      end
+
       context 'when store_geodata? is disabled' do
         before do
           allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
