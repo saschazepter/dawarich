@@ -2,7 +2,7 @@
 # (vendor/poster_renderer). The binary is built on Ubuntu 24.04 and links
 # lib versions Debian doesn't ship (libicu74, libjpeg8) — vendor exactly
 # those .so files and load them via LD_LIBRARY_PATH scoped to the renderer.
-FROM ubuntu:24.04 AS mbgl_libs
+FROM ubuntu:26.04 AS mbgl_libs
 # Only 64-bit targets ship the prebuilt maplibre-native binding (see the armv7
 # skip below), so vendor these libs there only. On 32-bit armhf, Ubuntu 24.04's
 # 64-bit time_t transition renamed libuv1/libpng16-16 to *t64, which would break
