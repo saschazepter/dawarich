@@ -2,7 +2,7 @@
 
 class Shared::AchievementsController < ApplicationController
   def show
-    progress = AchievementProgress.find_by(sharing_uuid: params[:uuid], sharing_enabled: true)
+    progress = Achievements::Progress.find_by(sharing_uuid: params[:uuid], sharing_enabled: true)
     definition = progress && Achievements::Registry.find(progress.achievement_key)
 
     if progress.nil? || definition.nil?

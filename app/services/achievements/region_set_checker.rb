@@ -17,7 +17,7 @@ module Achievements
     attr_reader :user, :notify, :oldest_timestamp
 
     def check_set(definition)
-      progress = AchievementProgress.find_or_create_by!(user: user, achievement_key: definition.key)
+      progress = Progress.find_or_create_by!(user: user, achievement_key: definition.key)
       newly_earned = []
       earned_total = 0
       completed_now = false

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe AchievementProgress do
+RSpec.describe Achievements::Progress do
   describe 'validations' do
     it 'enforces one row per user and achievement' do
       existing = create(:achievement_progress)
