@@ -13,7 +13,8 @@ export function simplifyPointsForRendering(points) {
   const simplified = [points[0]]
   let previousPoint = points[0]
 
-  points.slice(1).forEach((point) => {
+  for (let i = 1; i < points.length; i++) {
+    const point = points[i]
     const distance = calculateDistance(
       [previousPoint.longitude, previousPoint.latitude],
       [point.longitude, point.latitude],
@@ -23,7 +24,7 @@ export function simplifyPointsForRendering(points) {
       simplified.push(point)
       previousPoint = point
     }
-  })
+  }
 
   return simplified
 }

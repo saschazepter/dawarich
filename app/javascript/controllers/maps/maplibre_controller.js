@@ -1902,6 +1902,14 @@ export default class extends Controller {
       removedIndex >= 0 ? data.features[removedIndex] : undefined
     const canReconcile = Boolean(data?.features && removedFeature)
 
+    // The cached full point set feeds route rebuilds and the scratch layer
+    // in simplified rendering mode — keep it in sync with the layer data.
+    const cachedPoints = this.mapDataManager?.lastLoadedData?.points
+    const removedCacheIndex =
+      cachedPoints?.findIndex((p) => Number(p.id) === numericId) ?? -1
+    const removedCachePoint =
+      removedCacheIndex >= 0 ? cachedPoints[removedCacheIndex] : undefined
+
     // Optimistically remove the point so the map updates instantly; the API
     // call and route rebuild run in the background and are reverted on error.
     if (canReconcile) {
@@ -1910,6 +1918,7 @@ export default class extends Controller {
       )
       source.setData(data)
       pointsLayer.data = data
+      if (removedCachePoint) cachedPoints.splice(removedCacheIndex, 1)
       this.routesManager.reloadRoutes().catch((error) => console.error(error))
     }
 
@@ -1936,6 +1945,13 @@ export default class extends Controller {
         currentData.features = features
         currentSource.setData(currentData)
         pointsLayer.data = currentData
+        if (removedCachePoint && !cachedPoints.includes(removedCachePoint)) {
+          cachedPoints.splice(
+            Math.min(removedCacheIndex, cachedPoints.length),
+            0,
+            removedCachePoint,
+          )
+        }
         this.routesManager.reloadRoutes().catch((error) => console.error(error))
       }
       Toast.error("Failed to delete point")

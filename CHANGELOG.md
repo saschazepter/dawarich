@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Map v2 now applies the existing simplified point-rendering mode, so dense point streams are thinned on the map when that setting is selected (#946).
+- Map v2 now applies the existing simplified point-rendering mode, so dense point streams are thinned on the map when that setting is selected. Only the points layer is thinned — heatmap, fog of war, scratch map, and routes are still built from the full point set (#946).
 - Declining the "Move the visit here?" prompt when picking a distant place for a Map v2 visit no longer renames the visit to that place.
 - Place visit detection no longer leaves an empty duplicate visit behind when a newly added point bridges the gap between two previously separate visits at the same place (the two are now merged into one instead of orphaning the earlier suggestion). Confirmed visits are also left untouched by the nightly re-scan, so a new nearby point can no longer pull points out of a visit you have already confirmed.
 - Re-evaluating anomalous points now refreshes the map immediately instead of occasionally serving a cached copy of the points until the next change.

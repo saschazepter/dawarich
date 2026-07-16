@@ -191,19 +191,22 @@ export class RoutesManager {
     this.controller.showLoading("Reloading routes...")
 
     try {
-      // Rebuild routes from the full point set — the points layer may hold a
-      // simplified subset, which would coarsen routes on reload.
+      // In simplified mode the points layer holds a thinned subset, so
+      // rebuild routes from the cached full point set. Otherwise the layer
+      // data is authoritative — it reflects point edits immediately.
       const cachedPoints =
         this.controller.mapDataManager?.lastLoadedData?.points
-      const pointsLayer = this.layerManager.getLayer("points")
-      const points =
+      const useCachedPoints =
+        this.settings.pointsRenderingMode === "simplified" &&
         cachedPoints?.length > 0
-          ? cachedPoints
-          : pointsLayer?.data?.features?.map((f) => ({
-              latitude: f.geometry.coordinates[1],
-              longitude: f.geometry.coordinates[0],
-              timestamp: f.properties.timestamp,
-            })) || []
+      const pointsLayer = this.layerManager.getLayer("points")
+      const points = useCachedPoints
+        ? cachedPoints
+        : pointsLayer?.data?.features?.map((f) => ({
+            latitude: f.geometry.coordinates[1],
+            longitude: f.geometry.coordinates[0],
+            timestamp: f.properties.timestamp,
+          })) || []
 
       const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
       const { applySpeedColors } = await import(
