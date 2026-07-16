@@ -169,11 +169,9 @@ export class DataLoader {
             : null,
           onBatch: onLayerData
             ? (accumulatedPoints) => {
+                // Stream raw points; simplification runs once on completion
                 const rawGeoJSON = pointsToGeoJSON(accumulatedPoints)
-                onLayerData(
-                  "points",
-                  this.pointsGeoJSON(accumulatedPoints, rawGeoJSON),
-                )
+                onLayerData("points", rawGeoJSON)
                 onLayerData("heatmap", rawGeoJSON)
                 if (counter) counter.update("points", accumulatedPoints.length)
               }
