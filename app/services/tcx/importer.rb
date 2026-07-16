@@ -5,6 +5,7 @@ class Tcx::Importer
   include Imports::BulkInsertable
   include Imports::FileLoader
   include Imports::ActivityTypeMapping
+  include Imports::XmlAmpersandEscaping
 
   BATCH_SIZE = 1000
 
@@ -32,7 +33,7 @@ class Tcx::Importer
   private
 
   def xml_content
-    load_file_content.gsub(/&(?!(?:[a-zA-Z][a-zA-Z0-9]+|#\d+|#x[0-9a-fA-F]+);)/, '&amp;')
+    escape_raw_ampersands(load_file_content)
   end
 
   def parse_activity(activity)

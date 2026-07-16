@@ -241,6 +241,43 @@ RSpec.describe Kml::Importer do
       end
     end
 
+    context 'when file has raw ampersands in text fields' do
+      let(:file) { Tempfile.new(['raw_ampersand', '.kml']) }
+      let(:file_path) { file.path }
+
+      before do
+        file.write(<<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <kml xmlns="http://www.opengis.net/kml/2.2">
+            <Document>
+              <Placemark>
+                <name>Fish & Chips</name>
+                <TimeStamp><when>2024-01-15T12:00:00Z</when></TimeStamp>
+                <Point>
+                  <coordinates>-122.0841,37.4220,10</coordinates>
+                </Point>
+              </Placemark>
+            </Document>
+          </kml>
+        XML
+        file.close
+      end
+
+      after do
+        file.unlink
+      end
+
+      it 'creates points' do
+        expect { parser }.to change(Point, :count).by(1)
+      end
+
+      it 'preserves the ampersand in extracted text' do
+        parser
+
+        expect(user.points.sole.raw_data['name']).to eq('Fish & Chips')
+      end
+    end
+
     context 'when import fails' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/kml/points_with_timestamps.kml').to_s }
 

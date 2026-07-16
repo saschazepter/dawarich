@@ -37,32 +37,12 @@ RSpec.describe Tcx::Importer do
       end
     end
 
-    context 'with raw ampersands in text fields' do
-      let(:file) { Tempfile.new(['raw_ampersand', '.tcx']) }
+    context 'with problematic XML content' do
+      let(:file) { Tempfile.new(['problematic', '.tcx']) }
       let(:file_path) { file.path }
 
       before do
-        file.write(<<~XML)
-          <?xml version="1.0" encoding="UTF-8"?>
-          <TrainingCenterDatabase>
-            <Activities>
-              <Activity Sport="Running">
-                <Id>Passion & Punishment</Id>
-                <Lap StartTime="2024-01-01T10:00:00Z">
-                  <Track>
-                    <Trackpoint>
-                      <Time>2024-01-01T10:00:00Z</Time>
-                      <Position>
-                        <LatitudeDegrees>52.520</LatitudeDegrees>
-                        <LongitudeDegrees>13.405</LongitudeDegrees>
-                      </Position>
-                    </Trackpoint>
-                  </Track>
-                </Lap>
-              </Activity>
-            </Activities>
-          </TrainingCenterDatabase>
-        XML
+        file.write(tcx_content)
         file.close
       end
 
@@ -70,10 +50,71 @@ RSpec.describe Tcx::Importer do
         file.unlink
       end
 
-      it 'imports GPS trackpoints' do
-        expect { described_class.new(import, user.id, file_path).call }
-          .to change { user.points.count }.by(1)
+      context 'with raw ampersands in text fields' do
+        let(:tcx_content) { build_tcx(id: 'Passion & Punishment') }
+
+        it 'imports GPS trackpoints' do
+          expect { described_class.new(import, user.id, file_path).call }
+            .to change { user.points.count }.by(1)
+        end
+      end
+
+      context 'with CDATA sections containing ampersands' do
+        let(:tcx_content) { build_tcx(notes: '<![CDATA[Tom & Jerry]]>') }
+
+        it 'preserves the CDATA text verbatim' do
+          described_class.new(import, user.id, file_path).call
+
+          expect(user.points.sole.raw_data.dig('Extensions', 'TPX', 'Notes')).to eq('Tom & Jerry')
+        end
+      end
+
+      context 'with valid XML entities' do
+        let(:tcx_content) { build_tcx(notes: 'Fish &amp; Chips &#38; Salt &#x26; Vinegar') }
+
+        it 'resolves entities without double-escaping' do
+          described_class.new(import, user.id, file_path).call
+
+          expect(user.points.sole.raw_data.dig('Extensions', 'TPX', 'Notes'))
+            .to eq('Fish & Chips & Salt & Vinegar')
+        end
+      end
+
+      context 'with numeric references to XML-illegal characters' do
+        let(:tcx_content) { build_tcx(notes: 'beep &#2; boop') }
+
+        it 'imports GPS trackpoints' do
+          expect { described_class.new(import, user.id, file_path).call }
+            .to change { user.points.count }.by(1)
+        end
       end
     end
+  end
+
+  def build_tcx(id: 'Morning Run', notes: nil)
+    notes_xml = notes ? "<Extensions><TPX><Notes>#{notes}</Notes></TPX></Extensions>" : ''
+
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8"?>
+      <TrainingCenterDatabase>
+        <Activities>
+          <Activity Sport="Running">
+            <Id>#{id}</Id>
+            <Lap StartTime="2024-01-01T10:00:00Z">
+              <Track>
+                <Trackpoint>
+                  <Time>2024-01-01T10:00:00Z</Time>
+                  <Position>
+                    <LatitudeDegrees>52.520</LatitudeDegrees>
+                    <LongitudeDegrees>13.405</LongitudeDegrees>
+                  </Position>
+                  #{notes_xml}
+                </Trackpoint>
+              </Track>
+            </Lap>
+          </Activity>
+        </Activities>
+      </TrainingCenterDatabase>
+    XML
   end
 end
