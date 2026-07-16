@@ -1910,6 +1910,10 @@ export default class extends Controller {
     const removedCachePoint =
       removedCacheIndex >= 0 ? cachedPoints[removedCacheIndex] : undefined
 
+    // The API delete fires regardless of layer reconciliation, so the cache
+    // must always drop the point too.
+    if (removedCachePoint) cachedPoints.splice(removedCacheIndex, 1)
+
     // Optimistically remove the point so the map updates instantly; the API
     // call and route rebuild run in the background and are reverted on error.
     if (canReconcile) {
@@ -1918,7 +1922,6 @@ export default class extends Controller {
       )
       source.setData(data)
       pointsLayer.data = data
-      if (removedCachePoint) cachedPoints.splice(removedCacheIndex, 1)
       this.routesManager.reloadRoutes().catch((error) => console.error(error))
     }
 
@@ -1927,6 +1930,16 @@ export default class extends Controller {
       this.closeInfo()
       Toast.success("Point deleted successfully")
     } catch (_error) {
+      // The point still exists server-side, so restore it in the cache even
+      // when the layer reconcile below is skipped.
+      if (removedCachePoint && !cachedPoints.includes(removedCachePoint)) {
+        cachedPoints.splice(
+          Math.min(removedCacheIndex, cachedPoints.length),
+          0,
+          removedCachePoint,
+        )
+      }
+
       // Reconcile against the source's CURRENT data, re-read fresh: a realtime
       // broadcast may have replaced it while the request was in flight, so the
       // snapshot captured above could be stale and would clobber that update.
@@ -1945,13 +1958,6 @@ export default class extends Controller {
         currentData.features = features
         currentSource.setData(currentData)
         pointsLayer.data = currentData
-        if (removedCachePoint && !cachedPoints.includes(removedCachePoint)) {
-          cachedPoints.splice(
-            Math.min(removedCacheIndex, cachedPoints.length),
-            0,
-            removedCachePoint,
-          )
-        }
         this.routesManager.reloadRoutes().catch((error) => console.error(error))
       }
       Toast.error("Failed to delete point")
