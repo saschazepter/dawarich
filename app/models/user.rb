@@ -167,14 +167,33 @@ class User < ApplicationRecord
 
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
-      # Use select_all for better performance with large datasets
-      sql = <<-SQL
-        SELECT DISTINCT
+      quoted_id = ActiveRecord::Base.connection.quote(id)
+      sql = <<~SQL
+        WITH RECURSIVE tracked_months AS (
+          SELECT MAX(timestamp) AS timestamp
+          FROM points
+          WHERE user_id = #{quoted_id}
+
+          UNION ALL
+
+          SELECT (
+            SELECT MAX(points.timestamp)
+            FROM points
+            WHERE points.user_id = #{quoted_id}
+              AND points.timestamp < EXTRACT(
+                EPOCH FROM DATE_TRUNC('month', TO_TIMESTAMP(tracked_months.timestamp))
+              )::bigint
+          )
+          FROM tracked_months
+          WHERE tracked_months.timestamp IS NOT NULL
+        )
+        SELECT
           EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp)) AS year,
-          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month
-        FROM points
-        WHERE user_id = #{id}
-        ORDER BY year DESC, month ASC
+          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month,
+          EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp)) AS month_number
+        FROM tracked_months
+        WHERE timestamp IS NOT NULL
+        ORDER BY year DESC, month_number ASC
       SQL
 
       result = ActiveRecord::Base.connection.select_all(sql)
