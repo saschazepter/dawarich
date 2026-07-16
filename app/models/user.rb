@@ -167,19 +167,18 @@ class User < ApplicationRecord
 
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
-      quoted_id = ActiveRecord::Base.connection.quote(id)
       sql = <<~SQL
         WITH RECURSIVE tracked_months AS (
           SELECT MAX(timestamp) AS timestamp
           FROM points
-          WHERE user_id = #{quoted_id}
+          WHERE user_id = $1
 
           UNION ALL
 
           SELECT (
             SELECT MAX(points.timestamp)
             FROM points
-            WHERE points.user_id = #{quoted_id}
+            WHERE points.user_id = $1
               AND points.timestamp < EXTRACT(
                 EPOCH FROM DATE_TRUNC('month', TO_TIMESTAMP(tracked_months.timestamp))
               )::bigint
@@ -196,7 +195,11 @@ class User < ApplicationRecord
         ORDER BY year DESC, month_number ASC
       SQL
 
-      result = ActiveRecord::Base.connection.select_all(sql)
+      binds = [
+        ActiveRecord::Relation::QueryAttribute.new('user_id', id, ActiveRecord::Type::Integer.new)
+      ]
+
+      result = ActiveRecord::Base.connection.exec_query(sql, 'YearsTracked', binds)
 
       result
         .map { |r| [r['year'].to_i, r['month']] }

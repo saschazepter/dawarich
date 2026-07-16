@@ -550,6 +550,14 @@ RSpec.describe User, type: :model do
                                            { year: 2023, months: ['Dec'] }
                                          ])
       end
+
+      context 'when the user has no points' do
+        let(:user_without_points) { create(:user) }
+
+        it 'returns an empty array' do
+          expect(user_without_points.years_tracked).to eq([])
+        end
+      end
     end
 
     describe '#can_subscribe?' do
