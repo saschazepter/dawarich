@@ -42,6 +42,51 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe 'lite transition stamping' do
+    it 'stamps lite_since when the plan changes to lite' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+
+      user.update!(plan: :lite)
+
+      expect(Time.zone.parse(user.reload.settings['lite_since'])).to be_within(5.seconds).of(Time.zone.now)
+    end
+
+    it 'clears lite_since and archival warnings when the plan leaves lite' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge(
+                                      'lite_since' => 1.day.ago.iso8601,
+                                      'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }
+                                    ))
+
+      user.update!(plan: :pro)
+
+      expect(user.reload.settings).not_to have_key('lite_since')
+      expect(user.settings).not_to have_key('archival_warnings')
+    end
+
+    it 'resets stale archival warnings when re-entering lite' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '12mo' => 1.year.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings['lite_since']).to be_present
+    end
+
+    it 'does not touch settings when the plan does not change' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge('lite_since' => 1.day.ago.iso8601))
+
+      expect { user.update!(email: 'new-address@example.com') }
+        .not_to(change { user.reload.settings['lite_since'] })
+    end
+  end
+
   describe 'changelog consent' do
     it 'defaults to nil (not yet prompted) and reports prompt pending' do
       user = create(:user)
