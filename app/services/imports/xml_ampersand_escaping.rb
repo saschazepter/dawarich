@@ -6,6 +6,7 @@ module Imports
 
     CDATA_SECTION = /(<!\[CDATA\[.*?\]\]>)/m
     AMPERSAND = /&(?:([a-zA-Z][a-zA-Z0-9]*|#\d+|#x\h+);)?/
+    PREDEFINED_ENTITIES = %w[amp lt gt quot apos].freeze
 
     private
 
@@ -30,14 +31,13 @@ module Imports
     end
 
     def legal_reference?(reference)
-      codepoint =
-        if reference.start_with?('#x')
-          reference[2..].to_i(16)
-        elsif reference.start_with?('#')
-          reference[1..].to_i
-        end
-
-      codepoint.nil? || legal_codepoint?(codepoint)
+      if reference.start_with?('#x')
+        legal_codepoint?(reference[2..].to_i(16))
+      elsif reference.start_with?('#')
+        legal_codepoint?(reference[1..].to_i)
+      else
+        PREDEFINED_ENTITIES.include?(reference)
+      end
     end
 
     def legal_codepoint?(codepoint)

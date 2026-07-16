@@ -80,6 +80,16 @@ RSpec.describe Tcx::Importer do
         end
       end
 
+      context 'with undefined named entities' do
+        let(:tcx_content) { build_tcx(notes: 'a&nbsp;b &copy; c') }
+
+        it 'preserves them as literal text' do
+          described_class.new(import, user.id, file_path).call
+
+          expect(user.points.sole.raw_data.dig('Extensions', 'TPX', 'Notes')).to eq('a&nbsp;b &copy; c')
+        end
+      end
+
       context 'with numeric references to XML-illegal characters' do
         let(:tcx_content) { build_tcx(notes: 'beep &#2; boop') }
 
