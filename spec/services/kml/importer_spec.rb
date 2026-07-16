@@ -97,13 +97,10 @@ RSpec.describe Kml::Importer do
         expect(point.velocity).to eq('5.5')
       end
 
-      it 'stores extended data in raw_data' do
+      it 'does not persist raw_data for imported points' do
         parser
 
-        point = user.points.first
-
-        expect(point.raw_data['name']).to eq('Location with Speed')
-        expect(point.raw_data['description']).to eq('A location with extended data including speed')
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
     end
 
