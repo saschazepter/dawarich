@@ -117,6 +117,77 @@ RSpec.describe Imports::Create do
           service.call
           expect(import.reload.error_message).to eq('StandardError')
         end
+
+        it 'reports unexpected failures' do
+          allow(ExceptionReporter).to receive(:call)
+
+          service.call
+
+          expect(ExceptionReporter).to have_received(:call)
+            .with(instance_of(StandardError), 'Import failed')
+        end
+      end
+    end
+
+    context 'when the uploaded file format is unsupported' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new('{"unknown":"format"}'), filename: 'unknown.json',
+                           content_type: 'application/json')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Unable to detect file format')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a single archive entry exceeds the extraction limit' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        archive = Zip::OutputStream.write_buffer do |zip|
+          zip.put_next_entry('ride.gpx')
+          zip.write('x' * 100)
+        end
+        archive.rewind
+        import.file.attach(io: archive, filename: 'ride.zip', content_type: 'application/zip')
+        stub_const('Archive::Unzipper::MAX_EXTRACTED_SIZE', 10)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('entry exceeds 10 bytes')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a CSV is missing required columns' do
+      let(:import) { create(:import, user:, source: 'csv', status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new("foo,bar,baz\n1,2,3\n"), filename: 'locations.csv',
+                           content_type: 'text/csv')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq(
+          'Could not detect required columns: latitude, longitude, timestamp. ' \
+          'Found headers must include recognized aliases for all three.'
+        )
+        expect(ExceptionReporter).not_to have_received(:call)
       end
     end
 
