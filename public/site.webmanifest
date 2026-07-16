@@ -1,6 +1,8 @@
 {
   "name": "Dawarich",
   "short_name": "Dawarich",
+  "start_url": "/map/v2",
+  "scope": "/",
   "icons": [
     {
       "src": "/icon-192.png",

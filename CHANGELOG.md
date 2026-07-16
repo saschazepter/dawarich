@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Dawarich added to an iOS Home Screen now opens Map v2 instead of an unrelated previously visited page (#3097)
 - Users downgraded to Lite with more than a year of history now receive the archival warnings gradually (heads-up, then email, then archived notice over 30 days) instead of an immediate "Data has been archived" notification. Upgrading off Lite resets the warning state.
 
 ### Changed
