@@ -13,8 +13,11 @@ FactoryBot.define do
     ssid            { 'MyString' }
     connection      { 1 }
     vertical_accuracy { 1 }
-    accuracy        { 1 }
-    timestamp       { DateTime.new(2024, 5, 1).to_i + rand(1_000).minutes }
+    accuracy { 1 }
+    # Sequential timestamps: the model validates uniqueness of (user, lonlat,
+    # timestamp), and rand(1_000) produced birthday-paradox collisions whenever
+    # a spec created several same-coordinate points ("usually red" CI).
+    sequence(:timestamp) { |n| DateTime.new(2024, 5, 1).to_i + (n % 100_000) * 10 }
     mode            { 1 }
     inrids          { 'MyString' }
     in_regions      { 'MyString' }
