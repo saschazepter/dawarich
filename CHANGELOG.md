@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The app and Sidekiq containers no longer crash-loop on startup when `WEB_CONCURRENCY` or `BACKGROUND_PROCESSING_CONCURRENCY` reach the container as an unexpanded `${VAR:-default}` string (seen with some podman-compose versions); the entrypoint now warns and falls back to the default value (#3124)
 - Cache preheating no longer times out for accounts with large location histories.
 - Users downgraded to Lite with more than a year of history now receive the archival warnings gradually (heads-up, then email, then archived notice over 30 days) instead of an immediate "Data has been archived" notification. Upgrading off Lite resets the warning state.
+- TCX and KML imports no longer fail when text fields contain raw ampersands.
 
 
 ## [1.10.0] - 2026-07-15
