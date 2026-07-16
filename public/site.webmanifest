@@ -1,6 +1,7 @@
 {
   "name": "Dawarich",
   "short_name": "Dawarich",
+  "description": "Self-hostable location history: track, visualize and analyze your movement data on your own terms.",
   "start_url": "/map/v2",
   "scope": "/",
   "icons": [

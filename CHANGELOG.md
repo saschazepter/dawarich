@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.10.1] - Unreleased
 
+### Added
+
+- Dawarich can now be installed to the phone home screen as a web app (PWA): all pages link the web app manifest and Apple touch icon, and the installed app opens straight into Map v2.
+
 ### Fixed
 
 - Dawarich added to an iOS Home Screen now opens Map v2 instead of an unrelated previously visited page (#3097)
