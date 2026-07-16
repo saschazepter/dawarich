@@ -76,7 +76,7 @@ class Tcx::Importer
       velocity: extract_speed(trackpoint),
       import_id: import.id,
       user_id: user_id,
-      raw_data: trackpoint.merge('sport' => map_activity_type(sport)),
+      motion_data: { 'activity_type' => map_activity_type(sport) }.compact,
       created_at: Time.current,
       updated_at: Time.current
     }

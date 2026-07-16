@@ -28,10 +28,8 @@ module Map
       @timeline_tags = current_user.tags.order(:name).limit(8)
 
       # Theme tokens power both the poster tab and the Appearance section's
-      # custom map colors, so they load regardless of the posters feature gate.
+      # custom map colors.
       @poster_themes = local_poster_themes
-
-      return unless posters_enabled?
 
       @recent_posters = current_user.posters.with_attached_image.order(created_at: :desc).limit(10)
     end

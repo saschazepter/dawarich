@@ -26,6 +26,15 @@ RSpec.describe Tcx::Importer do
         point = user.points.order(:timestamp).first
         expect(point.timestamp).to eq(Time.zone.parse('2024-01-01T10:00:00Z').to_i)
       end
+
+      it 'does not persist raw_data for imported points' do
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
+      end
+
+      it 'stores the mapped activity type in motion_data' do
+        expect(Point.where(import_id: import.id).pluck(:motion_data).uniq)
+          .to eq([{ 'activity_type' => 'running' }])
+      end
     end
 
     context 'with no-GPS TCX (indoor)' do

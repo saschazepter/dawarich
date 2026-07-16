@@ -50,10 +50,12 @@ class Api::V1::PointsController < ApiController
     )
     return if performed?
 
+    per_page = params[:per_page].to_i
+    per_page = 100 unless per_page.positive?
     points = points
              .order(timestamp: order)
              .page(params[:page])
-             .per(params[:per_page] || 100)
+             .per(per_page)
 
     serialized_points = if slim_points?
                           Points::SlimCollectionQuery.new(points).call
@@ -61,8 +63,10 @@ class Api::V1::PointsController < ApiController
                           points.map { |point| point_serializer.new(point).call }
                         end
 
+    total_count = cache_count.to_i
+    total_pages = (total_count.to_f / per_page).ceil
     response.set_header('X-Current-Page', points.current_page.to_s)
-    response.set_header('X-Total-Pages', points.total_pages.to_s)
+    response.set_header('X-Total-Pages', total_pages.to_s)
 
     # For Lite users on Cloud: include the unscoped count and scoped count
     # so the frontend can show how many points fall outside the 12-month data window.
@@ -71,9 +75,8 @@ class Api::V1::PointsController < ApiController
                                        .where(timestamp: start_at..end_at)
       total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?
       total_in_range = total_in_range.count
-      scoped_count = points.total_count
       response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
-      response.set_header('X-Scoped-Points', scoped_count.to_s)
+      response.set_header('X-Scoped-Points', total_count.to_s)
     end
 
     render json: serialized_points
@@ -207,7 +210,7 @@ class Api::V1::PointsController < ApiController
   def points_index_etag(start_at, end_at, order, max_timestamp, count, max_updated)
     [
       'points/index', current_api_user.id, start_at, end_at, order, slim_points?,
-      params[:page], params[:per_page] || 100,
+      params[:page], params[:per_page] || 100, params[:import_id],
       params[:anomalies_only], params[:include_anomalies],
       params[:min_longitude], params[:max_longitude],
       params[:min_latitude], params[:max_latitude],
