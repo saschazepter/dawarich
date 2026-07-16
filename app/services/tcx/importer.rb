@@ -17,7 +17,7 @@ class Tcx::Importer
   end
 
   def call
-    json = Hash.from_xml(load_file_content)
+    json = Hash.from_xml(xml_content)
 
     activities = Array.wrap(json.dig('TrainingCenterDatabase', 'Activities', 'Activity'))
 
@@ -30,6 +30,10 @@ class Tcx::Importer
   end
 
   private
+
+  def xml_content
+    load_file_content.gsub(/&(?!(?:[a-zA-Z][a-zA-Z0-9]+|#\d+|#x[0-9a-fA-F]+);)/, '&amp;')
+  end
 
   def parse_activity(activity)
     return [] if activity.blank?

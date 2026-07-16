@@ -36,5 +36,44 @@ RSpec.describe Tcx::Importer do
         expect(user.points.count).to eq(0)
       end
     end
+
+    context 'with raw ampersands in text fields' do
+      let(:file) { Tempfile.new(['raw_ampersand', '.tcx']) }
+      let(:file_path) { file.path }
+
+      before do
+        file.write(<<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <TrainingCenterDatabase>
+            <Activities>
+              <Activity Sport="Running">
+                <Id>Passion & Punishment</Id>
+                <Lap StartTime="2024-01-01T10:00:00Z">
+                  <Track>
+                    <Trackpoint>
+                      <Time>2024-01-01T10:00:00Z</Time>
+                      <Position>
+                        <LatitudeDegrees>52.520</LatitudeDegrees>
+                        <LongitudeDegrees>13.405</LongitudeDegrees>
+                      </Position>
+                    </Trackpoint>
+                  </Track>
+                </Lap>
+              </Activity>
+            </Activities>
+          </TrainingCenterDatabase>
+        XML
+        file.close
+      end
+
+      after do
+        file.unlink
+      end
+
+      it 'imports GPS trackpoints' do
+        expect { described_class.new(import, user.id, file_path).call }
+          .to change { user.points.count }.by(1)
+      end
+    end
   end
 end
