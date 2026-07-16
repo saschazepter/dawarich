@@ -82,7 +82,8 @@ export class DataLoader {
       end_at: endDate,
     })
     const points = result.points
-    const pointsGeoJSON = this.pointsGeoJSON(points)
+    const allPointsGeoJSON = pointsToGeoJSON(points)
+    const pointsGeoJSON = this.pointsGeoJSON(points, allPointsGeoJSON)
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -98,7 +99,13 @@ export class DataLoader {
       routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
     }
 
-    return { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON }
+    return {
+      points,
+      pointsGeoJSON,
+      allPointsGeoJSON,
+      routesGeoJSON,
+      routesBaseGeoJSON,
+    }
   }
 
   /**
@@ -162,8 +169,12 @@ export class DataLoader {
             : null,
           onBatch: onLayerData
             ? (accumulatedPoints) => {
-                onLayerData("points", this.pointsGeoJSON(accumulatedPoints))
-                onLayerData("heatmap", pointsToGeoJSON(accumulatedPoints))
+                const rawGeoJSON = pointsToGeoJSON(accumulatedPoints)
+                onLayerData(
+                  "points",
+                  this.pointsGeoJSON(accumulatedPoints, rawGeoJSON),
+                )
+                onLayerData("heatmap", rawGeoJSON)
                 if (counter) counter.update("points", accumulatedPoints.length)
               }
             : null,
@@ -282,7 +293,8 @@ export class DataLoader {
       // Transform points to GeoJSON
       performanceMonitor.mark("transform-geojson")
       data.points = points
-      data.pointsGeoJSON = this.pointsGeoJSON(data.points)
+      const allPointsGeoJSON = pointsToGeoJSON(data.points)
+      data.pointsGeoJSON = this.pointsGeoJSON(data.points, allPointsGeoJSON)
       data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -309,9 +321,8 @@ export class DataLoader {
         onLayerData("routes-base", data.routesBaseGeoJSON)
         // Final points/heatmap update with complete dataset
         onLayerData("points", data.pointsGeoJSON)
-        onLayerData("heatmap", pointsToGeoJSON(data.points))
-        // Fog and scratch need all points — update once
-        const allPointsGeoJSON = pointsToGeoJSON(data.points)
+        // Heatmap, fog and scratch need all points
+        onLayerData("heatmap", allPointsGeoJSON)
         onLayerData("fog", allPointsGeoJSON)
         onLayerData("scratch", allPointsGeoJSON)
       }
@@ -535,10 +546,12 @@ export class DataLoader {
     }
   }
 
-  pointsGeoJSON(points) {
-    return pointsToGeoJSON(points, {
-      simplified: this.settings.pointsRenderingMode === "simplified",
-    })
+  pointsGeoJSON(points, rawGeoJSON = null) {
+    if (this.settings.pointsRenderingMode !== "simplified") {
+      return rawGeoJSON || pointsToGeoJSON(points)
+    }
+
+    return pointsToGeoJSON(points, { simplified: true })
   }
 
   /**
