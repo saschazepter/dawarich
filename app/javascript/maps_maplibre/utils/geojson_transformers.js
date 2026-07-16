@@ -1,12 +1,64 @@
+import { calculateDistance } from "./geometry"
+
+export const SIMPLIFIED_POINTS_DISTANCE_METERS = 50
+export const SIMPLIFIED_POINTS_TIME_MS = 20000
+
+/**
+ * Match Map v1's simplified point-rendering mode.
+ * @param {Array} points - Array of point objects from API
+ * @returns {Array} Simplified point array
+ */
+export function simplifyPointsForRendering(points) {
+  if (!points.length) return points
+
+  const simplified = [points[0]]
+  let previousPoint = points[0]
+
+  points.slice(1).forEach((point) => {
+    const distance = calculateDistance(
+      [previousPoint.longitude, previousPoint.latitude],
+      [point.longitude, point.latitude],
+    )
+    const timeDiff =
+      timestampMs(point.timestamp) - timestampMs(previousPoint.timestamp)
+
+    if (
+      distance >= SIMPLIFIED_POINTS_DISTANCE_METERS ||
+      timeDiff >= SIMPLIFIED_POINTS_TIME_MS
+    ) {
+      simplified.push(point)
+      previousPoint = point
+    }
+  })
+
+  return simplified
+}
+
+function timestampMs(timestamp) {
+  if (timestamp == null) return 0
+  if (typeof timestamp === "number") {
+    return timestamp < 10000000000 ? timestamp * 1000 : timestamp
+  }
+
+  const parsed = Date.parse(timestamp)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
 /**
  * Transform points array to GeoJSON FeatureCollection
  * @param {Array} points - Array of point objects from API
+ * @param {Object} options
+ * @param {boolean} options.simplified - Apply simplified point rendering
  * @returns {Object} GeoJSON FeatureCollection
  */
-export function pointsToGeoJSON(points) {
+export function pointsToGeoJSON(points, options = {}) {
+  const renderPoints = options.simplified
+    ? simplifyPointsForRendering(points)
+    : points
+
   return {
     type: "FeatureCollection",
-    features: points.map((point) => ({
+    features: renderPoints.map((point) => ({
       type: "Feature",
       geometry: {
         type: "Point",

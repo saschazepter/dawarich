@@ -82,7 +82,7 @@ export class DataLoader {
       end_at: endDate,
     })
     const points = result.points
-    const pointsGeoJSON = pointsToGeoJSON(points)
+    const pointsGeoJSON = this.pointsGeoJSON(points)
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -162,9 +162,8 @@ export class DataLoader {
             : null,
           onBatch: onLayerData
             ? (accumulatedPoints) => {
-                const geoJSON = pointsToGeoJSON(accumulatedPoints)
-                onLayerData("points", geoJSON)
-                onLayerData("heatmap", geoJSON)
+                onLayerData("points", this.pointsGeoJSON(accumulatedPoints))
+                onLayerData("heatmap", pointsToGeoJSON(accumulatedPoints))
                 if (counter) counter.update("points", accumulatedPoints.length)
               }
             : null,
@@ -283,7 +282,7 @@ export class DataLoader {
       // Transform points to GeoJSON
       performanceMonitor.mark("transform-geojson")
       data.points = points
-      data.pointsGeoJSON = pointsToGeoJSON(data.points)
+      data.pointsGeoJSON = this.pointsGeoJSON(data.points)
       data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -310,10 +309,11 @@ export class DataLoader {
         onLayerData("routes-base", data.routesBaseGeoJSON)
         // Final points/heatmap update with complete dataset
         onLayerData("points", data.pointsGeoJSON)
-        onLayerData("heatmap", data.pointsGeoJSON)
+        onLayerData("heatmap", pointsToGeoJSON(data.points))
         // Fog and scratch need all points — update once
-        onLayerData("fog", data.pointsGeoJSON)
-        onLayerData("scratch", data.pointsGeoJSON)
+        const allPointsGeoJSON = pointsToGeoJSON(data.points)
+        onLayerData("fog", allPointsGeoJSON)
+        onLayerData("scratch", allPointsGeoJSON)
       }
     } else {
       data.points = []
@@ -533,6 +533,12 @@ export class DataLoader {
         }
       }),
     }
+  }
+
+  pointsGeoJSON(points) {
+    return pointsToGeoJSON(points, {
+      simplified: this.settings.pointsRenderingMode === "simplified",
+    })
   }
 
   /**
