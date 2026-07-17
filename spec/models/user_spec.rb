@@ -580,13 +580,28 @@ RSpec.describe User, type: :model do
 
     describe '#years_tracked' do
       let!(:points) do
-        (1..3).map do |i|
-          create(:point, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0) + i.minutes)
+        [
+          DateTime.new(2024, 1, 1, 5, 0, 0),
+          DateTime.new(2024, 3, 1, 5, 0, 0),
+          DateTime.new(2023, 12, 1, 5, 0, 0)
+        ].flat_map do |month|
+          (1..3).map { |i| create(:point, user:, timestamp: month + i.minutes) }
         end
       end
 
-      it 'returns years tracked' do
-        expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])
+      it 'returns only tracked months in calendar order for each year' do
+        expect(user.years_tracked).to eq([
+                                           { year: 2024, months: %w[Jan Mar] },
+                                           { year: 2023, months: ['Dec'] }
+                                         ])
+      end
+
+      context 'when the user has no points' do
+        let(:user_without_points) { create(:user) }
+
+        it 'returns an empty array' do
+          expect(user_without_points.years_tracked).to eq([])
+        end
       end
     end
 
