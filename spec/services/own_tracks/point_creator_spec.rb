@@ -44,6 +44,19 @@ RSpec.describe OwnTracks::PointCreator do
     expect(user.points_count).to eq(Point.where(user_id: user.id).count)
   end
 
+  it 'retries a point upsert canceled by transient database contention' do
+    attempts = 0
+    allow(Point).to receive(:archival_safe_upsert_all).and_wrap_original do |method, *args, **kwargs|
+      attempts += 1
+      raise ActiveRecord::QueryCanceled, 'canceling statement due to statement timeout' if attempts == 1
+
+      method.call(*args, **kwargs)
+    end
+
+    expect { call_service }.to change { Point.where(user:).count }.by(1)
+    expect(attempts).to eq(2)
+  end
+
   it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
     allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
 
