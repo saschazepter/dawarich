@@ -18,7 +18,8 @@ RSpec.describe 'Web app manifest launch behavior' do
     expect(manifest).to include(
       'name' => 'Dawarich',
       'short_name' => 'Dawarich',
-      'display' => 'standalone'
+      'display' => 'standalone',
+      'id' => '/'
     )
     expect(manifest['icons']).to include(
       hash_including('sizes' => '192x192'),
@@ -36,6 +37,21 @@ RSpec.describe 'PWA installability', type: :request do
       expect(response.body).to include('name="theme-color"')
       expect(response.body).to include('rel="apple-touch-icon"')
       expect(response.body).to include('name="mobile-web-app-capable"')
+    end
+
+    it 'declares each PWA tag exactly once' do
+      expect(response.body.scan('rel="manifest"').count).to eq(1)
+      expect(response.body.scan('rel="apple-touch-icon"').count).to eq(1)
+      expect(response.body.scan('name="theme-color"').count).to eq(1)
+    end
+  end
+
+  describe 'manifest content type' do
+    it 'serves /site.webmanifest as application/manifest+json' do
+      get '/site.webmanifest'
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('application/manifest+json')
     end
   end
 
