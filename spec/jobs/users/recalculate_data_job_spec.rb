@@ -128,6 +128,25 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
+    context 'when the per-user track lock is held by a concurrent job' do
+      let(:timeout_error) do
+        Tracks::PerUserLock::AcquisitionTimeout.new(
+          "Tracks::PerUserLock: could not acquire lock for user_id=#{user.id} within 30.0s"
+        )
+      end
+
+      before do
+        allow_any_instance_of(Tracks::ParallelGenerator).to receive(:call).and_raise(timeout_error)
+      end
+
+      it 'retries the recalculation with its original arguments without creating a failure notification' do
+        expect { described_class.perform_now(user.id, year: 2024, notify: true) }
+          .to have_enqueued_job(described_class).with(user.id, year: 2024, notify: true)
+
+        expect(user.notifications.where(title: 'Data recalculation failed')).to be_empty
+      end
+    end
+
     context 'when an error occurs' do
       subject { described_class.perform_now(user.id, year: 2024) }
 

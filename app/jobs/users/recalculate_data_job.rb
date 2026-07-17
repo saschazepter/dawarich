@@ -8,6 +8,8 @@ class Users::RecalculateDataJob < ApplicationJob
 
   queue_as :stats
 
+  retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5
+
   def perform(user_id, year: nil, notify: true)
     @user = find_user_or_skip(user_id) || return
 
@@ -28,6 +30,8 @@ class Users::RecalculateDataJob < ApplicationJob
 
       create_success_notification(years_to_process) if @notify
     end
+  rescue Tracks::PerUserLock::AcquisitionTimeout
+    raise
   rescue StandardError => e
     create_failure_notification(e) if @notify
     raise
