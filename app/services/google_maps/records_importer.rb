@@ -39,7 +39,6 @@ class GoogleMaps::RecordsImporter
       course: location['heading'],
       battery: parse_battery_charging(location['batteryCharging']),
       motion_data: Points::MotionDataExtractor.from_google_records(location),
-      raw_data: location,
       topic: 'Google Maps Timeline Export',
       tracker_id: tracker_id_for(location),
       import_id: @import.id,
