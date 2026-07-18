@@ -199,6 +199,20 @@ RSpec.describe Archivable, type: :model do
       expect(point.raw_data).to eq({ 'src' => 'original' })
     end
 
+    it 'upserts rows in a deterministic order regardless of input order' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      later = base_row.merge(timestamp: 1_700_000_300)
+      earlier = base_row.merge(timestamp: 1_700_000_240)
+      Point.archival_safe_upsert_all([later, earlier], returning: Arel.sql('id'))
+
+      expect(captured).to eq([earlier, later])
+    end
+
     context 'when the upsert hits a transient deadlock' do
       it 'retries with jittered backoff and returns the result' do
         attempts = 0
