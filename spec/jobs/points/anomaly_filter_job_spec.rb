@@ -14,4 +14,21 @@ RSpec.describe Points::AnomalyFilterJob do
       described_class.perform_now(42, 100, 200)
     end.to have_enqueued_job(described_class).with(42, 100, 200)
   end
+
+  it 'reports the error with job context when retries are exhausted' do
+    filter = instance_double(Points::AnomalyFilter)
+    allow(Points::AnomalyFilter).to receive(:new).with(42, 100, 200).and_return(filter)
+    allow(filter).to receive(:call).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+    allow(ExceptionReporter).to receive(:call)
+
+    job = described_class.new(42, 100, 200)
+    job.exception_executions = { '[ActiveRecord::Deadlocked]' => 2 }
+
+    expect { job.perform_now }.not_to have_enqueued_job(described_class)
+
+    expect(ExceptionReporter).to have_received(:call).with(
+      an_instance_of(ActiveRecord::Deadlocked),
+      'Points::AnomalyFilterJob retries exhausted user_id=42 range=100..200'
+    )
+  end
 end

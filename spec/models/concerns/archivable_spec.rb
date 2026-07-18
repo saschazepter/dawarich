@@ -198,6 +198,42 @@ RSpec.describe Archivable, type: :model do
       expect(point.raw_data_archived).to be false
       expect(point.raw_data).to eq({ 'src' => 'original' })
     end
+
+    context 'when the upsert hits a transient deadlock' do
+      it 'retries with jittered backoff and returns the result' do
+        attempts = 0
+        allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+          attempts += 1
+          raise ActiveRecord::Deadlocked, 'deadlock detected' if attempts == 1
+
+          original.call(*args, **kwargs)
+        end
+        allow(Point).to receive(:sleep)
+
+        result = Point.archival_safe_upsert_all(
+          [base_row.merge(timestamp: 1_700_000_120)],
+          returning: Arel.sql('id, xmax')
+        )
+
+        expect(attempts).to eq(2)
+        expect(Point.exists?(result.first['id'])).to be true
+        expect(Point).to have_received(:sleep).with(be_between(0.1, 0.15)).once
+      end
+
+      it 'raises after exhausting retries' do
+        allow(Point).to receive(:upsert_all).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+        allow(Point).to receive(:sleep)
+
+        expect do
+          Point.archival_safe_upsert_all(
+            [base_row.merge(timestamp: 1_700_000_180)],
+            returning: Arel.sql('id, xmax')
+          )
+        end.to raise_error(ActiveRecord::Deadlocked)
+
+        expect(Point).to have_received(:sleep).exactly(3).times
+      end
+    end
   end
 
   describe 'raw_data mutation guard' do
