@@ -12,6 +12,11 @@ import {
   resolveLayoutGeometry,
 } from "poster_studio/data/layouts"
 import {
+  ORDERABLE_LAYOUT_IDS,
+  PRINT_PRODUCTS,
+  printProductFor,
+} from "poster_studio/data/print_products"
+import {
   extendTokens,
   loadThemeTokens,
   resolveTheme,
@@ -21,6 +26,7 @@ import { drawOverlay } from "poster_studio/render/overlay"
 import { buildPosterStyle } from "poster_studio/render/style_builder"
 import { formatCoords } from "poster_studio/render/text_layout"
 import { exportPoster, studioFilename } from "poster_studio/ui/exporter"
+import { submitPrintOrder } from "poster_studio/ui/order_client"
 import {
   collectCoords,
   createPreviewMap,
@@ -35,7 +41,11 @@ const METERS_PER_DEGREE = 111320
 // Sidecar frame semantics: it renders ±distance/3 vertically, so covering
 // the studio's visible height needs distance = 3 × half-height in meters.
 const SIDECAR_DISTANCE_FACTOR = 1.5
-const SIDECAR_DISTANCE_RANGE = [500, 20000]
+// Max lifted so any single-view framing is saveable: the distance box is
+// calibrated to the visible frame, so a low cap made zoomed-out routes read as
+// "outside the frame" even while visible. The upper bound stays finite to keep
+// degenerate whole-globe requests off the sidecar.
+const SIDECAR_DISTANCE_RANGE = [500, 5_000_000]
 function toLocalInput(date) {
   const pad = (n) => String(n).padStart(2, "0")
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
@@ -86,8 +96,21 @@ export default class extends Controller {
     "saveOpacity",
     "dateStart",
     "dateEnd",
+    "loadButton",
+    "loadSpinner",
+    "loadLabel",
+    "orderSection",
+    "orderCta",
+    "orderButton",
+    "sizePicker",
+    "sizePickerOptions",
+    "orderDialog",
+    "orderSummary",
+    "orderStatus",
+    "orderError",
+    "orderConfirmButton",
   ]
-  static values = { fonts: Object }
+  static values = { fonts: Object, printOrderUrl: String }
 
   connect() {
     // The map page wraps content in a z-index:20 stacking context that would
@@ -101,7 +124,9 @@ export default class extends Controller {
     document.addEventListener("poster-studio:open", this.onOpen)
     this.onResize = () => this.resizeFrame()
     this.populateLayouts()
+    this.populateSizePicker()
     this.populateFonts()
+    this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
   }
 
   disconnect() {
@@ -126,6 +151,7 @@ export default class extends Controller {
       await this.loadFonts()
       this.createMap()
       this.updateSummary()
+      this.syncOrderAvailability()
     } catch (error) {
       Flash.show("error", `Poster studio failed to open: ${error.message}`)
       this.close()
@@ -287,6 +313,29 @@ export default class extends Controller {
     select.value = DEFAULT_LAYOUT_ID
   }
 
+  populateSizePicker() {
+    if (!this.hasSizePickerOptionsTarget) return
+
+    const container = this.sizePickerOptionsTarget
+    container.innerHTML = ""
+    ORDERABLE_LAYOUT_IDS.forEach((id) => {
+      const layout = layoutById(id)
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "btn btn-outline btn-sm w-full justify-between"
+      button.dataset.layoutId = id
+      button.dataset.action = "poster-studio-editor#pickPrintSize"
+
+      const name = document.createElement("span")
+      name.textContent = layout.name
+      const price = document.createElement("span")
+      price.className = "opacity-70"
+      price.textContent = PRINT_PRODUCTS[id].priceLabel
+      button.append(name, price)
+      container.appendChild(button)
+    })
+  }
+
   get layout() {
     return layoutById(this.layoutSelectTarget.value)
   }
@@ -294,6 +343,20 @@ export default class extends Controller {
   layoutChanged() {
     this.resizeFrame()
     this.updateSummary()
+    this.syncOrderAvailability()
+    // Keep an open order view in sync with the new size: an orderable size
+    // refreshes the dialog (and its price); a non-orderable one falls back to
+    // the size picker.
+    if (this.orderViewOpen) this.openOrder()
+  }
+
+  get orderViewOpen() {
+    if (!this.hasOrderDialogTarget) return false
+
+    return (
+      !this.orderDialogTarget.classList.contains("hidden") ||
+      !this.sizePickerTarget.classList.contains("hidden")
+    )
   }
 
   resizeFrame() {
@@ -418,19 +481,32 @@ export default class extends Controller {
 
     const subtitleWasAuto =
       this.subtitleInputTarget.value === this.dateRangeLabel()
+    this.setLoadBusy(true)
     this.setStatus("Loading tracks for the new range…")
-    document.dispatchEvent(
-      new CustomEvent("timeline-feed:date-navigated", {
-        detail: { startAt: start, endAt: end },
-      }),
-    )
-    await this.waitForTrackReload()
+    try {
+      document.dispatchEvent(
+        new CustomEvent("timeline-feed:date-navigated", {
+          detail: { startAt: start, endAt: end },
+        }),
+      )
+      await this.waitForTrackReload()
 
-    if (subtitleWasAuto) this.subtitleInputTarget.value = this.dateRangeLabel()
-    this.previewMap?.setStyle(this.posterStyle())
-    this.recenter()
-    this.syncSaveAvailability()
-    this.setStatus("")
+      if (subtitleWasAuto)
+        this.subtitleInputTarget.value = this.dateRangeLabel()
+      this.previewMap?.setStyle(this.posterStyle())
+      this.recenter()
+      this.syncSaveAvailability()
+    } finally {
+      this.setLoadBusy(false)
+      this.setStatus("")
+    }
+  }
+
+  setLoadBusy(value) {
+    if (!this.hasLoadButtonTarget) return
+    this.loadButtonTarget.disabled = value
+    this.loadSpinnerTarget.classList.toggle("hidden", !value)
+    this.loadLabelTarget.textContent = value ? "Loading…" : "Load"
   }
 
   // The reload replaces the layer data objects; wait for the identity to
@@ -547,6 +623,119 @@ export default class extends Controller {
       this.setStatus("")
     } finally {
       this.setBusy(false)
+    }
+  }
+
+  syncOrderAvailability() {
+    // The "Order a print" zone is server-rendered only behind the
+    // poster_ordering flag, and appears only when ordering is configured.
+    if (!this.hasOrderSectionTarget) return
+
+    this.orderSectionTarget.classList.toggle(
+      "hidden",
+      this.printOrderUrlValue.length === 0,
+    )
+  }
+
+  // Exactly one of the three order views shows at a time, so the panel never
+  // stacks the CTA, the size picker and the dialog on top of each other.
+  showOrderView(which) {
+    this.orderCtaTarget.classList.toggle("hidden", which !== "cta")
+    this.sizePickerTarget.classList.toggle("hidden", which !== "picker")
+    this.orderDialogTarget.classList.toggle("hidden", which !== "dialog")
+  }
+
+  openOrder() {
+    const product = printProductFor(this.layout.id)
+    if (product) this.showOrderDialog(product)
+    else this.openSizePicker()
+  }
+
+  showOrderDialog(product) {
+    this.orderSummaryTarget.textContent = `${this.layout.name} poster — ${product.priceLabel}`
+    this.orderErrorTarget.classList.add("hidden")
+    this.orderStatusTarget.textContent = ""
+    this.showOrderView("dialog")
+  }
+
+  closeOrder() {
+    this.showOrderView("cta")
+  }
+
+  openSizePicker() {
+    this.showOrderView("picker")
+  }
+
+  closeSizePicker() {
+    this.showOrderView("cta")
+  }
+
+  pickPrintSize(event) {
+    const id = event.currentTarget.dataset.layoutId
+    this.layoutSelectTarget.value = id
+    // layoutChanged reopens the order view for the now-orderable size.
+    this.layoutChanged()
+  }
+
+  async confirmOrder() {
+    if (this.busy || !this.previewMap) return
+    const layout = this.layout
+    const product = printProductFor(layout.id)
+    if (!product) return
+
+    const checkoutTab = window.open("", "_blank")
+    try {
+      this.setBusy(true)
+      this.orderConfirmButtonTarget.disabled = true
+      this.orderErrorTarget.classList.add("hidden")
+      this.orderStatusTarget.textContent = "Rendering print PDF…"
+
+      const mapBounds = this.previewMap.getBounds()
+      const { blob } = await exportPoster({
+        style: this.posterStyle(),
+        bounds: [
+          [mapBounds.getWest(), mapBounds.getSouth()],
+          [mapBounds.getEast(), mapBounds.getNorth()],
+        ],
+        layout,
+        dpi: 300,
+        format: "pdf",
+        theme: this.resolvedTheme,
+        text: this.posterText(),
+        font: this.fontFamily,
+        cssSize: {
+          width: this.frameTarget.clientWidth,
+          height: this.frameTarget.clientHeight,
+        },
+      })
+
+      this.orderStatusTarget.textContent = "Uploading…"
+      const { checkoutUrl } = await submitPrintOrder({
+        url: this.printOrderUrlValue,
+        blob,
+        sku: product.sku,
+        title: this.titleInputTarget.value.trim(),
+        themeBase: this.themeBase,
+        layoutId: layout.id,
+      })
+
+      this.orderStatusTarget.textContent = "Redirecting to checkout…"
+      if (checkoutTab) {
+        checkoutTab.location = checkoutUrl
+      } else {
+        window.location.assign(checkoutUrl)
+      }
+      this.closeOrder()
+      this.setStatus("Order started — finish payment in the checkout tab.")
+    } catch (error) {
+      checkoutTab?.close()
+      this.orderDialogTarget.classList.remove("hidden")
+      this.orderErrorTarget.textContent = error.message
+      this.orderErrorTarget.classList.remove("hidden")
+      this.orderStatusTarget.textContent = ""
+    } finally {
+      this.setBusy(false)
+      this.orderConfirmButtonTarget.disabled = false
     }
   }
 

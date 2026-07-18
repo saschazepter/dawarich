@@ -4,46 +4,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.10.0] - Unreleased
 
-### Added
-
-- New API endpoints `GET`/`POST`/`DELETE /api/v1/demo_data` to check, load and remove demo data, enabling demo-data onboarding in the mobile app.
-- New API endpoints `GET`/`PATCH /api/v1/settings/mobile` for syncing mobile app settings between devices: settings are stored per user with a server-stamped `updated_at` so the most recent write wins. The existing settings API now also accepts `maps.distance_unit` and merges the `maps` hash instead of replacing it, so partial updates no longer wipe other map settings.
-- Cloud: free tools on dawarich.app can hand your uploaded file into signup — it's auto-imported into the new account (single-use claim ticket, 24h TTL). Adds a `pending_imports` table, the `rack-cors` gem, and a daily cleanup job; self-hosted instances are unaffected (the endpoint is disabled there).
-- Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
-- Custom map colors: pick from theme presets or edit individual color tokens for the map, and a reorganized, collapsible Settings tab to manage them.
-- The classic map (v1) now shows a dismissible banner announcing it will be retired in August 2026, plus a second banner — shown when your family is sharing location — pointing out that family location history is only visible on the new map (v2). Both dismissals are remembered per browser.
+## [1.10.1] - Unreleased
 
 ### Changed
 
-- Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
-- During replay, photos also stack up as a tilted, Polaroid-style pile in the top-left corner of the map as the playhead reaches each one (newest on top, up to five shown at once); click a photo in the pile to open it. The pile stays in sync with the on-map photo markers as you play, scrub, or rewind, and works on the map, trip, and public shared-trip replays.
-- Turning on the photos layer while a replay is already running now adds those photos to the replay (corner pile and map markers) and hides the static markers; turning it off removes them again — previously photos only appeared if the layer was enabled before starting replay.
-- Replay panel: a **recenter & follow** button. During playback the camera follows the moving marker; dragging the map turns following off so you can look around freely, and pressing the button re-centers on the marker and resumes following.
-- The replay panel no longer shows the per-day point count.
-- `GET /api/v1/points` is significantly faster over large date ranges: slim responses are built straight from a single SQL query (~5× faster than per-record serialization, byte-identical output), the map bounding-box filter runs as a single PostGIS predicate, and repeat requests answer `304 Not Modified` via ETags without rebuilding the response. Map v2 and the monthly stats map both ride this path (#3026).
-- Public shared-trip pages now query Immich/Photoprism once per view instead of twice: the photo search result is briefly cached and shared between the page render and the shared photos map endpoint.
+- The legacy `latitude`/`longitude` columns on `points` are dropped — the PostGIS `lonlat` column has been the single source of truth since 0.25.0. The migration copies any remaining legacy-only coordinates into `lonlat` before dropping, so upgrades from older versions are safe. To reclaim the freed disk space on large instances, run `pg_repack -t points` (optional).
+
+### Changed
+
+- File imports no longer store a copy of each source record in the point's `raw_data` — the uploaded file stays attached to the import as the source of truth. API responses return `raw_data: {}` for newly imported points, and FIT/TCX health fields (heart rate, cadence, power, temperature) as well as Google phone takeout HOME/WORK place labels are no longer stored.
+- TCX and FIT imports now store their activity type in `motion_data`: transportation-mode detection works for TCX imports for the first time, and FIT driving activities are classified correctly.
+- Google phone takeout imports now store the mapped activity type in `motion_data`, so transportation-mode detection (driving, walking, cycling, bus, train, flying) works for activity segments from phone takeout files.
 
 ### Fixed
 
+- Point uploads (REST API, OwnTracks, Overland, Traccar) now write batches in a consistent order so concurrent uploads no longer deadlock each other, and both uploads and anomaly filtering recover automatically from any remaining transient database deadlocks instead of failing the upload or background job.
+- The app and Sidekiq containers no longer crash-loop on startup when `WEB_CONCURRENCY` or `BACKGROUND_PROCESSING_CONCURRENCY` reach the container as an unexpanded `${VAR:-default}` string (seen with some podman-compose versions); the entrypoint now warns and falls back to the default value (#3124)
+- Cache preheating no longer times out for accounts with large location histories.
+- Users downgraded to Lite with more than a year of history now receive the archival warnings gradually (heads-up, then email, then archived notice over 30 days) instead of an immediate "Data has been archived" notification. Upgrading off Lite resets the warning state.
+- TCX and KML imports no longer fail when text fields contain raw ampersands.
 - Map v2 now applies the existing simplified point-rendering mode, so dense point streams are thinned on the map when that setting is selected. Only the points layer is thinned — heatmap, fog of war, scratch map, and routes are still built from the full point set (#946).
+
+
+## [1.10.0] - 2026-07-15
+
+⚠️ Important: ⚠️ there are some changes to defaults in the docker-compose.yml for self-hosted users. You may want to adjust environment variables to reduce memory usage or increase concurrency. See the "Changed" section below.
+
+### Added
+
+- Poster Studio: design a printable poster of your travels in a full-screen studio opened from Map v2, with live preview, theme and layout presets, text controls, and PNG/PDF export. Posters can be saved to a server-rendered gallery or — in the future releases — ordered as a print via Stripe. Self-hosters: the Docker image grows by ~100 MB for the server-side renderer, and gallery rendering is unavailable on 32-bit ARM (armv7) hosts.
+- New API endpoints `GET`/`POST`/`DELETE /api/v1/demo_data` to check, load and remove demo data, enabling demo-data onboarding in the mobile app.
+- New API endpoints `GET`/`PATCH /api/v1/settings/mobile` for syncing mobile app settings between devices (most recent write wins). The existing settings API now also accepts `maps.distance_unit` and merges the `maps` hash instead of replacing it, so partial updates no longer wipe other map settings.
+- Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
+- Custom map colors: pick from theme presets or edit individual color tokens for the map, and a reorganized, collapsible Settings tab to manage them.
+- The classic map (v1) now shows a dismissible banner announcing its retirement in August 2026, plus — when your family shares location — a second banner noting that family location history is only visible on Map v2. Dismissals are remembered per browser.
+
+### Changed
+
+- The default self-hosted stack now idles about 20% lighter (app container 452 → 325 MB, whole stack 843 → 690 MB): `docker-compose.yml` defaults to one Puma worker (`WEB_CONCURRENCY=1`) and 3 background job threads (`BACKGROUND_PROCESSING_CONCURRENCY=3`) — raise either env var for busier instances — and jemalloc now returns freed memory to the OS promptly. Installations that already set these variables are unaffected (#3119).
+- Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
+- During replay, photos now stack up as a tilted, Polaroid-style pile in the top-left corner as the playhead reaches them (newest on top, up to five shown); click a photo to open it. The pile stays in sync as you play, scrub, or rewind, and works on map, trip, and public shared-trip replays.
+- Toggling the photos layer during a running replay now adds or removes its photos live (corner pile and map markers) — previously photos only appeared if the layer was enabled before starting the replay.
+- Replay panel: a new **recenter & follow** button. The camera follows the moving marker during playback; dragging the map turns following off, and the button re-centers and resumes it.
+- The replay panel no longer shows the per-day point count.
+- `GET /api/v1/points` is significantly faster over large date ranges: slim responses are built from a single SQL query (~5× faster, byte-identical output), the bounding-box filter runs as a single PostGIS predicate, and repeat requests answer `304 Not Modified` via ETags. Map v2 and the monthly stats map both use this path (#3026).
+- Public shared-trip pages now query Immich/Photoprism once per view instead of twice: the photo search result is briefly cached and reused.
+
+### Fixed
+
+- Family location history now actually shows up on Map v2: the history endpoint read coordinates from the legacy `latitude`/`longitude` columns, which are empty on instances that only store the PostGIS `lonlat` value, so nothing was drawn. Coordinates are now derived from `lonlat` (#2977)
 - Declining the "Move the visit here?" prompt when picking a distant place for a Map v2 visit no longer renames the visit to that place.
-- Place visit detection no longer leaves an empty duplicate visit behind when a newly added point bridges the gap between two previously separate visits at the same place (the two are now merged into one instead of orphaning the earlier suggestion). Confirmed visits are also left untouched by the nightly re-scan, so a new nearby point can no longer pull points out of a visit you have already confirmed.
+- Place visit detection no longer leaves an empty duplicate visit behind when a new point bridges two previously separate visits at the same place — they are now merged into one. The nightly re-scan also leaves confirmed visits untouched, so a new nearby point can no longer pull points out of a visit you already confirmed.
 - Re-evaluating anomalous points now refreshes the map immediately instead of occasionally serving a cached copy of the points until the next change.
-- Raw data archival: reading archived `raw_data` back from encrypted archives works again (it silently returned nothing before), archive chunks are labeled with the points' actual month, and archives are verified at write time. Re-importing a duplicate point with different `raw_data` (same coordinates and timestamp) now detaches it from its stale archive so the newer data can't be cleared away. Clearing archived data now waits out a 7-day cooling window in the automated jobs and the `archive_full` rake task; the previously broken `points:raw_data:archive`/`archive_full` rake tasks work again. Restores are now reported under the `restored` metric label instead of `removed` — update dashboards reading `points_total{operation="removed"}` accordingly.
-- User data exports now include archived `raw_data` as plain gzip files, so an export can be imported on a different instance (previously the bundled archive files were encrypted with the exporting instance's key and unreadable anywhere else).
+- Raw data archival: reading archived `raw_data` back works again (it silently returned nothing before), archive chunks are labeled with the points' actual month, archives are verified at write time, and the previously broken `points:raw_data:archive`/`archive_full` rake tasks work again.
+- Raw data archival, continued: re-importing a duplicate point with different `raw_data` now detaches it from its stale archive so the newer data can't be cleared away, and clearing archived data now waits out a 7-day cooling window. Restores are reported under the `restored` metric label instead of `removed` — update dashboards reading `points_total{operation="removed"}` accordingly.
+- User data exports now include archived `raw_data` as plain gzip files, so an export can be imported on a different instance (previously the archives were encrypted with the exporting instance's key and unreadable elsewhere).
 - Creating, updating, or deleting a user in Settings no longer shows a blank "HTTP ERROR 422" page when validation fails — the admin is redirected back with a message explaining what went wrong (e.g. password too short) (#3051)
 - Email delivery no longer times out with providers that use implicit TLS (SMTP port 465, e.g. many hosted mail services): set `SMTP_SSL=true` to enable it, and it is enabled automatically when `SMTP_PORT=465`. STARTTLS remains the default for all other ports (#3068)
 - Points on Map v2 can no longer be moved by accident: dragging a point now requires enabling the new "Edit points" toggle in the layers panel. The toggle resets on every page load, so points stay put unless you deliberately turn editing on (#3060)
-- Family location sharing now makes the separate "Location history" toggle clearer — the family settings page explains it is distinct from live location, that it powers the recent-track view on Map v2, and that only points recorded after you enable it are shared. The default history window is now 7 days instead of 24 hours, so newly-shared members show a useful track instead of an almost-empty one.
-- Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero, so no place visits were ever detected for them. Note for self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand on large databases if you want it gentler (#2963)
-- The nightly place-visit job now only processes points that don't yet belong to a visit, instead of recomputing every place's entire history each night, and pauses briefly between places — together these stop it from saturating the database and delaying incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
+- The family "Location history" toggle is clearer: the settings page now explains it is distinct from live location, powers the recent-track view on Map v2, and only shares points recorded after enabling it. The default history window grew from 24 hours to 7 days, so newly-shared members show a useful track.
+- Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero. Self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; on large databases raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand to make it gentler (#2963)
+- The nightly place-visit job now only processes points that don't yet belong to a visit and pauses briefly between places, so it no longer saturates the database and delays incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
 - Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
 - Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
 - Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
-- Photoprism photo imports no longer fail with an HTTP 400: the `after` and `before` filters are now sent as plain `YYYY-MM-DD` dates, which Photoprism's search API requires (recent Photoprism rejects full timestamps, including the `before` value shipped in 1.9.2). Since a bare `before` date is coarser than the requested range, results are additionally bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
-- Cloud: for Lite users viewing a single import on the map, the points counter no longer includes unrelated points from the same date range (the `X-Total-Points-In-Range` header is now scoped to the import).
+- Photoprism photo imports no longer fail with an HTTP 400: the `after`/`before` filters are now sent as plain `YYYY-MM-DD` dates, as recent Photoprism requires (it rejects the full timestamps shipped in 1.9.2). Results are still bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
 
 
 ## [1.9.2] - 2026-06-25
