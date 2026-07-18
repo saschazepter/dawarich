@@ -337,6 +337,14 @@ export default class extends Controller {
     const startAtLocal = `${date}T00:00:00`
     const endAtLocal = `${date}T23:59:59`
 
+    // Collapse the top date-range form to the selected day. Only navigation
+    // does this — hydration leaves the server-rendered inputs (which carry the
+    // URL's time component) untouched.
+    const startInput = document.querySelector('input[name="start_at"]')
+    const endInput = document.querySelector('input[name="end_at"]')
+    if (startInput) startInput.value = `${date}T00:00`
+    if (endInput) endInput.value = `${date}T23:59`
+
     const params = new URLSearchParams(window.location.search)
     params.set("start_at", startAtLocal)
     params.set("end_at", endAtLocal)
@@ -401,14 +409,6 @@ export default class extends Controller {
         day: "numeric",
       })
     }
-
-    // Keep the top date-range form inputs aligned with the selected day so the
-    // range and the panel never silently disagree — applies on calendar/arrow
-    // navigation AND on URL hydration (deep-links), both ways (C1).
-    const startInput = document.querySelector('input[name="start_at"]')
-    const endInput = document.querySelector('input[name="end_at"]')
-    if (startInput) startInput.value = `${date}T00:00`
-    if (endInput) endInput.value = `${date}T23:59`
   }
 
   // Pure UI update — no navigation. Called on connect() when URL params
