@@ -69,11 +69,31 @@ RSpec.describe Tracks::PerUserLock do
     it 'renews the lock so it survives a block that outlives the initial lease' do
       remaining_ms = nil
 
-      described_class.with_user_lock(user_id, ttl: 1) do
-        sleep 1.6
+      described_class.with_user_lock(user_id, ttl: 2) do
+        sleep 2.6
         remaining_ms = Sidekiq.redis { |r| r.pttl(redis_key) }
       end
 
+      expect(remaining_ms).to be > 0
+    end
+
+    it 'keeps renewing after a transient redis error instead of giving up' do
+      calls = 0
+      original_renew = described_class.method(:renew)
+      allow(described_class).to receive(:renew) do |*args|
+        calls += 1
+        raise 'transient redis blip' if calls == 1
+
+        original_renew.call(*args)
+      end
+
+      remaining_ms = nil
+      described_class.with_user_lock(user_id, ttl: 2) do
+        sleep 2.5
+        remaining_ms = Sidekiq.redis { |r| r.pttl(redis_key) }
+      end
+
+      expect(calls).to be >= 2
       expect(remaining_ms).to be > 0
     end
 

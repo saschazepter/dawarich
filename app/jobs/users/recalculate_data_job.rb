@@ -8,7 +8,12 @@ class Users::RecalculateDataJob < ApplicationJob
 
   queue_as :stats
 
-  retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5
+  retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5 do |job, error|
+    Rails.logger.error(
+      'Users::RecalculateDataJob lock contention retries exhausted ' \
+      "user_id=#{job.arguments.first}: #{error.message}"
+    )
+  end
 
   def perform(user_id, year: nil, notify: true)
     @user = find_user_or_skip(user_id) || return

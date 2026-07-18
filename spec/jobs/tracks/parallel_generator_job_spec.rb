@@ -70,6 +70,17 @@ RSpec.describe Tracks::ParallelGeneratorJob do
 
         expect(ExceptionReporter).not_to have_received(:call)
       end
+
+      it 'logs and stops retrying once attempts are exhausted' do
+        allow(Rails.logger).to receive(:error)
+        job = described_class.new(user_id)
+        job.exception_executions = { '[Tracks::PerUserLock::AcquisitionTimeout]' => 4 }
+
+        expect { job.perform_now }.not_to have_enqueued_job(described_class)
+
+        expect(Rails.logger).to have_received(:error)
+          .with(/ParallelGeneratorJob lock contention retries exhausted user_id=#{user_id}/)
+      end
     end
 
     context 'when an error occurs' do

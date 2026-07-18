@@ -145,6 +145,17 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
 
         expect(user.notifications.where(title: 'Data recalculation failed')).to be_empty
       end
+
+      it 'logs and stops retrying once attempts are exhausted' do
+        allow(Rails.logger).to receive(:error)
+        job = described_class.new(user.id, year: 2024, notify: true)
+        job.exception_executions = { '[Tracks::PerUserLock::AcquisitionTimeout]' => 4 }
+
+        expect { job.perform_now }.not_to have_enqueued_job(described_class)
+
+        expect(Rails.logger).to have_received(:error)
+          .with(/RecalculateDataJob lock contention retries exhausted user_id=#{user.id}/)
+      end
     end
 
     context 'when an error occurs' do

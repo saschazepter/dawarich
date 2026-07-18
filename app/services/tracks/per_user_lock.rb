@@ -82,7 +82,7 @@ module Tracks
       thread = Thread.new do
         loop do
           break if stop.pop(timeout: interval)
-          break unless renew_or_report(key, token, ttl_ms, user_id)
+          break if lock_lost?(key, token, ttl_ms, user_id)
         end
       end
 
@@ -96,11 +96,11 @@ module Tracks
       heartbeat[:thread].join
     end
 
-    def self.renew_or_report(key, token, ttl_ms, user_id)
-      return true if renew(key, token, ttl_ms)
+    def self.lock_lost?(key, token, ttl_ms, user_id)
+      return false if renew(key, token, ttl_ms)
 
       Rails.logger.warn("event=tracks.per_user_lock_renew_lost user_id=#{user_id}")
-      false
+      true
     rescue StandardError => e
       Rails.logger.warn(
         "event=tracks.per_user_lock_renew_error user_id=#{user_id} error=#{e.class}: #{e.message}"

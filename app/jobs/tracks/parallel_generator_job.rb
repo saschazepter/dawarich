@@ -5,7 +5,12 @@
 class Tracks::ParallelGeneratorJob < ApplicationJob
   queue_as :tracks
 
-  retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5
+  retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5 do |job, error|
+    Rails.logger.error(
+      'Tracks::ParallelGeneratorJob lock contention retries exhausted ' \
+      "user_id=#{job.arguments.first}: #{error.message}"
+    )
+  end
 
   def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false)
     user = find_user_or_skip(user_id) || return
