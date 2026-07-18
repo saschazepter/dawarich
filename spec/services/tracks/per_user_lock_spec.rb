@@ -56,6 +56,27 @@ RSpec.describe Tracks::PerUserLock do
       expect(lock_ttl).to be > 0
     end
 
+    it 'uses a short lease so an orphaned lock frees within about a minute' do
+      remaining_ms = nil
+
+      described_class.with_user_lock(user_id) do
+        remaining_ms = Sidekiq.redis { |r| r.pttl(redis_key) }
+      end
+
+      expect(remaining_ms).to be_between(1, 60_000)
+    end
+
+    it 'renews the lock so it survives a block that outlives the initial lease' do
+      remaining_ms = nil
+
+      described_class.with_user_lock(user_id, ttl: 1) do
+        sleep 1.6
+        remaining_ms = Sidekiq.redis { |r| r.pttl(redis_key) }
+      end
+
+      expect(remaining_ms).to be > 0
+    end
+
     it 'raises AcquisitionTimeout when another holder owns the lock' do
       Sidekiq.redis { |r| r.set(redis_key, 'other-owner', ex: 60) }
 
