@@ -96,7 +96,7 @@ class PlacesController < ApplicationController
   def destroy
     @place.destroy!
 
-    redirect_to places_url, notice: 'Place was successfully destroyed.', status: :see_other
+    redirect_to places_url(page: params[:page]), notice: 'Place was successfully destroyed.', status: :see_other
   end
 
   private
