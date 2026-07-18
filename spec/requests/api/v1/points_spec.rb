@@ -248,13 +248,15 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when the upsert exhausts deadlock retries' do
       before do
         allow(Points::Create).to receive(:new).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+        allow(Rails.logger).to receive(:error)
       end
 
-      it 'returns a JSON error with a 500 status' do
+      it 'logs the failure and returns a JSON error with a 500 status' do
         post "/api/v1/points?api_key=#{user.api_key}", params: point_params
 
         expect(response).to have_http_status(:internal_server_error)
         expect(JSON.parse(response.body)).to include('error')
+        expect(Rails.logger).to have_received(:error).with(/Point creation failed: ActiveRecord::Deadlocked/)
       end
     end
 
