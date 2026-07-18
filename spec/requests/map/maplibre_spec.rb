@@ -19,6 +19,12 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
       expect(response.body).to include('Blueprint')
     end
+
+    it 'renders the studio date controls on the map page' do
+      get map_v2_path
+
+      expect(response.body).to include('data-poster-studio-editor-target="dateStart"')
+    end
   end
 
   describe 'print ordering' do

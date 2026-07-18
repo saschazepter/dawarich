@@ -1,3 +1,4 @@
+<% show_date_controls = local_assigns.fetch(:show_date_controls, true) %>
 <% poster_font_urls = %w[inter oswald playfair-display jetbrains-mono].flat_map do |key|
      %w[400 700].map { |weight| ["#{key}-#{weight}", asset_path("poster/#{key}-#{weight}.woff2")] }
    end.to_h %>
@@ -16,30 +17,35 @@
         <%= icon 'map', class: 'h-4 w-4 opacity-70' %>
         Poster Studio
       </h2>
-      <%# Changing dates reloads the map page (that's how track data loads);
-          the studio stashes its state and reopens itself afterwards. %>
-      <div class="flex items-center gap-2 min-w-0">
-        <input type="datetime-local" class="input input-bordered input-sm"
-               data-poster-studio-editor-target="dateStart">
-        <span class="text-xs opacity-60">–</span>
-        <input type="datetime-local" class="input input-bordered input-sm"
-               data-poster-studio-editor-target="dateEnd">
-        <button type="button" class="btn btn-sm btn-primary"
-                data-poster-studio-editor-target="loadButton"
-                data-action="poster-studio-editor#applyDates">
-          <span class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
-                data-poster-studio-editor-target="loadSpinner"></span>
-          <span data-poster-studio-editor-target="loadLabel">Load</span>
-        </button>
-        <div class="hidden items-center gap-1 lg:flex">
-          <button type="button" class="btn btn-sm btn-ghost"
-                  data-range="today" data-action="poster-studio-editor#presetRange">Today</button>
-          <button type="button" class="btn btn-sm btn-ghost"
-                  data-range="week" data-action="poster-studio-editor#presetRange">Last 7 days</button>
-          <button type="button" class="btn btn-sm btn-ghost"
-                  data-range="month" data-action="poster-studio-editor#presetRange">Last month</button>
+      <% if show_date_controls %>
+        <div class="flex items-center gap-2 min-w-0">
+          <input type="datetime-local" class="input input-bordered input-sm"
+                 data-poster-studio-editor-target="dateStart">
+          <span class="text-xs opacity-60">–</span>
+          <input type="datetime-local" class="input input-bordered input-sm"
+                 data-poster-studio-editor-target="dateEnd">
+          <button type="button" class="btn btn-sm btn-primary"
+                  data-poster-studio-editor-target="loadButton"
+                  data-action="poster-studio-editor#applyDates">
+            <span class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+                  data-poster-studio-editor-target="loadSpinner"></span>
+            <span data-poster-studio-editor-target="loadLabel">Load</span>
+          </button>
+          <div class="hidden items-center gap-1 lg:flex">
+            <button type="button" class="btn btn-sm btn-ghost"
+                    data-range="today" data-action="poster-studio-editor#presetRange">Today</button>
+            <button type="button" class="btn btn-sm btn-ghost"
+                    data-range="week" data-action="poster-studio-editor#presetRange">Last 7 days</button>
+            <button type="button" class="btn btn-sm btn-ghost"
+                    data-range="month" data-action="poster-studio-editor#presetRange">Last month</button>
+          </div>
         </div>
-      </div>
+      <% else %>
+        <div class="flex items-center gap-2 min-w-0 text-sm opacity-70">
+          <%= icon 'calendar-clock', class: 'h-4 w-4' %>
+          <span><%= local_assigns[:date_range_label] %></span>
+        </div>
+      <% end %>
       <button type="button" class="btn btn-ghost btn-sm btn-circle shrink-0" title="Close studio"
               data-action="poster-studio-editor#close">
         <%= icon 'x' %>
