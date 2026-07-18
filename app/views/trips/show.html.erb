@@ -137,7 +137,7 @@
                 class="btn btn-sm btn-outline gap-1"
                 data-trip-maplibre-target="posterBtn"
                 data-action="click->trip-maplibre#openPosterStudio"
-                title="Create a poster of this trip"
+                title="<%= @trip.path.blank? ? 'Available once the trip route is calculated' : 'Create a poster of this trip' %>"
                 <% if @trip.path.blank? %>disabled<% end %>>
           <%= icon 'image', class: 'w-4 h-4' %>
           <span class="hidden sm:inline">Poster</span>

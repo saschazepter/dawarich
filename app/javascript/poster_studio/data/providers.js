@@ -99,6 +99,31 @@ export class MapPageProvider {
   }
 }
 
+export function buildTripGeojson({
+  dayRouteCollections = [],
+  pathData = null,
+}) {
+  const features = []
+  for (const collection of dayRouteCollections) {
+    features.push(...(collection?.features ?? []))
+  }
+  if (!features.length && pathData) {
+    try {
+      const coordinates = JSON.parse(pathData)
+      if (Array.isArray(coordinates) && coordinates.length >= 2) {
+        features.push({
+          type: "Feature",
+          properties: {},
+          geometry: { type: "LineString", coordinates },
+        })
+      }
+    } catch {
+      // malformed path data falls through to an empty collection
+    }
+  }
+  return { type: "FeatureCollection", features }
+}
+
 export class TripProvider {
   constructor({ geojson, startAt, endAt, title }) {
     this.geojson = geojson ?? EMPTY_COLLECTION

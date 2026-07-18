@@ -9,7 +9,7 @@ import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { flightWindows } from "maps_maplibre/utils/flight_mask"
-import { TripProvider } from "poster_studio/data/providers"
+import { buildTripGeojson, TripProvider } from "poster_studio/data/providers"
 import Flash from "./flash_controller"
 
 /**
@@ -220,7 +220,6 @@ export default class extends Controller {
 
       this.dayRoutesLayer = new DayRoutesLayer(this.map)
       this.dayRoutesLayer.addDayRoutes(this.pointsByDay)
-      if (this.hasPosterBtnTarget) this.posterBtnTarget.disabled = false
 
       this.applyDayColors(dayKeys)
 
@@ -424,30 +423,12 @@ export default class extends Controller {
   }
 
   posterGeojson() {
-    const features = []
-    if (this.dayRoutesLayer) {
-      for (const dayRoute of this.dayRoutesLayer.dayRouteData.values()) {
-        features.push(...dayRoute.features)
-      }
-    }
-    if (!features.length) {
-      const pathData = this.getPathData()
-      if (pathData) {
-        try {
-          const coordinates = JSON.parse(pathData)
-          if (coordinates.length >= 2) {
-            features.push({
-              type: "Feature",
-              properties: {},
-              geometry: { type: "LineString", coordinates },
-            })
-          }
-        } catch {
-          // malformed path data falls through to an empty collection
-        }
-      }
-    }
-    return { type: "FeatureCollection", features }
+    return buildTripGeojson({
+      dayRouteCollections: this.dayRoutesLayer
+        ? [...this.dayRoutesLayer.dayRouteData.values()]
+        : [],
+      pathData: this.getPathData(),
+    })
   }
 
   // ===== Photos layer toggle (button-based) =====

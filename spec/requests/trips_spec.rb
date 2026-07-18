@@ -95,6 +95,7 @@ RSpec.describe '/trips', type: :request do
 
         button = Nokogiri::HTML(response.body).at_css('[data-trip-maplibre-target="posterBtn"]')
         expect(button['disabled']).to be_present
+        expect(button['title']).to eq('Available once the trip route is calculated')
       end
 
       it 'renders the poster gallery list' do
