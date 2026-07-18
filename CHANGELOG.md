@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.10.1] - Unreleased
 
+### Added
+
+- Dawarich can now be installed to the phone home screen as a web app (PWA): all pages link the web app manifest and Apple touch icon, and the installed app opens straight into Map v2.
+
 ### Changed
 
 - The legacy `latitude`/`longitude` columns on `points` are dropped — the PostGIS `lonlat` column has been the single source of truth since 0.25.0. The migration copies any remaining legacy-only coordinates into `lonlat` before dropping, so upgrades from older versions are safe. To reclaim the freed disk space on large instances, run `pg_repack -t points` (optional).
@@ -19,13 +23,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Track generation and user data recalculations now retry a bounded number of times when another job is already processing the same user's tracks, instead of dropping the request and reporting an error; a genuinely stuck lock is logged after the retries are exhausted. The per-user lock also renews itself while a job runs and frees within a minute if a worker dies, so a crashed job no longer blocks a user's track processing for up to half an hour.
+- Dawarich added to an iOS Home Screen now opens Map v2 instead of an unrelated previously visited page (#3097)
 - Point uploads (REST API, OwnTracks, Overland, Traccar) now write batches in a consistent order so concurrent uploads no longer deadlock each other, and both uploads and anomaly filtering recover automatically from any remaining transient database deadlocks instead of failing the upload or background job.
 - The app and Sidekiq containers no longer crash-loop on startup when `WEB_CONCURRENCY` or `BACKGROUND_PROCESSING_CONCURRENCY` reach the container as an unexpanded `${VAR:-default}` string (seen with some podman-compose versions); the entrypoint now warns and falls back to the default value (#3124)
 - Cache preheating no longer times out for accounts with large location histories.
 - Users downgraded to Lite with more than a year of history now receive the archival warnings gradually (heads-up, then email, then archived notice over 30 days) instead of an immediate "Data has been archived" notification. Upgrading off Lite resets the warning state.
 - TCX and KML imports no longer fail when text fields contain raw ampersands.
 - Outgoing email now works with local unauthenticated SMTP relays: set `SMTP_AUTHENTICATION=none` (also `off`/`false`/`disabled`) to disable SMTP AUTH instead of hitting "SMTP-AUTH requested but missing user name" (#3147, #2690, #1469, #1463)
+- Deleting a place from the Places list no longer jumps back to the first page — you stay on the page you were viewing (#3145)
 - Map v2 now applies the existing simplified point-rendering mode, so dense point streams are thinned on the map when that setting is selected. Only the points layer is thinned — heatmap, fog of war, scratch map, and routes are still built from the full point set (#946).
+- Statistics pages no longer fail to load when older monthly data contains malformed country or city entries. Recalculating stats for an affected month repairs the stored data.
+
 
 
 ## [1.10.0] - 2026-07-15
