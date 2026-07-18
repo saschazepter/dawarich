@@ -51,25 +51,19 @@ RSpec.describe Fit::Importer do
         expect(Time.zone.at(point.timestamp).year).to eq(2024)
       end
 
-      it 'parses heart rate into raw_data' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['heart_rate']).to eq(140)
+      it 'does not persist raw_data for imported points' do
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
 
-      it 'parses cadence into raw_data' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['cadence']).to eq(80)
-      end
+      it 'maps activity type from session sport into motion_data' do
+        point = Point.where(import_id: import.id).first
 
-      it 'maps activity type from session sport' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['activity_type']).to eq('cycling')
+        expect(point.motion_data['activity_type']).to eq('cycling')
       end
 
       it 'imports all records with correct ordering' do
         points = user.points.order(:timestamp)
         expect(points.last.lat).to be_within(0.001).of(52.522)
-        expect(points.last.raw_data['heart_rate']).to eq(150)
       end
     end
 
@@ -96,9 +90,10 @@ RSpec.describe Fit::Importer do
         expect(point.lon).to be_within(0.0001).of(13.4050)
       end
 
-      it 'maps activity type from session sport' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['activity_type']).to eq('cycling')
+      it 'maps activity type from session sport into motion_data' do
+        point = Point.where(import_id: import.id).first
+
+        expect(point.motion_data['activity_type']).to eq('cycling')
       end
     end
 

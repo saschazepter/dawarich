@@ -118,6 +118,29 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           .to eq('https://tiles.example.com/{z}/{x}/{y}.mvt')
       end
 
+      it 'rejects a maps_maplibre_tiles_url missing a coordinate placeholder' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}.mvt' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body['errors']).to include('Tile URL must include {z}, {x}, and {y} placeholders')
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a non-string maps_maplibre_tiles_url without raising' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { maps_maplibre_tiles_url: 123 } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'normalizes a whitespace-only maps_maplibre_tiles_url to nil' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { maps_maplibre_tiles_url: '   ' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
       it 'merges nested maps settings without clobbering v1 keys' do
         user.settings['maps'] = {
           'name' => 'OSM', 'url' => +'https://tile.example/{z}/{x}/{y}.png', 'distance_unit' => 'km'

@@ -66,7 +66,7 @@ RSpec.describe Visits::Suggest do
       expect { subject }.to change(Place, :count).by(1)
     end
 
-    it 'creates visits' do
+    it 'creates separate visits across a same-location time gap above the configured maximum' do
       expect { subject }.to change(Visit, :count).by(2)
     end
 
@@ -140,14 +140,6 @@ RSpec.describe Visits::Suggest do
       create(:point, :with_known_location, user:, timestamp: start_time + 190.minutes)
       # end of second visit
     ]
-  end
-
-  def clear_enqueued_jobs
-    ActiveJob::Base.queue_adapter.enqueued_jobs.clear
-  end
-
-  def enqueued_jobs
-    ActiveJob::Base.queue_adapter.enqueued_jobs
   end
 
   def have_job_class(job_class)

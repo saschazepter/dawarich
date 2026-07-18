@@ -148,6 +148,7 @@ const TRANSPORTATION_EXPERT_THRESHOLD_MAP = {
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
+  static saveQueue = Promise.resolve()
 
   /**
    * Initialize settings manager with API key
@@ -506,6 +507,13 @@ export class SettingsManager {
     return SettingsManager.getSettings()[key]
   }
 
+  static validVectorTilesUrl(url) {
+    return (
+      !url ||
+      ["{z}", "{x}", "{y}"].every((placeholder) => url.includes(placeholder))
+    )
+  }
+
   /**
    * Update a specific setting and save to backend
    * @param {string} key - Setting key
@@ -513,10 +521,16 @@ export class SettingsManager {
    * @returns {Promise<Object|null>} API response data
    */
   static async updateSetting(key, value) {
-    const settings = SettingsManager.getSettings()
-    settings[key] = value
+    return await SettingsManager.updateSettings({ [key]: value })
+  }
 
-    const isLayerSetting = Object.values(LAYER_NAME_MAP).includes(key)
+  static async updateSettings(updates) {
+    const settings = SettingsManager.getSettings()
+    Object.assign(settings, updates)
+
+    const isLayerSetting = Object.keys(updates).some((key) =>
+      Object.values(LAYER_NAME_MAP).includes(key),
+    )
     if (isLayerSetting) {
       settings.enabledMapLayers =
         SettingsManager._collapseLayerSettings(settings)
@@ -524,7 +538,13 @@ export class SettingsManager {
 
     SettingsManager.updateCache(settings)
 
-    return await SettingsManager.saveToBackend(settings)
+    const previousSave = SettingsManager.saveQueue.catch(() => null)
+    const save = previousSave.then(() =>
+      SettingsManager.saveToBackend(settings),
+    )
+    SettingsManager.saveQueue = save
+
+    return await save
   }
 
   /**
