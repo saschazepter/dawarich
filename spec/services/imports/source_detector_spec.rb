@@ -336,6 +336,22 @@ RSpec.describe Imports::SourceDetector do
       end
     end
 
+    context 'with a KML file that has a UTF-8 BOM, read via file header (#3101)' do
+      let(:tmp_path) do
+        file = Tempfile.new(['kml_with_bom', '.kml'])
+        file.binmode
+        file.write("\xEF\xBB\xBF".b)
+        file.write(file_fixture('kml/points_with_timestamps.kml').read)
+        file.close
+        file.path
+      end
+
+      it 'detects kml despite the BOM' do
+        detector = described_class.new_from_file_header(tmp_path)
+        expect(detector.detect_source).to eq(:kml)
+      end
+    end
+
     context 'with JSON markers beyond the 8KB header window' do
       let(:tmp_path) do
         path = Tempfile.new(['phone_takeout_large', '.json']).path
