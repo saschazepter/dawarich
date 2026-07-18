@@ -213,6 +213,20 @@ RSpec.describe Archivable, type: :model do
       expect(captured).to eq([earlier, later])
     end
 
+    it 'orders rows chronologically regardless of timestamp type or UTC offset' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      later = base_row.merge(timestamp: DateTime.parse('2026-07-18T09:30:00+01:00'))
+      earlier = base_row.merge(timestamp: DateTime.parse('2026-07-18T10:00:00+03:00'))
+      Point.archival_safe_upsert_all([later, earlier], returning: Arel.sql('id'))
+
+      expect(captured).to eq([earlier, later])
+    end
+
     context 'when the upsert hits a transient deadlock' do
       it 'retries with jittered backoff and returns the result' do
         attempts = 0
