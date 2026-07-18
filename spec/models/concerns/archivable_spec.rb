@@ -241,6 +241,22 @@ RSpec.describe Archivable, type: :model do
       expect(captured).to eq([west, east])
     end
 
+    it 'does not raise while sorting a batch containing a malformed lonlat' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      valid = base_row.merge(timestamp: 1_700_000_600)
+      malformed = base_row.merge(lonlat: 'not-a-point', timestamp: 1_700_000_660)
+
+      expect do
+        Point.archival_safe_upsert_all([malformed, valid], returning: Arel.sql('id'))
+      end.not_to raise_error
+      expect(captured.first).to eq(valid)
+    end
+
     context 'when the upsert hits a transient deadlock' do
       it 'retries with jittered backoff and returns the result' do
         attempts = 0

@@ -5,9 +5,9 @@ class Points::AnomalyFilterJob < ApplicationJob
 
   retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3 do |job, error|
     user_id, start_time, end_time = job.arguments
-    ExceptionReporter.call(
-      error,
-      "Points::AnomalyFilterJob retries exhausted user_id=#{user_id} range=#{start_time}..#{end_time}"
+    Rails.logger.error(
+      "Points::AnomalyFilterJob retries exhausted user_id=#{user_id} " \
+      "range=#{start_time}..#{end_time}: #{error.class}: #{error.message}"
     )
   end
 
