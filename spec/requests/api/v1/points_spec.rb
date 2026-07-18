@@ -245,6 +245,19 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(json_response.first['timestamp']).to be_an_instance_of(Integer)
     end
 
+    context 'when the upsert exhausts deadlock retries' do
+      before do
+        allow(Points::Create).to receive(:new).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+      end
+
+      it 'returns a JSON error with a 500 status' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)).to include('error')
+      end
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)

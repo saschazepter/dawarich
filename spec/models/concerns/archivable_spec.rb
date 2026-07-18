@@ -227,6 +227,20 @@ RSpec.describe Archivable, type: :model do
       expect(captured).to eq([earlier, later])
     end
 
+    it 'orders rows by geographic coordinate rather than lexical WKT string' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      east = base_row.merge(lonlat: 'POINT(13 52)', timestamp: 1_700_000_400)
+      west = base_row.merge(lonlat: 'POINT(9 52)', timestamp: 1_700_000_460)
+      Point.archival_safe_upsert_all([east, west], returning: Arel.sql('id'))
+
+      expect(captured).to eq([west, east])
+    end
+
     context 'when the upsert hits a transient deadlock' do
       it 'retries with jittered backoff and returns the result' do
         attempts = 0

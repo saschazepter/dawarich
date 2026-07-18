@@ -30,13 +30,7 @@ module Archivable
     def archival_safe_upsert_all(rows, returning:)
       return [] if rows.empty?
 
-      rows = rows.sort_by do |row|
-        [
-          (row[:lonlat] || row['lonlat']).to_s,
-          (row[:timestamp] || row['timestamp']).to_i,
-          (row[:user_id] || row['user_id']).to_i
-        ]
-      end
+      rows = rows.sort_by { |row| dedup_key(row) }
       update_columns = rows.first.keys.map(&:to_sym) - UPSERT_CONFLICT_KEYS - %i[created_at]
 
       set_clauses = update_columns.map do |column|
