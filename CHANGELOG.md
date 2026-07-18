@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Cache preheating no longer times out for accounts with large location histories.
 - Users downgraded to Lite with more than a year of history now receive the archival warnings gradually (heads-up, then email, then archived notice over 30 days) instead of an immediate "Data has been archived" notification. Upgrading off Lite resets the warning state.
 - TCX and KML imports no longer fail when text fields contain raw ampersands.
+- Map v2 now applies the existing simplified point-rendering mode, so dense point streams are thinned on the map when that setting is selected. Only the points layer is thinned — heatmap, fog of war, scratch map, and routes are still built from the full point set (#946).
 
 
 ## [1.10.0] - 2026-07-15
