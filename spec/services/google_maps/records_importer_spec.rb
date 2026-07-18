@@ -150,13 +150,10 @@ RSpec.describe GoogleMaps::RecordsImporter do
         expect(created_point.battery).to eq(1) # true -> 1
       end
 
-      it 'stores all fields in raw_data' do
+      it 'does not persist raw_data for imported points' do
         parser
-        created_point = Point.last
 
-        expect(created_point.raw_data['source']).to eq('WIFI')
-        expect(created_point.raw_data['deviceTag']).to eq(1_234_567_890)
-        expect(created_point.raw_data['platformType']).to eq('ANDROID')
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
     end
 

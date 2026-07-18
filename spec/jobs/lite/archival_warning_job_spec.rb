@@ -149,5 +149,52 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect { described_class.perform_now }.not_to change(Notification, :count)
       end
     end
+
+    context 'when a Pro user with years of history is freshly downgraded to Lite' do
+      let!(:downgraded) { create(:user).tap { |u| u.update_column(:plan, User.plans[:pro]) } }
+
+      before do
+        create(:point, user: downgraded, timestamp: 14.months.ago.to_i)
+        downgraded.update!(plan: :lite)
+      end
+
+      it 'sends only the approaching warning on the first run' do
+        expect { described_class.perform_now }
+          .to change { Notification.where(user: downgraded).count }.by(1)
+
+        notification = Notification.where(user: downgraded).last
+        expect(notification.title).to include('30 days')
+      end
+
+      it 'does not enqueue the email on the first run' do
+        expect { described_class.perform_now }
+          .not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'sends the email once the user has been Lite for 15 days' do
+        described_class.perform_now
+        set_lite_since(downgraded, 16.days.ago)
+
+        expect { described_class.perform_now }
+          .to have_enqueued_job(Users::MailerSendingJob)
+          .with(downgraded.id, 'archival_approaching')
+      end
+
+      it 'sends the archived notification once the user has been Lite for 30 days' do
+        described_class.perform_now
+        set_lite_since(downgraded, 31.days.ago)
+
+        expect { described_class.perform_now }
+          .to change { Notification.where(user: downgraded).count }.by(1)
+
+        notification = Notification.where(user: downgraded).order(:created_at).last
+        expect(notification.title).to include('archived')
+      end
+    end
+  end
+
+  def set_lite_since(user, time)
+    user.reload
+    user.update_column(:settings, user.settings.merge('lite_since' => time.iso8601))
   end
 end
