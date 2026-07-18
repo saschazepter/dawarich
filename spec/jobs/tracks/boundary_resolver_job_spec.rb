@@ -33,7 +33,7 @@ RSpec.describe Tracks::BoundaryResolverJob do
     expect(ExceptionReporter).not_to have_received(:call)
   end
 
-  it 'logs and stops retrying once attempts are exhausted' do
+  it 'logs, fails the session, and stops retrying once attempts are exhausted' do
     allow(Rails.logger).to receive(:error)
     job = described_class.new(user.id, session_id)
     job.exception_executions = { '[Tracks::PerUserLock::AcquisitionTimeout]' => 4 }
@@ -42,5 +42,6 @@ RSpec.describe Tracks::BoundaryResolverJob do
 
     expect(Rails.logger).to have_received(:error)
       .with(/BoundaryResolverJob lock contention retries exhausted user_id=#{user.id}/)
+    expect(session_manager).to have_received(:mark_failed)
   end
 end

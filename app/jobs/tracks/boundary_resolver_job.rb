@@ -6,10 +6,12 @@ class Tracks::BoundaryResolverJob < ApplicationJob
   queue_as :tracks
 
   retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5 do |job, error|
+    user_id, session_id = job.arguments
     Rails.logger.error(
       'Tracks::BoundaryResolverJob lock contention retries exhausted ' \
-      "user_id=#{job.arguments.first}: #{error.message}"
+      "user_id=#{user_id}: #{error.message}"
     )
+    Tracks::SessionManager.new(user_id, session_id).mark_failed(error.message) if session_id
   end
 
   MAX_RETRIES = 5
