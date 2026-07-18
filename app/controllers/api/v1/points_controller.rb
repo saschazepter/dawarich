@@ -89,6 +89,7 @@ class Api::V1::PointsController < ApiController
     render json: { data: sanitized }
   rescue StandardError => e
     Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
+    Sentry.capture_exception(e) if defined?(Sentry)
 
     render json: { error: 'Point creation failed' }, status: :internal_server_error
   end
