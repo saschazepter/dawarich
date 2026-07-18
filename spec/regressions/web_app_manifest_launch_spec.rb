@@ -69,4 +69,10 @@ RSpec.describe 'PWA installability', type: :request do
 
     it_behaves_like 'a page with PWA meta tags'
   end
+
+  describe 'shared layout (public share pages)' do
+    before { get public_shared_link_path(create(:shared_link)) }
+
+    it_behaves_like 'a page with PWA meta tags'
+  end
 end
