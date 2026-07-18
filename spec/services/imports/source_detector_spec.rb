@@ -85,6 +85,24 @@ RSpec.describe Imports::SourceDetector do
       end
     end
 
+    context 'with GPX file prefixed with a UTF-8 BOM (#3101)' do
+      let(:file_content) { "\xEF\xBB\xBF#{file_fixture('gpx/gpx_track_single_segment.gpx').read}" }
+      let(:filename) { 'test.gpx' }
+
+      it 'detects gpx format despite the BOM' do
+        expect(detector.detect_source).to eq(:gpx)
+      end
+    end
+
+    context 'with KML file prefixed with a UTF-8 BOM (#3101)' do
+      let(:file_content) { "\xEF\xBB\xBF#{file_fixture('kml/points_with_timestamps.kml').read}" }
+      let(:filename) { 'test.kml' }
+
+      it 'detects kml format despite the BOM' do
+        expect(detector.detect_source).to eq(:kml)
+      end
+    end
+
     context 'with invalid JSON' do
       let(:file_content) { 'invalid json content' }
 
@@ -299,6 +317,38 @@ RSpec.describe Imports::SourceDetector do
       it 'detects google_semantic_history despite BOM' do
         detector = described_class.new_from_file_header(fixture_path)
         expect(detector.detect_source).to eq(:google_semantic_history)
+      end
+    end
+
+    context 'with a GPX file that has a UTF-8 BOM, read via file header (#3101)' do
+      let(:tmp_path) do
+        file = Tempfile.new(['gpx_with_bom', '.gpx'])
+        file.binmode
+        file.write("\xEF\xBB\xBF".b)
+        file.write(file_fixture('gpx/gpx_track_single_segment.gpx').read)
+        file.close
+        file.path
+      end
+
+      it 'detects gpx despite the BOM' do
+        detector = described_class.new_from_file_header(tmp_path)
+        expect(detector.detect_source).to eq(:gpx)
+      end
+    end
+
+    context 'with a KML file that has a UTF-8 BOM, read via file header (#3101)' do
+      let(:tmp_path) do
+        file = Tempfile.new(['kml_with_bom', '.kml'])
+        file.binmode
+        file.write("\xEF\xBB\xBF".b)
+        file.write(file_fixture('kml/points_with_timestamps.kml').read)
+        file.close
+        file.path
+      end
+
+      it 'detects kml despite the BOM' do
+        detector = described_class.new_from_file_header(tmp_path)
+        expect(detector.detect_source).to eq(:kml)
       end
     end
 

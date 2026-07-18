@@ -143,6 +143,7 @@ class Imports::SourceDetector
       else
         file_content
       end
+    content_to_check = strip_bom(content_to_check)
     (
       content_to_check.strip.start_with?('<?xml') ||
       content_to_check.strip.start_with?('<gpx')
@@ -159,6 +160,7 @@ class Imports::SourceDetector
       else
         file_content
       end
+    content_to_check = strip_bom(content_to_check)
 
     # Check if it's a KMZ file (ZIP archive)
     if filename&.downcase&.end_with?('.kmz')
