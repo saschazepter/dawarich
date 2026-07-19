@@ -24,9 +24,18 @@ module Imports
 
       inserted
     rescue StandardError => e
+      raise if atomic_bulk_insert?
+
       on_bulk_insert_error(e)
       create_import_error_notification("Failed to process #{importer_name} data: #{e.message}")
       0
+    end
+
+    # Importers that wrap the whole import in a transaction override this to true, so an
+    # insert failure propagates and rolls back cleanly instead of poisoning the transaction
+    # (a swallowed error would leave the connection aborted for the notification write).
+    def atomic_bulk_insert?
+      false
     end
 
     def record_batch_counters(attempted, skipped)

@@ -19,8 +19,10 @@ class Geojson::Importer
     path = resolve_file_path
     validate_json(path)
     initialize_stream
-    stream_features(path)
-    flush_batch
+    ActiveRecord::Base.transaction do
+      stream_features(path)
+      flush_batch
+    end
   ensure
     cleanup_temp_file
   end
@@ -78,6 +80,10 @@ class Geojson::Importer
     bulk_insert_points(batch)
     @processed_points += batch.size
     broadcast_import_progress(import, @processed_points)
+  end
+
+  def atomic_bulk_insert?
+    true
   end
 
   def importer_name

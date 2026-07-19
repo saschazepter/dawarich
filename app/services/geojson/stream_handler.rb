@@ -32,7 +32,7 @@ class Geojson::StreamHandler < Oj::Saj
     normalized_key = normalize_string(key)
     parent = @stack.last
 
-    state = if parent.is_a?(HashState) && parent.root && normalized_key == 'features'
+    state = if parent.is_a?(HashState) && parent.root && normalized_key == 'features' && feature_collection?(parent)
               FeatureStreamState.new(normalized_key)
             else
               ArrayState.new([], normalized_key)
@@ -52,6 +52,11 @@ class Geojson::StreamHandler < Oj::Saj
   end
 
   private
+
+  def feature_collection?(root)
+    type = root.data['type']
+    type.nil? || type == 'FeatureCollection'
+  end
 
   def dispatch_to_parent(parent, value, key)
     return unless parent

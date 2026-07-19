@@ -53,4 +53,17 @@ RSpec.describe Geojson::StreamHandler do
 
     expect(yielded).to be_empty
   end
+
+  it 'does not stream a features array when the root type is not FeatureCollection' do
+    feature = {
+      'type' => 'Feature',
+      'geometry' => { 'type' => 'Point', 'coordinates' => [13.4, 52.5] },
+      'properties' => {}
+    }
+    yielded = []
+
+    parse({ 'type' => 'Topology', 'features' => [feature] }) { |value| yielded << value }
+
+    expect(yielded).to be_empty
+  end
 end

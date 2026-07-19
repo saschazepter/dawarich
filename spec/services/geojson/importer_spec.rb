@@ -15,8 +15,8 @@ RSpec.describe Geojson::Importer do
       expect { call_service }.to change { Point.count }.by(10)
     end
 
-    it 'does not load the complete JSON document into memory' do
-      allow(service).to receive(:load_json_data).and_raise('full document load attempted')
+    it 'streams without invoking the eager full-document loader' do
+      expect(service).not_to receive(:load_json_data)
 
       expect { call_service }.to change { Point.count }.by(10)
     end
@@ -49,6 +49,46 @@ RSpec.describe Geojson::Importer do
         original_count = Point.count
 
         expect { malformed_service.call }.to raise_error(Oj::ParseError)
+        expect(Point.count).to eq(original_count)
+      end
+    end
+
+    it 'rolls back and surfaces the real error when a batch insert fails mid-stream' do
+      stub_const('Geojson::Importer::BATCH_SIZE', 3)
+      call_count = 0
+      allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+        call_count += 1
+        raise ActiveRecord::StatementInvalid, 'simulated batch failure' if call_count == 2
+
+        original.call(*args, **kwargs)
+      end
+      original_count = Point.count
+
+      expect { call_service }.to raise_error(ActiveRecord::StatementInvalid, /simulated batch failure/)
+      expect(Point.count).to eq(original_count)
+    end
+
+    it 'rolls back all points when a feature raises after an earlier batch flushed' do
+      stub_const('Geojson::Importer::BATCH_SIZE', 2)
+
+      document = <<~JSON
+        {
+          "type": "FeatureCollection",
+          "features": [
+            { "type": "Feature", "geometry": { "type": "Point", "coordinates": [13.4, 52.5] }, "properties": { "timestamp": 1609459201 } },
+            { "type": "Feature", "geometry": { "type": "Point", "coordinates": [13.5, 52.6] }, "properties": { "timestamp": 1609459262 } },
+            { "type": "Feature", "geometry": { "type": "Point", "coordinates": [13.6, 52.7] }, "properties": null }
+          ]
+        }
+      JSON
+
+      Tempfile.create(['partial', '.geojson']) do |file|
+        file.write(document)
+        file.flush
+        partial_service = described_class.new(import, user.id, file.path)
+        original_count = Point.count
+
+        expect { partial_service.call }.to raise_error(NoMethodError)
         expect(Point.count).to eq(original_count)
       end
     end
