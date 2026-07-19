@@ -120,6 +120,59 @@ RSpec.describe Imports::ZipExtractor do
       end
     end
 
+    context 'with more than 1,000 files' do
+      let(:zip_path) do
+        path = Rails.root.join('tmp', "test_many_files_#{SecureRandom.hex(4)}.zip").to_s
+        gpx_content = File.read(Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx'))
+        ::Zip::File.open(path, create: true) do |zipfile|
+          1000.times do |index|
+            zipfile.get_output_stream("metadata/entry_#{index}.txt") { |file| file.write('metadata') }
+          end
+          2.times do |index|
+            zipfile.get_output_stream("tracks/track_#{index}.gpx") { |file| file.write(gpx_content) }
+          end
+        end
+        path
+      end
+
+      after { File.delete(zip_path) if File.exist?(zip_path) }
+
+      it 'accepts exports past the previous limit and imports the supported files' do
+        expect { described_class.new(import, user.id, zip_path).call }.not_to raise_error
+
+        names = user.imports.where.not(id: import.id).pluck(:name)
+        expect(names).to contain_exactly(
+          'track_0.gpx (from test_archive.zip)',
+          'track_1.gpx (from test_archive.zip)'
+        )
+        expect(Import.exists?(import.id)).to be(false)
+      end
+    end
+
+    context 'when the file-count safety limit is exceeded' do
+      let(:zip_path) do
+        path = Rails.root.join('tmp', "test_too_many_files_#{SecureRandom.hex(4)}.zip").to_s
+        ::Zip::File.open(path, create: true) do |zipfile|
+          3.times do |index|
+            zipfile.get_output_stream("entry_#{index}.txt") { |file| file.write('metadata') }
+          end
+        end
+        path
+      end
+
+      before { stub_const("#{described_class}::MAX_FILES", 2) }
+
+      after { File.delete(zip_path) if File.exist?(zip_path) }
+
+      it 'rejects the archive and reports the configured ceiling' do
+        expect do
+          described_class.new(import, user.id, zip_path).call
+        end.to raise_error('Too many files in archive (max 2)')
+
+        expect(import.reload).to be_failed
+      end
+    end
+
     context 'when extraction fails' do
       let(:zip_path) { '/nonexistent/path/to/archive.zip' }
 
