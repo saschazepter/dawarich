@@ -16,6 +16,7 @@ import {
   PRINT_PRODUCTS,
   printProductFor,
 } from "poster_studio/data/print_products"
+import { MapPageProvider } from "poster_studio/data/providers"
 import {
   extendTokens,
   loadThemeTokens,
@@ -120,7 +121,7 @@ export default class extends Controller {
       document.body.appendChild(this.element)
       return
     }
-    this.onOpen = () => this.open()
+    this.onOpen = (event) => this.open(event.detail?.provider)
     document.addEventListener("poster-studio:open", this.onOpen)
     this.onResize = () => this.resizeFrame()
     this.populateLayouts()
@@ -135,14 +136,18 @@ export default class extends Controller {
     if (this.backdropUrl) URL.revokeObjectURL(this.backdropUrl)
   }
 
-  async open() {
+  async open(provider = null) {
     if (!this.element.classList.contains("hidden")) return
+    this.provider =
+      provider ?? new MapPageProvider({ application: this.application })
     this.element.classList.remove("hidden")
     window.addEventListener("resize", this.onResize)
 
     try {
       this.hidden ??= new Set(DEFAULT_HIDDEN)
       if (!this.tokens) await this.seedTheme(this.initialThemeKey())
+      if (!this.titleInputTarget.value)
+        this.titleInputTarget.value = this.provider.defaultTitle()
       if (!this.subtitleInputTarget.value)
         this.subtitleInputTarget.value = this.dateRangeLabel()
       this.seedDateInputs()
@@ -173,7 +178,8 @@ export default class extends Controller {
 
   createMap() {
     this.teardown()
-    const bounds = trackBounds(this.trackGeojson) ?? this.mainMapBounds()
+    const bounds =
+      trackBounds(this.trackGeojson) ?? this.provider.fallbackBounds()
     this.previewMap = createPreviewMap({
       container: this.mapContainerTarget,
       style: this.posterStyle(),
@@ -432,11 +438,11 @@ export default class extends Controller {
   }
 
   dateRangeLabel() {
-    const controller = this.mapController
-    if (!controller?.startDateValue || !controller?.endDateValue) return ""
+    const { startAt, endAt } = this.provider?.dateRange() ?? {}
+    if (!startAt || !endAt) return ""
     const options = { day: "numeric", month: "short", year: "numeric" }
-    const start = new Date(controller.startDateValue)
-    const end = new Date(controller.endDateValue)
+    const start = new Date(startAt)
+    const end = new Date(endAt)
     return `${start.toLocaleDateString("en-GB", options)} – ${end.toLocaleDateString("en-GB", options)}`
   }
 
@@ -458,38 +464,26 @@ export default class extends Controller {
   // ===== Date range =====
 
   seedDateInputs() {
-    const controller = this.mapController
-    if (!controller?.startDateValue) return
-    this.dateStartTarget.value = toLocalInput(
-      new Date(controller.startDateValue),
-    )
-    this.dateEndTarget.value = toLocalInput(new Date(controller.endDateValue))
+    if (!this.hasDateStartTarget || !this.hasDateEndTarget) return
+    const { startAt, endAt } = this.provider.dateRange()
+    if (!startAt) return
+    this.dateStartTarget.value = toLocalInput(new Date(startAt))
+    this.dateEndTarget.value = toLocalInput(new Date(endAt))
   }
 
-  // SPA date change, same as the timeline: dispatch the shared event so the
-  // main map reloads its layers in place — the studio never closes. The URL
-  // is pushed for browser-state consistency.
+  // SPA date change delegated to the provider — the studio never closes.
   async applyDates() {
+    if (!this.provider?.supportsDateNavigation) return
     const start = this.dateStartTarget.value
     const end = this.dateEndTarget.value
-    if (!start || !end || !this.mapController) return
-
-    const params = new URLSearchParams(window.location.search)
-    params.set("start_at", start)
-    params.set("end_at", end)
-    window.history.pushState({}, "", `/map/v2?${params.toString()}`)
+    if (!start || !end) return
 
     const subtitleWasAuto =
       this.subtitleInputTarget.value === this.dateRangeLabel()
     this.setLoadBusy(true)
     this.setStatus("Loading tracks for the new range…")
     try {
-      document.dispatchEvent(
-        new CustomEvent("timeline-feed:date-navigated", {
-          detail: { startAt: start, endAt: end },
-        }),
-      )
-      await this.waitForTrackReload()
+      await this.provider.applyDates(start, end)
 
       if (subtitleWasAuto)
         this.subtitleInputTarget.value = this.dateRangeLabel()
@@ -507,35 +501,6 @@ export default class extends Controller {
     this.loadButtonTarget.disabled = value
     this.loadSpinnerTarget.classList.toggle("hidden", !value)
     this.loadLabelTarget.textContent = value ? "Loading…" : "Load"
-  }
-
-  // The reload replaces the layer data objects; wait for the identity to
-  // change and then stay stable for two polls (progressive loading lands
-  // in several passes), capped at ~16s.
-  async waitForTrackReload() {
-    const layerManager = this.mapController?.layerManager
-    const snapshot = () => ({
-      routes: layerManager?.getLayer("routes")?.data,
-      tracks: layerManager?.getLayer("tracks")?.data,
-    })
-    const before = snapshot()
-    let changed = false
-    let stable = 0
-    let last = before
-    for (let i = 0; i < 40; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      const current = snapshot()
-      if (current.routes !== before.routes || current.tracks !== before.tracks)
-        changed = true
-      if (changed) {
-        stable =
-          current.routes === last.routes && current.tracks === last.tracks
-            ? stable + 1
-            : 0
-        if (stable >= 2) return
-      }
-      last = current
-    }
   }
 
   presetRange(event) {
@@ -560,7 +525,8 @@ export default class extends Controller {
   // ===== Map interaction =====
 
   recenter() {
-    const bounds = trackBounds(this.trackGeojson) ?? this.mainMapBounds()
+    const bounds =
+      trackBounds(this.trackGeojson) ?? this.provider.fallbackBounds()
     if (bounds) this.previewMap?.fitBounds(bounds, { padding: 24 })
   }
 
@@ -758,9 +724,10 @@ export default class extends Controller {
     this.saveLatTarget.value = center.lat
     this.saveLonTarget.value = center.lng
     this.saveDistanceTarget.value = distance
-    this.saveStartAtTarget.value = this.mapController?.startDateValue || ""
-    this.saveEndAtTarget.value = this.mapController?.endDateValue || ""
-    this.saveSourceTarget.value = this.trackSource
+    const { startAt, endAt } = this.provider.dateRange()
+    this.saveStartAtTarget.value = startAt || ""
+    this.saveEndAtTarget.value = endAt || ""
+    this.saveSourceTarget.value = this.provider.trackSource()
     this.saveOpacityTarget.value = this.trackOpacityTarget.value
     this.saveFormTarget.requestSubmit()
     this.setStatus("Queued — rendering server-side into Recent posters…")
@@ -827,41 +794,12 @@ export default class extends Controller {
 
   // ===== Data plumbing =====
 
-  get trackSource() {
-    const layerManager = this.mapController?.layerManager
-    if (layerManager?.getLayer("routes")?.data?.features?.length)
-      return "routes"
-    if (layerManager?.getLayer("tracks")?.data?.features?.length)
-      return "tracks"
-    return "routes"
-  }
-
   get trackGeojson() {
     return (
-      this.mapController?.layerManager?.getLayer(this.trackSource)?.data ?? {
+      this.provider?.trackGeojson() ?? {
         type: "FeatureCollection",
         features: [],
       }
-    )
-  }
-
-  mainMapBounds() {
-    const bounds = this.mapController?.map?.getBounds()
-    if (!bounds) return null
-    return [
-      [bounds.getWest(), bounds.getSouth()],
-      [bounds.getEast(), bounds.getNorth()],
-    ]
-  }
-
-  get mapController() {
-    const container = document.getElementById("maps-maplibre-container")
-    return (
-      container &&
-      this.application.getControllerForElementAndIdentifier(
-        container,
-        "maps--maplibre",
-      )
     )
   }
 

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- The Poster Studio can now be opened directly from a trip's page, pre-loaded with the trip's route, date range, and name.
+
 - Dawarich can now be installed to the phone home screen as a web app (PWA): all pages link the web app manifest and Apple touch icon, and the installed app opens straight into Map v2.
 
 ### Changed
