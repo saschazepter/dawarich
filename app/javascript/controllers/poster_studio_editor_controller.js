@@ -107,9 +107,14 @@ export default class extends Controller {
     "sizePickerOptions",
     "orderDialog",
     "orderSummary",
-    "orderStatus",
     "orderError",
-    "orderConfirmButton",
+    "orderActions",
+    "orderSteps",
+    "orderStep",
+    "uploadBar",
+    "checkoutLink",
+    "orderPageLink",
+    "orderDoneButton",
   ]
   static values = { fonts: Object, printOrderUrl: String }
 
@@ -352,8 +357,9 @@ export default class extends Controller {
     this.syncOrderAvailability()
     // Keep an open order view in sync with the new size: an orderable size
     // refreshes the dialog (and its price); a non-orderable one falls back to
-    // the size picker.
-    if (this.orderViewOpen) this.openOrder()
+    // the size picker. Skipped while an order is rendering/uploading so the
+    // step list isn't reset mid-flight.
+    if (this.orderViewOpen && !this.busy) this.openOrder()
   }
 
   get orderViewOpen() {
@@ -620,7 +626,7 @@ export default class extends Controller {
   showOrderDialog(product) {
     this.orderSummaryTarget.textContent = `${this.layout.name} poster — ${product.priceLabel}`
     this.orderErrorTarget.classList.add("hidden")
-    this.orderStatusTarget.textContent = ""
+    this.resetOrderSteps()
     this.showOrderView("dialog")
   }
 
@@ -649,12 +655,10 @@ export default class extends Controller {
     const product = printProductFor(layout.id)
     if (!product) return
 
-    const checkoutTab = window.open("", "_blank")
     try {
       this.setBusy(true)
-      this.orderConfirmButtonTarget.disabled = true
       this.orderErrorTarget.classList.add("hidden")
-      this.orderStatusTarget.textContent = "Rendering print PDF…"
+      this.beginOrderSteps()
 
       const mapBounds = this.previewMap.getBounds()
       const { blob } = await exportPoster({
@@ -675,34 +679,77 @@ export default class extends Controller {
         },
       })
 
-      this.orderStatusTarget.textContent = "Uploading…"
-      const { checkoutUrl } = await submitPrintOrder({
+      this.setOrderStep("prepare", "done")
+      this.setOrderStep("upload", "active")
+      const { token, checkoutUrl } = await submitPrintOrder({
         url: this.printOrderUrlValue,
         blob,
         sku: product.sku,
         title: this.titleInputTarget.value.trim(),
         themeBase: this.themeBase,
         layoutId: layout.id,
+        onProgress: (fraction) => {
+          this.uploadBarTarget.value = Math.round(fraction * 100)
+        },
       })
 
-      this.orderStatusTarget.textContent = "Redirecting to checkout…"
-      if (checkoutTab) {
-        checkoutTab.location = checkoutUrl
-      } else {
-        window.location.assign(checkoutUrl)
-      }
-      this.closeOrder()
-      this.setStatus("Order started — finish payment in the checkout tab.")
+      this.setOrderStep("upload", "done")
+      this.enableCheckout(checkoutUrl, token)
     } catch (error) {
-      checkoutTab?.close()
-      this.orderDialogTarget.classList.remove("hidden")
+      this.resetOrderSteps()
       this.orderErrorTarget.textContent = error.message
       this.orderErrorTarget.classList.remove("hidden")
-      this.orderStatusTarget.textContent = ""
     } finally {
       this.setBusy(false)
-      this.orderConfirmButtonTarget.disabled = false
     }
+  }
+
+  // The checkout link is a real user-clicked anchor: window.open after the
+  // long render/upload would land outside the popup-blocker gesture window.
+  beginOrderSteps() {
+    this.orderActionsTarget.classList.add("hidden")
+    this.orderStepsTarget.classList.remove("hidden")
+    this.uploadBarTarget.value = 0
+    this.setOrderStep("prepare", "active")
+    this.setOrderStep("upload", "pending")
+    this.setOrderStep("checkout", "pending")
+    this.checkoutLinkTarget.classList.add("btn-disabled")
+    this.checkoutLinkTarget.setAttribute("aria-disabled", "true")
+    this.checkoutLinkTarget.removeAttribute("href")
+    this.orderPageLinkTarget.classList.add("hidden")
+    this.orderDoneButtonTarget.classList.add("hidden")
+  }
+
+  resetOrderSteps() {
+    this.orderStepsTarget.classList.add("hidden")
+    this.orderActionsTarget.classList.remove("hidden")
+  }
+
+  setOrderStep(name, state) {
+    const step = this.orderStepTargets.find((el) => el.dataset.step === name)
+    if (!step) return
+    step.classList.toggle("opacity-40", state === "pending")
+    step
+      .querySelector("[data-role='spinner']")
+      ?.classList.toggle("hidden", state !== "active")
+    step
+      .querySelector("[data-role='done']")
+      ?.classList.toggle("hidden", state !== "done")
+    step
+      .querySelector("[data-role='bar']")
+      ?.classList.toggle("hidden", state !== "active")
+  }
+
+  enableCheckout(checkoutUrl, token) {
+    this.setOrderStep("checkout", "active")
+    this.checkoutLinkTarget.href = checkoutUrl
+    this.checkoutLinkTarget.classList.remove("btn-disabled")
+    this.checkoutLinkTarget.removeAttribute("aria-disabled")
+    if (token) {
+      this.orderPageLinkTarget.href = `${new URL(this.printOrderUrlValue).origin}/orders/${token}`
+      this.orderPageLinkTarget.classList.remove("hidden")
+    }
+    this.orderDoneButtonTarget.classList.remove("hidden")
   }
 
   // Server-side render through the sidecar: fills the hidden posters form
