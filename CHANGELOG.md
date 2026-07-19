@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Deleting a single point from the map now recalculates your monthly distance and statistics, instead of leaving them counting the deleted point.
 - Large GeoJSON imports now stream features in bounded batches instead of loading the entire file into memory, preventing worker memory exhaustion on exports with hundreds of thousands of points.
 - Google phone Timeline imports now stream semantic segments and raw signals in bounded batches instead of loading the entire export into memory, preventing worker memory exhaustion on large Timeline files.
 - FIT activities without a `device_info` section now import their location records instead of failing strict FIT validation.
