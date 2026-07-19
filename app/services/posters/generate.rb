@@ -58,7 +58,7 @@ module Posters
     def route_opacity
       raw = @poster.settings['route_opacity'].to_f
       raw /= 100.0 if raw > 1
-      raw = 0.6 if raw <= 0
+      raw = 1.0 if raw <= 0
       raw.clamp(0.05, 1.0)
     end
 

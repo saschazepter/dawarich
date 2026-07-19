@@ -87,6 +87,11 @@ class Api::V1::PointsController < ApiController
     sanitized = points.map { |row| row.to_h.except('xmax') }
 
     render json: { data: sanitized }
+  rescue StandardError => e
+    Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
+    Sentry.capture_exception(e) if defined?(Sentry)
+
+    render json: { error: 'Point creation failed' }, status: :internal_server_error
   end
 
   def update
