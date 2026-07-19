@@ -34,10 +34,10 @@ module Imports
 
         extract_files(temp_dir)
         entries = collect_supported_files(temp_dir)
-        google_entries = detect_google_takeout(entries)
+        known_entries = detect_google_takeout(entries) + detect_google_photos(entries)
 
-        if google_entries.any?
-          create_imports_from_entries(google_entries)
+        if known_entries.any?
+          create_imports_from_entries(known_entries)
         else
           create_imports_from_entries(entries)
         end
@@ -108,6 +108,19 @@ module Imports
       end
 
       matched.any? ? matched : []
+    end
+
+    def detect_google_photos(entries)
+      entries.select do |entry|
+        entry[:source].nil? &&
+          json_entry?(entry) &&
+          Imports::SourceDetector.new_from_file_header(entry[:path]).detect_source == :google_photos &&
+          (entry[:source] = 'google_photos')
+      end
+    end
+
+    def json_entry?(entry)
+      File.extname(entry[:path]).downcase == '.json'
     end
 
     def create_imports_from_entries(entries)
