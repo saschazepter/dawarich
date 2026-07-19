@@ -26,6 +26,8 @@ class GoogleMaps::SemanticHistoryImporter
 
   def process_batch(batch)
     records = batch.map { |point_data| prepare_point_data(point_data) }
+                   .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
+    return if records.empty?
 
     Point.upsert_all(
       records,

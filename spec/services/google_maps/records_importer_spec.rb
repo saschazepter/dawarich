@@ -39,7 +39,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
     end
 
     context 'with regular timestamp' do
-      let(:locations) { super()[0].merge('timestamp' => time.to_s).to_json }
+      let(:locations) { [super()[0].merge('timestamp' => time.to_s)] }
 
       it 'creates a point' do
         expect { parser }.to change(Point, :count).by(1)
