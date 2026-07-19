@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Google phone Timeline imports now stream semantic segments and raw signals in bounded batches instead of loading the entire export into memory, preventing worker memory exhaustion on large Timeline files.
 - FIT activities without a `device_info` section now import their location records instead of failing strict FIT validation.
 - GPX imports now preserve XML byte-order marks, allowing files whose BOM correctly identifies the encoding despite an incorrect XML declaration to import successfully.
 - ZIP imports now accept large activity exports containing up to 25,000 files, while retaining file-count and expanded-size safety checks.
