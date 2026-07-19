@@ -9,7 +9,10 @@ module Imports
     def bulk_insert_points(batch)
       return 0 if batch.empty?
 
-      unique_batch = batch.compact.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+      unique_batch = batch.compact
+                          .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
+                          .uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+      return 0 if unique_batch.empty?
 
       result = Point.upsert_all(
         unique_batch,
