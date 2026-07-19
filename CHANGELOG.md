@@ -5,18 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## [1.10.1] - Unreleased
+## [1.10.1] - 2026-07-19, Berlin
 
 ### Added
 
 - The Poster Studio can now be opened directly from a trip's page, pre-loaded with the trip's route, date range, and name.
-
 - Dawarich can now be installed to the phone home screen as a web app (PWA): all pages link the web app manifest and Apple touch icon, and the installed app opens straight into Map v2.
 
 ### Changed
 
 - The legacy `latitude`/`longitude` columns on `points` are dropped — the PostGIS `lonlat` column has been the single source of truth since 0.25.0. The migration copies any remaining legacy-only coordinates into `lonlat` before dropping, so upgrades from older versions are safe.
-- New Dawarich Cloud signups now always use the reverse-trial flow; the internal feature flag that gated the rollout is removed. Self-hosted instances are unaffected.
 - File imports no longer store a copy of each source record in the point's `raw_data` — the uploaded file stays attached to the import as the source of truth. API responses return `raw_data: {}` for newly imported points, and FIT/TCX health fields (heart rate, cadence, power, temperature) as well as Google phone takeout HOME/WORK place labels are no longer stored.
 - TCX and FIT imports now store their activity type in `motion_data`: transportation-mode detection works for TCX imports for the first time, and FIT driving activities are classified correctly.
 - Google phone takeout imports now store the mapped activity type in `motion_data`, so transportation-mode detection (driving, walking, cycling, bus, train, flying) works for activity segments from phone takeout files.
@@ -30,7 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Point uploads (REST API, OwnTracks, Overland, Traccar) now write batches in a consistent order so concurrent uploads no longer deadlock each other, and both uploads and anomaly filtering recover automatically from any remaining transient database deadlocks instead of failing the upload or background job.
 - The app and Sidekiq containers no longer crash-loop on startup when `WEB_CONCURRENCY` or `BACKGROUND_PROCESSING_CONCURRENCY` reach the container as an unexpanded `${VAR:-default}` string (seen with some podman-compose versions); the entrypoint now warns and falls back to the default value (#3124)
 - Cache preheating no longer times out for accounts with large location histories.
-- Changing plans resets the Lite archival-warning state, so a user downgraded to Lite again is notified about archived data again.
+- Cloud: Changing plans resets the Lite archival-warning state, so a user downgraded to Lite again is notified about archived data again.
 - TCX and KML imports no longer fail when text fields contain raw ampersands.
 - The Map v2 "Share" button no longer renders its label below the button bounds on narrow layouts (#3007)
 - Outgoing email now works with local unauthenticated SMTP relays: set `SMTP_AUTHENTICATION=none` (also `off`/`false`/`disabled`) to disable SMTP AUTH instead of hitting "SMTP-AUTH requested but missing user name" (#3147, #2690, #1469, #1463)
@@ -39,8 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Statistics pages no longer fail to load when older monthly data contains malformed country or city entries. Recalculating stats for an affected month repairs the stored data.
 
 
-
-## [1.10.0] - 2026-07-15
+## [1.10.0] - 2026-07-15, Malmö
 
 ⚠️ Important: ⚠️ there are some changes to defaults in the docker-compose.yml for self-hosted users. You may want to adjust environment variables to reduce memory usage or increase concurrency. See the "Changed" section below.
 
