@@ -1,12 +1,16 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const { submitPrintOrder } = await import(
+const source = await readFile(
   new URL(
     "../../app/javascript/poster_studio/ui/order_client.js",
     import.meta.url,
-  )
+  ),
+  "utf8",
 )
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const { submitPrintOrder } = await import(moduleUrl)
 
 class FakeXhr {
   static instances = []
