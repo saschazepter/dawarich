@@ -462,6 +462,45 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           expect { invalid_utf8_service.call }.to change { Point.count }.by(1)
         end
       end
+
+      it 'rolls back and surfaces the real error when a batch insert fails mid-stream' do
+        stub_const('GoogleMaps::PhoneTakeoutImporter::BATCH_SIZE', 2)
+        call_count = 0
+        allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+          call_count += 1
+          raise ActiveRecord::StatementInvalid, 'simulated batch failure' if call_count == 2
+
+          original.call(*args, **kwargs)
+        end
+        original_count = Point.count
+
+        expect { service.call }.to raise_error(ActiveRecord::StatementInvalid, /simulated batch failure/)
+        expect(Point.count).to eq(original_count)
+      end
+
+      it 'rolls back all points when a segment raises after an earlier batch flushed' do
+        stub_const('GoogleMaps::PhoneTakeoutImporter::BATCH_SIZE', 2)
+
+        document = <<~JSON
+          {
+            "semanticSegments": [
+              { "startTime": "2024-06-15T09:00:00Z", "visit": { "topCandidate": { "placeLocation": { "latLng": "48.8566°, 2.3522°" } } } },
+              { "startTime": "2024-06-15T10:00:00Z", "visit": { "topCandidate": { "placeLocation": { "latLng": "48.8570°, 2.3525°" } } } },
+              { "startTime": "not-a-real-date", "visit": { "topCandidate": { "placeLocation": { "latLng": "48.8580°, 2.3530°" } } } }
+            ]
+          }
+        JSON
+
+        Tempfile.create(['partial-timeline', '.json']) do |file|
+          file.write(document)
+          file.flush
+          partial_service = described_class.new(import, user.id, file.path)
+          original_count = Point.count
+
+          expect { partial_service.call }.to raise_error(Date::Error)
+          expect(Point.count).to eq(original_count)
+        end
+      end
     end
   end
 end
