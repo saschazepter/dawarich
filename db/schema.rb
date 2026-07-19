@@ -359,6 +359,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_19_190000) do
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
+    t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY ((ARRAY['google-maps-timeline-export'::character varying, 'google-maps-phone-timeline-export'::character varying])::text[]))"
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"

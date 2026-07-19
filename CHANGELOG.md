@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## Unreleased
+
+### Fixed
+
+- Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
+
 ## [1.10.1] - 2026-07-19, Berlin
 
 ### Added
