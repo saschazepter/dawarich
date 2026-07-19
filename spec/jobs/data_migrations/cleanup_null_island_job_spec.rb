@@ -41,4 +41,16 @@ RSpec.describe DataMigrations::CleanupNullIslandJob do
       .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 5)
       .and have_enqueued_job(Tracks::RecalculateJob).with(track.id)
   end
+
+  describe 'fan out' do
+    it 'enqueues a per-user job for every user with (0,0) points' do
+      other_user = create(:user)
+      create(:point, user: other_user, latitude: 0.0, longitude: 0.0,
+                     lonlat: 'POINT(0.0 0.0)', timestamp: Time.zone.local(2024, 6, 1).to_i)
+
+      expect { described_class.perform_now }
+        .to have_enqueued_job(described_class).with(user.id)
+        .and have_enqueued_job(described_class).with(other_user.id)
+    end
+  end
 end

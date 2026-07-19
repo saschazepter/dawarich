@@ -8,15 +8,20 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
 
     user = find_user_or_skip(user_id) || return
 
-    zero_points = user.points.null_island
-    track_ids = zero_points.where.not(track_id: nil).distinct.pluck(:track_id)
-    affected_months = zero_points.pluck(:timestamp).map do |timestamp|
+    rows = user.points.null_island.pluck(:id, :timestamp, :track_id)
+    track_ids = rows.filter_map(&:last).uniq
+    affected_months = rows.map do |_, timestamp, _|
       time = Time.zone.at(timestamp)
       [time.year, time.month]
     end.uniq
 
-    zero_points.update_all(anomaly: true, updated_at: Time.current)
-    destroy_null_island_visits(user)
+    Point.where(id: rows.map(&:first)).update_all(anomaly: true, updated_at: Time.current) if rows.any?
+    destroyed_visits = destroy_null_island_visits(user)
+
+    Rails.logger.info(
+      "[DataMigrations::CleanupNullIsland] user_id=#{user.id} flagged=#{rows.size} " \
+      "visits_destroyed=#{destroyed_visits} tracks=#{track_ids.size} months=#{affected_months.size}"
+    )
 
     affected_months.each { |year, month| Stats::CalculatingJob.perform_later(user.id, year, month) }
     track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
@@ -35,5 +40,6 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
         .joins(:place)
         .where(Points::NullIsland.sql_predicate('places.lonlat'))
         .destroy_all
+        .count
   end
 end
