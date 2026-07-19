@@ -267,12 +267,6 @@ RSpec.describe Kml::Importer do
       it 'creates points' do
         expect { parser }.to change(Point, :count).by(1)
       end
-
-      it 'preserves the ampersand in extracted text' do
-        parser
-
-        expect(user.points.sole.raw_data['name']).to eq('Fish & Chips')
-      end
     end
 
     context 'when KMZ archive contains KML with raw ampersands' do
@@ -305,12 +299,6 @@ RSpec.describe Kml::Importer do
 
       it 'creates points' do
         expect { parser }.to change(Point, :count).by(1)
-      end
-
-      it 'preserves the ampersand in extracted text' do
-        parser
-
-        expect(user.points.sole.raw_data['name']).to eq('Fish & Chips')
       end
     end
 

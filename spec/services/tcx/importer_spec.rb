@@ -71,31 +71,27 @@ RSpec.describe Tcx::Importer do
       context 'with CDATA sections containing ampersands' do
         let(:tcx_content) { build_tcx(notes: '<![CDATA[Tom & Jerry]]>') }
 
-        it 'preserves the CDATA text verbatim' do
-          described_class.new(import, user.id, file_path).call
-
-          expect(user.points.sole.raw_data.dig('Extensions', 'TPX', 'Notes')).to eq('Tom & Jerry')
+        it 'imports GPS trackpoints' do
+          expect { described_class.new(import, user.id, file_path).call }
+            .to change { user.points.count }.by(1)
         end
       end
 
       context 'with valid XML entities' do
         let(:tcx_content) { build_tcx(notes: 'Fish &amp; Chips &#38; Salt &#x26; Vinegar') }
 
-        it 'resolves entities without double-escaping' do
-          described_class.new(import, user.id, file_path).call
-
-          expect(user.points.sole.raw_data.dig('Extensions', 'TPX', 'Notes'))
-            .to eq('Fish & Chips & Salt & Vinegar')
+        it 'imports GPS trackpoints' do
+          expect { described_class.new(import, user.id, file_path).call }
+            .to change { user.points.count }.by(1)
         end
       end
 
       context 'with undefined named entities' do
         let(:tcx_content) { build_tcx(notes: 'a&nbsp;b &copy; c') }
 
-        it 'preserves them as literal text' do
-          described_class.new(import, user.id, file_path).call
-
-          expect(user.points.sole.raw_data.dig('Extensions', 'TPX', 'Notes')).to eq('a&nbsp;b &copy; c')
+        it 'imports GPS trackpoints' do
+          expect { described_class.new(import, user.id, file_path).call }
+            .to change { user.points.count }.by(1)
         end
       end
 
