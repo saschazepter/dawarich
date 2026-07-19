@@ -329,15 +329,46 @@
                 statutory 14-day right of withdrawal does not apply once
                 production starts (§312g Abs. 2 Nr. 1 BGB).
               </p>
-              <p class="text-xs" data-poster-studio-editor-target="orderStatus"></p>
               <p class="text-xs text-error hidden" data-poster-studio-editor-target="orderError"></p>
-              <div class="flex gap-2">
+              <div class="flex gap-2" data-poster-studio-editor-target="orderActions">
                 <button type="button" class="btn btn-primary btn-sm flex-1"
-                        data-poster-studio-editor-target="orderConfirmButton"
-                        data-action="poster-studio-editor#confirmOrder">Continue to checkout</button>
+                        data-action="poster-studio-editor#confirmOrder">Order this poster</button>
                 <button type="button" class="btn btn-ghost btn-sm"
                         data-action="poster-studio-editor#openSizePicker">Back</button>
               </div>
+
+              <%# Order progress: steps activate one after another; the checkout
+                  link stays disabled until the print file is uploaded. %>
+              <ol class="hidden space-y-3" data-poster-studio-editor-target="orderSteps">
+                <li class="space-y-1.5 opacity-40" data-poster-studio-editor-target="orderStep" data-step="prepare">
+                  <p class="flex items-center gap-1.5 text-xs font-medium">
+                    <span class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" data-role="spinner"></span>
+                    <span class="hidden text-success" data-role="done"><%= icon 'circle-check', class: 'h-3.5 w-3.5' %></span>
+                    <span>1. Preparing poster</span>
+                  </p>
+                  <progress class="progress progress-primary hidden h-1.5 w-full" data-role="bar"></progress>
+                </li>
+                <li class="space-y-1.5 opacity-40" data-poster-studio-editor-target="orderStep" data-step="upload">
+                  <p class="flex items-center gap-1.5 text-xs font-medium">
+                    <span class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" data-role="spinner"></span>
+                    <span class="hidden text-success" data-role="done"><%= icon 'circle-check', class: 'h-3.5 w-3.5' %></span>
+                    <span>2. Uploading poster</span>
+                  </p>
+                  <progress class="progress progress-primary hidden h-1.5 w-full" value="0" max="100"
+                            data-role="bar" data-poster-studio-editor-target="uploadBar"></progress>
+                </li>
+                <li class="space-y-1.5 opacity-40" data-poster-studio-editor-target="orderStep" data-step="checkout">
+                  <p class="text-xs font-medium">3. Continue to order</p>
+                  <a class="btn btn-primary btn-sm btn-disabled w-full" aria-disabled="true"
+                     target="_blank" rel="noopener"
+                     data-poster-studio-editor-target="checkoutLink">Continue to payment</a>
+                  <a class="link hidden text-xs" target="_blank" rel="noopener"
+                     data-poster-studio-editor-target="orderPageLink">Checkout not working? Open your order page</a>
+                  <button type="button" class="btn btn-ghost btn-xs hidden w-full"
+                          data-poster-studio-editor-target="orderDoneButton"
+                          data-action="poster-studio-editor#closeOrder">Close</button>
+                </li>
+              </ol>
             </div>
           </div>
           <% end %>
