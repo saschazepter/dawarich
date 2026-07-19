@@ -75,6 +75,10 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
     fi
 
+# Return freed pages to the OS quickly instead of holding them in the
+# allocator, and cap arena count — keeps idle RSS low on small hosts.
+ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
+
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
 
@@ -94,6 +98,11 @@ RUN bundle config set --local path 'vendor/bundle' \
     && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
 COPY ../. ./
+
+# Node deps (tailwind plugins like daisyui) are needed by assets:precompile.
+# Install them here so the build does not depend on a host-side `npm install`
+# having populated node_modules in the build context.
+RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
 
 # Poster renderer dependencies — prebuilt maplibre-native binaries exist for
 # x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
@@ -118,6 +127,8 @@ RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
 RUN cp -r public /tmp/public_assets
 
 # Copy entrypoint scripts and grant execution permissions
+COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh
+
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 

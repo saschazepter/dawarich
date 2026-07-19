@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_14_224647) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_19_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -350,8 +350,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_224647) do
     t.bigint "import_id"
     t.text "in_regions", default: [], array: true
     t.text "inrids", default: [], array: true
-    t.decimal "latitude", precision: 10, scale: 6
-    t.decimal "longitude", precision: 10, scale: 6
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.integer "mode"
     t.jsonb "motion_data", default: {}, null: false
@@ -383,6 +381,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_224647) do
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
+    t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY ((ARRAY['google-maps-timeline-export'::character varying, 'google-maps-phone-timeline-export'::character varying])::text[]))"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
@@ -430,7 +429,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_224647) do
     t.datetime "last_accessed_at"
     t.string "magic_phrase", limit: 255
     t.string "name", limit: 255, null: false
-    t.integer "og_image_state", default: 0, null: false
     t.bigint "resource_id"
     t.integer "resource_type", null: false
     t.datetime "revoked_at"
