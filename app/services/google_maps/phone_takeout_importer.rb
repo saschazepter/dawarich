@@ -96,7 +96,7 @@ class GoogleMaps::PhoneTakeoutImporter
     {
       import_id: import.id,
       topic: 'Google Maps Phone Timeline Export',
-      tracker_id: 'google-maps-phone-timeline-export',
+      tracker_id: "google-phone-#{import.id}",
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current
