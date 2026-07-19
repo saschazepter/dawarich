@@ -112,7 +112,7 @@ class Api::V1::PointsController < ApiController
   end
 
   def destroy
-    point = current_api_user.points.find(params[:id])
+    point = current_api_user.points.without_raw_data.find(params[:id])
     Points::Destroyer.new(current_api_user, point.id).call
 
     render json: { message: 'Point deleted successfully' }

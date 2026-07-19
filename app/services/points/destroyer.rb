@@ -32,7 +32,10 @@ class Points::Destroyer
       .map { |point| Time.zone.at(point.timestamp) }
       .map { |time| [time.year, time.month] }
       .uniq
-      .each { |year, month| Stats::CalculatingJob.perform_later(user.id, year, month) }
+      .each do |year, month|
+        Rails.logger.info("[Points::Destroyer] enqueuing Stats::CalculatingJob for #{year}-#{month}")
+        Stats::CalculatingJob.perform_later(user.id, year, month)
+      end
   end
 
   def enqueue_track_recalculation(destroyed)
