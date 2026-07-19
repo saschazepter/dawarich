@@ -84,6 +84,57 @@ RSpec.describe Imports::ZipExtractor do
       end
     end
 
+    context 'with a Google Photos Takeout ZIP' do
+      let(:sidecar_content) { file_fixture('google_photos/sidecar.json').read }
+      let(:zip_path) do
+        path = Rails.root.join('tmp', "test_photos_#{SecureRandom.hex(4)}.zip").to_s
+        ::Zip::File.open(path, create: true) do |zipfile|
+          zipfile.get_output_stream('Takeout/Google Photos/2024/IMG_001.jpg.supplemental-metadata.json') do |f|
+            f.write(sidecar_content)
+          end
+          zipfile.get_output_stream('Takeout/Google Photos/Vacation/album_metadata.json') do |f|
+            f.write('{"title":"Vacation 2024","date":{"timestamp":"1718448000"}}')
+          end
+        end
+        path
+      end
+
+      after { File.delete(zip_path) if File.exist?(zip_path) }
+
+      it 'imports geotagged sidecars and skips non-sidecar album metadata' do
+        described_class.new(import, user.id, zip_path).call
+
+        imports = user.imports.where.not(id: import.id)
+        expect(imports.count).to eq(1)
+        expect(imports.first.source).to eq('google_photos')
+      end
+    end
+
+    context 'with a combined Location History and Photos Takeout ZIP' do
+      let(:sidecar_content) { file_fixture('google_photos/sidecar.json').read }
+      let(:zip_path) do
+        path = Rails.root.join('tmp', "test_combined_#{SecureRandom.hex(4)}.zip").to_s
+        ::Zip::File.open(path, create: true) do |zipfile|
+          zipfile.get_output_stream('Takeout/Location History/Semantic Location History/2024/2024_JANUARY.json') do |f|
+            f.write('{"timelineObjects":[]}')
+          end
+          zipfile.get_output_stream('Takeout/Google Photos/IMG_002.jpg.supplemental-metadata.json') do |f|
+            f.write(sidecar_content)
+          end
+        end
+        path
+      end
+
+      after { File.delete(zip_path) if File.exist?(zip_path) }
+
+      it 'imports both the location history and the photo sidecar' do
+        described_class.new(import, user.id, zip_path).call
+
+        imports = user.imports.where.not(id: import.id)
+        expect(imports.pluck(:source)).to contain_exactly('google_semantic_history', 'google_photos')
+      end
+    end
+
     context 'with path traversal attempt' do
       let(:zip_path) do
         path = Rails.root.join('tmp', "test_traversal_#{SecureRandom.hex(4)}.zip").to_s

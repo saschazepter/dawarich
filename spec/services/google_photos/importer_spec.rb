@@ -37,6 +37,33 @@ RSpec.describe GooglePhotos::Importer do
     end
   end
 
+  context 'with a zero photoTakenTime timestamp' do
+    let(:sidecar) { super().merge('photoTakenTime' => { 'timestamp' => '0' }) }
+
+    it 'falls back to the creation timestamp instead of dropping the point' do
+      expect { import_sidecar }.to change { user.points.count }.by(1)
+
+      expect(user.points.last.timestamp).to eq(1_718_448_000)
+    end
+  end
+
+  context 'when both geoData and geoDataExif carry coordinates' do
+    let(:sidecar) do
+      super().merge(
+        'geoData' => { 'latitude' => 40.0, 'longitude' => 5.0, 'altitude' => 0.0 },
+        'geoDataExif' => { 'latitude' => 48.12345, 'longitude' => 11.54321, 'altitude' => 34.5 }
+      )
+    end
+
+    it 'prefers the camera EXIF coordinates' do
+      import_sidecar
+
+      point = user.points.last
+      expect(point.lat).to eq(48.12345)
+      expect(point.lon).to eq(11.54321)
+    end
+  end
+
   context 'without geodata' do
     let(:sidecar) { super().except('geoDataExif') }
 

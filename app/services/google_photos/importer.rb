@@ -5,7 +5,7 @@ class GooglePhotos::Importer
   include Imports::BulkInsertable
   include Imports::FileLoader
 
-  GEO_KEYS = %w[geoData geoDataExif].freeze
+  GEO_KEYS = %w[geoDataExif geoData].freeze
   TRACKER_ID = 'google-photos-takeout'
   TOPIC = 'Google Photos Takeout'
 
@@ -75,7 +75,11 @@ class GooglePhotos::Importer
   end
 
   def extract_timestamp(sidecar)
-    value = sidecar.dig('photoTakenTime', 'timestamp') || sidecar.dig('creationTime', 'timestamp')
+    normalize_timestamp(sidecar.dig('photoTakenTime', 'timestamp')) ||
+      normalize_timestamp(sidecar.dig('creationTime', 'timestamp'))
+  end
+
+  def normalize_timestamp(value)
     numeric = number(value)
     return unless numeric&.positive?
 
