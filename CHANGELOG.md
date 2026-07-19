@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Large GeoJSON imports now stream features in bounded batches instead of loading the entire file into memory, preventing worker memory exhaustion on exports with hundreds of thousands of points.
 - Google phone Timeline imports now stream semantic segments and raw signals in bounded batches instead of loading the entire export into memory, preventing worker memory exhaustion on large Timeline files.
 - FIT activities without a `device_info` section now import their location records instead of failing strict FIT validation.
 - GPX imports now preserve XML byte-order marks, allowing files whose BOM correctly identifies the encoding despite an incorrect XML declaration to import successfully.
