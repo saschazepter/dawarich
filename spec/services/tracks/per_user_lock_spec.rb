@@ -97,6 +97,18 @@ RSpec.describe Tracks::PerUserLock do
       expect(remaining_ms).to be > 0
     end
 
+    it 'stops renew attempts once consecutive redis errors exhaust the lease' do
+      calls = 0
+      allow(described_class).to receive(:renew) do
+        calls += 1
+        raise 'redis down'
+      end
+
+      described_class.with_user_lock(user_id, ttl: 0.6) { sleep 1.4 }
+
+      expect(calls).to eq(described_class::MAX_RENEW_ERRORS)
+    end
+
     it 'raises AcquisitionTimeout when another holder owns the lock' do
       Sidekiq.redis { |r| r.set(redis_key, 'other-owner', ex: 60) }
 

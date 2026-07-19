@@ -6,6 +6,7 @@ module Tracks
     DEFAULT_ACQUIRE_TIMEOUT = 30.0
     DEFAULT_TTL = 60.0
     RENEW_DIVISOR = 3.0
+    MAX_RENEW_ERRORS = 3
     POLL_INTERVAL = 0.1
     LOCK_WAIT_WARN_SECONDS = 1.0
 
@@ -80,9 +81,27 @@ module Tracks
       stop = Queue.new
 
       thread = Thread.new do
+        renew_errors = 0
         loop do
           break if stop.pop(timeout: interval)
-          break if lock_lost?(key, token, ttl_ms, user_id)
+
+          begin
+            break if lock_lost?(key, token, ttl_ms, user_id)
+
+            renew_errors = 0
+          rescue StandardError => e
+            renew_errors += 1
+            Rails.logger.warn(
+              "event=tracks.per_user_lock_renew_error user_id=#{user_id} " \
+              "consecutive=#{renew_errors} error=#{e.class}: #{e.message}"
+            )
+            if renew_errors >= MAX_RENEW_ERRORS
+              Rails.logger.warn(
+                "event=tracks.per_user_lock_renew_lost user_id=#{user_id} reason=consecutive_renew_errors"
+              )
+              break
+            end
+          end
         end
       end
 
@@ -101,11 +120,6 @@ module Tracks
 
       Rails.logger.warn("event=tracks.per_user_lock_renew_lost user_id=#{user_id}")
       true
-    rescue StandardError => e
-      Rails.logger.warn(
-        "event=tracks.per_user_lock_renew_error user_id=#{user_id} error=#{e.class}: #{e.message}"
-      )
-      false
     end
 
     def self.renew(key, token, ttl_ms)

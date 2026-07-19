@@ -16,9 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - The legacy `latitude`/`longitude` columns on `points` are dropped — the PostGIS `lonlat` column has been the single source of truth since 0.25.0. The migration copies any remaining legacy-only coordinates into `lonlat` before dropping, so upgrades from older versions are safe. To reclaim the freed disk space on large instances, run `pg_repack -t points` (optional).
-
-### Changed
-
+- New Dawarich Cloud signups now always use the reverse-trial flow; the internal feature flag that gated the rollout is removed. Self-hosted instances are unaffected.
 - File imports no longer store a copy of each source record in the point's `raw_data` — the uploaded file stays attached to the import as the source of truth. API responses return `raw_data: {}` for newly imported points, and FIT/TCX health fields (heart rate, cadence, power, temperature) as well as Google phone takeout HOME/WORK place labels are no longer stored.
 - TCX and FIT imports now store their activity type in `motion_data`: transportation-mode detection works for TCX imports for the first time, and FIT driving activities are classified correctly.
 - Google phone takeout imports now store the mapped activity type in `motion_data`, so transportation-mode detection (driving, walking, cycling, bus, train, flying) works for activity segments from phone takeout files.
