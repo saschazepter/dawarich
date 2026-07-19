@@ -5,10 +5,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## Unreleased
+
+### Fixed
+
+- Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
+- Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0) and recalculates affected stats and tracks.
+
 ## [1.10.1] - 2026-07-19, Berlin
 
 ### Added
 
+- Google Photos Takeout metadata sidecars can now add geotagged photos as sparse timeline points; sidecars without usable coordinates are skipped.
 - The Poster Studio can now be opened directly from a trip's page, pre-loaded with the trip's route, date range, and name.
 - Dawarich can now be installed to the phone home screen as a web app (PWA): all pages link the web app manifest and Apple touch icon, and the installed app opens straight into Map v2.
 
@@ -21,6 +29,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Deleting a single point from the map now recalculates your monthly distance and statistics, instead of leaving them counting the deleted point.
+- Large GeoJSON imports now stream features in bounded batches instead of loading the entire file into memory, preventing worker memory exhaustion on exports with hundreds of thousands of points.
+- Google phone Timeline imports now stream semantic segments and raw signals in bounded batches instead of loading the entire export into memory, preventing worker memory exhaustion on large Timeline files.
+- FIT activities without a `device_info` section now import their location records instead of failing strict FIT validation.
+- GPX imports now preserve XML byte-order marks, allowing files whose BOM correctly identifies the encoding despite an incorrect XML declaration to import successfully.
+- ZIP imports now accept large activity exports containing up to 25,000 files, while retaining file-count and expanded-size safety checks.
 - OwnTracks `_type: waypoint` sync messages are no longer stored as location points, so syncing your saved OwnTracks places no longer creates phantom distance/track spikes (#3137)
 - Map v2 date pickers now keep the time component when a range with a specific time is loaded from the URL, instead of resetting to the start/end of the day (#3106)
 - Track generation and user data recalculations now retry a bounded number of times when another job is already processing the same user's tracks, instead of dropping the request and reporting an error; a genuinely stuck lock is logged after the retries are exhausted. The per-user lock also renews itself while a job runs and frees within a minute if a worker dies, so a crashed job no longer blocks a user's track processing for up to half an hour.
