@@ -132,7 +132,7 @@ RSpec.describe '/points', type: :request do
       expect do
         delete bulk_destroy_points_url, params: { point_ids: [tracked.id] }
       end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 5)
-        .and have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+                                                     .and have_enqueued_job(Tracks::RecalculateJob).with(track.id)
     end
 
     it 'returns a 303 status code' do
