@@ -25,6 +25,13 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
       expect(response.body).to include('data-poster-studio-editor-target="dateStart"')
     end
+
+    it 'defaults the track opacity slider to 100%' do
+      get map_v2_path
+
+      slider = Nokogiri::HTML(response.body).at_css('[data-poster-studio-editor-target="trackOpacity"]')
+      expect(slider['value']).to eq('100')
+    end
   end
 
   describe 'print ordering' do

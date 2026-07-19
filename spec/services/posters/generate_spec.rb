@@ -34,7 +34,7 @@ RSpec.describe Posters::Generate do
 
     it 'renders with the poster distance, opacity, subtitle and track' do
       expect(Posters::NativeRenderer).to receive(:new).with(
-        poster: poster, track: track, distance: 6000, route_opacity: 0.6,
+        poster: poster, track: track, distance: 6000, route_opacity: 1.0,
         subtitle: '1 Apr 2026 – 30 Apr 2026'
       ).and_return(renderer)
 
