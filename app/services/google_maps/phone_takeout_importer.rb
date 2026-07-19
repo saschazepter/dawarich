@@ -188,6 +188,9 @@ class GoogleMaps::PhoneTakeoutImporter
   def parse_timeline_path(data_point)
     return [] if data_point['startTime'].nil?
 
+    previous_source_timestamp = nil
+    timestamp_offset = 0
+    assigned_timestamps = {}
     data_point['timelinePath'].filter_map do |point|
       coords = parse_coordinates(point['point'])
       next if coords.nil?
@@ -196,8 +199,16 @@ class GoogleMaps::PhoneTakeoutImporter
       start_time = DateTime.parse(data_point['startTime'])
       offset = point['durationMinutesOffsetFromStartTime']
 
-      timestamp = start_time
-      timestamp += offset.to_i.minutes if offset.present? && !offset.to_i.negative?
+      source_timestamp = start_time
+      source_timestamp += offset.to_i.minutes if offset.present? && !offset.to_i.negative?
+      timestamp_key = [source_timestamp, lat, lon]
+      timestamp = assigned_timestamps[timestamp_key] if assigned_timestamps.key?(timestamp_key)
+      unless assigned_timestamps.key?(timestamp_key)
+        timestamp_offset = source_timestamp == previous_source_timestamp ? timestamp_offset + 1 : 0
+        timestamp = source_timestamp + timestamp_offset.seconds
+        assigned_timestamps[timestamp_key] = timestamp
+        previous_source_timestamp = source_timestamp
+      end
 
       point_hash(lat, lon, timestamp, data_point, altitude: alt)
     end
@@ -232,12 +243,23 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def parse_semantic_timeline_path(segment)
+    previous_source_timestamp = nil
+    timestamp_offset = 0
+    assigned_timestamps = {}
     segment['timelinePath'].filter_map do |point|
       coords = parse_coordinates(point['point'])
       next if coords.nil?
 
       lat, lon, alt = coords
-      timestamp = DateTime.parse(point['time']).utc.to_i
+      source_timestamp = DateTime.parse(point['time']).utc.to_i
+      timestamp_key = [source_timestamp, lat, lon]
+      timestamp = assigned_timestamps[timestamp_key] if assigned_timestamps.key?(timestamp_key)
+      unless assigned_timestamps.key?(timestamp_key)
+        timestamp_offset = source_timestamp == previous_source_timestamp ? timestamp_offset + 1 : 0
+        timestamp = source_timestamp + timestamp_offset
+        assigned_timestamps[timestamp_key] = timestamp
+        previous_source_timestamp = source_timestamp
+      end
 
       point_hash(lat, lon, timestamp, segment, altitude: alt)
     end
