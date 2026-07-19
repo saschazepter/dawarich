@@ -7,16 +7,10 @@ class Points::Destroyer
   end
 
   def call
-    affected_track_ids = nil
     destroyed = nil
 
     ActiveRecord::Base.transaction do
-      affected_track_ids = user.points
-                               .where(id: point_ids)
-                               .where.not(track_id: nil)
-                               .distinct
-                               .pluck(:track_id)
-      destroyed = user.points.where(id: point_ids).destroy_all
+      destroyed = user.points.where(id: point_ids).without_raw_data.destroy_all
     end
 
     return destroyed if destroyed.empty?
@@ -24,7 +18,7 @@ class Points::Destroyer
     User.update_counters(user.id, points_count: -destroyed.count)
 
     enqueue_stats_recalculation(destroyed)
-    enqueue_track_recalculation(affected_track_ids, destroyed.count)
+    enqueue_track_recalculation(destroyed)
 
     destroyed
   end
@@ -41,11 +35,12 @@ class Points::Destroyer
       .each { |year, month| Stats::CalculatingJob.perform_later(user.id, year, month) }
   end
 
-  def enqueue_track_recalculation(track_ids, deleted_count)
+  def enqueue_track_recalculation(destroyed)
+    track_ids = destroyed.filter_map(&:track_id).uniq
     return if track_ids.empty?
 
     Rails.logger.info(
-      "[Points::Destroyer] deleted #{deleted_count} points, " \
+      "[Points::Destroyer] deleted #{destroyed.count} points, " \
       "enqueuing Tracks::RecalculateJob for #{track_ids.size} tracks: #{track_ids.inspect}"
     )
     track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
