@@ -172,6 +172,15 @@ RSpec.describe Fit::Importer do
         expect { activity.check }.not_to raise_error
         expect(activity.device_infos).to be_empty
       end
+
+      it 'leaves existing device_info entries untouched when they are present' do
+        activity = Fit4Ruby::Activity.new(timestamp: Time.current, total_timer_time: 60)
+        activity.new_device_info(timestamp: Time.current, device_index: 0)
+        activity.new_device_info(timestamp: Time.current, device_index: 1)
+
+        expect { activity.check }.not_to raise_error
+        expect(activity.device_infos.size).to eq(2)
+      end
     end
   end
 end
