@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- GPX imports now preserve XML byte-order marks, allowing files whose BOM correctly identifies the encoding despite an incorrect XML declaration to import successfully.
 - ZIP imports now accept large activity exports containing up to 25,000 files, while retaining file-count and expanded-size safety checks.
 - OwnTracks `_type: waypoint` sync messages are no longer stored as location points, so syncing your saved OwnTracks places no longer creates phantom distance/track spikes (#3137)
 - Map v2 date pickers now keep the time component when a range with a specific time is loaded from the URL, instead of resetting to the start/end of the day (#3106)
