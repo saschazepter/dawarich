@@ -5,7 +5,7 @@ require 'zip'
 module Imports
   class ZipExtractor
     SUPPORTED_EXTENSIONS = %w[.gpx .json .geojson .kml .kmz .csv .tcx .fit .rec].freeze
-    MAX_FILES = 1000
+    MAX_FILES = 25_000
 
     GOOGLE_TAKEOUT_PATTERNS = {
       %r{Semantic Location History/\d{4}/\d{4}_\w+\.json}i => 'google_semantic_history',
@@ -55,17 +55,12 @@ module Imports
 
     def extract_files(temp_dir)
       total_size = 0
-      file_count = 0
 
       ::Zip::File.open(@stable_zip_path) do |zip_file|
-        zip_file.each do |entry|
-          next if entry.directory?
-          next if entry.name.include?('..')
-          next if entry.name.start_with?('/')
+        entries = zip_file.select { |entry| extractable_entry?(entry) }
+        raise "Too many files in archive (max #{MAX_FILES})" if entries.size > MAX_FILES
 
-          file_count += 1
-          raise "Too many files in archive (max #{MAX_FILES})" if file_count > MAX_FILES
-
+        entries.each do |entry|
           dest = File.join(temp_dir, entry.name)
           next unless File.expand_path(dest).start_with?("#{File.expand_path(temp_dir)}/")
 
@@ -74,6 +69,10 @@ module Imports
           raise "Archive too large (max #{@max_size} bytes)" if total_size > @max_size
         end
       end
+    end
+
+    def extractable_entry?(entry)
+      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/')
     end
 
     def extract_entry(entry, dest)
