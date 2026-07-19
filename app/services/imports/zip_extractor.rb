@@ -112,26 +112,39 @@ module Imports
 
     def create_imports_from_entries(entries)
       user = User.find(@user_id)
+      seen_names = user.imports.where(name: entries.map { |entry| import_name_for(entry) }).pluck(:name).to_set
 
-      entries.each do |entry|
-        filename = File.basename(entry[:path])
-        import_name = "#{filename} (from #{@archive_name})"
+      new_imports = entries.filter_map do |entry|
+        name = import_name_for(entry)
+        next if seen_names.include?(name)
 
-        next if user.imports.exists?(name: import_name)
-
-        new_import = user.imports.build(
-          name: import_name,
-          source: entry[:source],
-          skip_background_processing: true
-        )
-        new_import.file.attach(
-          io: File.open(entry[:path]),
-          filename: filename,
-          content_type: Marcel::MimeType.for(name: filename)
-        )
-        new_import.save!
-        Import::ProcessJob.perform_later(new_import.id)
+        seen_names << name
+        build_import(user, entry, name)
       end
+
+      enqueue_processing(new_imports)
+    end
+
+    def import_name_for(entry)
+      "#{File.basename(entry[:path])} (from #{@archive_name})"
+    end
+
+    def build_import(user, entry, name)
+      filename = File.basename(entry[:path])
+      new_import = user.imports.build(name: name, source: entry[:source], skip_background_processing: true)
+      new_import.file.attach(
+        io: File.open(entry[:path]),
+        filename: filename,
+        content_type: Marcel::MimeType.for(name: filename)
+      )
+      new_import.save!
+      new_import
+    end
+
+    def enqueue_processing(imports)
+      return if imports.empty?
+
+      ActiveJob.perform_all_later(imports.map { |import| Import::ProcessJob.new(import.id) })
     end
   end
 end

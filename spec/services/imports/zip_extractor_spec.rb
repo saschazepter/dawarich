@@ -123,9 +123,13 @@ RSpec.describe Imports::ZipExtractor do
     context 'with more than 1,000 files' do
       let(:zip_path) do
         path = Rails.root.join('tmp', "test_many_files_#{SecureRandom.hex(4)}.zip").to_s
+        gpx_content = File.read(Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx'))
         ::Zip::File.open(path, create: true) do |zipfile|
-          1001.times do |index|
+          1000.times do |index|
             zipfile.get_output_stream("metadata/entry_#{index}.txt") { |file| file.write('metadata') }
+          end
+          2.times do |index|
+            zipfile.get_output_stream("tracks/track_#{index}.gpx") { |file| file.write(gpx_content) }
           end
         end
         path
@@ -133,8 +137,14 @@ RSpec.describe Imports::ZipExtractor do
 
       after { File.delete(zip_path) if File.exist?(zip_path) }
 
-      it 'accepts exports larger than the previous file-count limit' do
+      it 'accepts exports past the previous limit and imports the supported files' do
         expect { described_class.new(import, user.id, zip_path).call }.not_to raise_error
+
+        names = user.imports.where.not(id: import.id).pluck(:name)
+        expect(names).to contain_exactly(
+          'track_0.gpx (from test_archive.zip)',
+          'track_1.gpx (from test_archive.zip)'
+        )
         expect(Import.exists?(import.id)).to be(false)
       end
     end
