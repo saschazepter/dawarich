@@ -5,7 +5,12 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Mcp', type: :request do
   let(:user) { create(:user) }
 
-  before { host! 'localhost' }
+  before do
+    host! 'localhost'
+    Flipper.enable(:mcp_server)
+  end
+
+  after { Flipper.disable(:mcp_server) }
 
   let(:headers) do
     {
@@ -37,6 +42,36 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
         updated_at: now
       }
     end)
+  end
+
+  describe 'feature gating and request limits' do
+    it 'hides the endpoint when the feature flag is off' do
+      Flipper.disable(:mcp_server)
+
+      rpc('initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: {} })
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'rejects oversized JSON-RPC batches before running any tool' do
+      batch = Array.new(Api::V1::McpController::MAX_BATCH_SIZE + 1) do |index|
+        { jsonrpc: '2.0', id: index, method: 'tools/list' }
+      end
+
+      post '/api/v1/mcp', params: batch.to_json, headers: headers
+
+      expect(response).to have_http_status(:payload_too_large)
+    end
+
+    it 'still accepts a batch at the limit' do
+      batch = Array.new(Api::V1::McpController::MAX_BATCH_SIZE) do |index|
+        { jsonrpc: '2.0', id: index, method: 'tools/list' }
+      end
+
+      post '/api/v1/mcp', params: batch.to_json, headers: headers
+
+      expect(response).not_to have_http_status(:payload_too_large)
+    end
   end
 
   describe 'authentication and discovery' do
