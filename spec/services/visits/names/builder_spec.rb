@@ -133,5 +133,29 @@ RSpec.describe Visits::Names::Builder do
         expect(described_class.new(features, feature_type, '').call).to be_nil
       end
     end
+
+    context 'when the matched feature carries a generic OSM value' do
+      let(:features) do
+        [
+          {
+            'properties' => {
+              'name' => 'yes',
+              'osm_value' => feature_type,
+              'street' => 'Main St',
+              'city' => 'New York'
+            }
+          }
+        ]
+      end
+      let(:name) { 'yes' }
+
+      it 'drops the generic value instead of naming the visit after it' do
+        expect(subject).not_to match(/yes/i)
+      end
+
+      it 'still uses the remaining address components' do
+        expect(subject).to eq('Main St, New York')
+      end
+    end
   end
 end

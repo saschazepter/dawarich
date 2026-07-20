@@ -35,12 +35,14 @@ module Visits
         return nil if features.blank? || feature_type.blank? || name.blank?
         return nil unless feature
 
-        [
+        components = [
           name,
           properties['street'],
           properties['city'],
           properties['state']
-        ].compact.uniq.join(', ')
+        ].filter_map { |component| self.class.meaningful_component(component) }.uniq
+
+        components.any? ? components.join(', ') : nil
       end
 
       private
