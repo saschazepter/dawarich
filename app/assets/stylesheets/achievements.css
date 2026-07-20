@@ -18,7 +18,7 @@
 }
 
 .ach-kicker {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-size: 13px;
   letter-spacing: 5px;
   color: #d8b45a;
@@ -26,7 +26,7 @@
 }
 
 .ach-title {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-size: 40px;
   font-weight: 600;
   margin: 8px 0 10px;
@@ -305,7 +305,7 @@
 }
 
 .ach-plate-name {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-weight: 700;
   font-size: 17px;
   color: #f2ede0;
@@ -360,7 +360,7 @@
 }
 
 .ach-rarity {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-size: 11.5px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
@@ -411,7 +411,7 @@
 }
 
 .ach-badge-text {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-weight: 700;
   font-size: 13px;
   color: #fff;
@@ -599,7 +599,7 @@
   box-shadow:
     0 0 0 6px rgba(216, 180, 90, 0.15),
     inset 0 0 24px rgba(216, 180, 90, 0.2);
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-size: 46px;
   font-weight: 700;
   color: #d8b45a;
@@ -775,7 +775,7 @@
 }
 
 .ach-side-group {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-size: 11px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
@@ -811,7 +811,7 @@
 }
 
 .ach-side-link--summary {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: 13.5px;
   letter-spacing: 1px;
@@ -868,7 +868,7 @@
   align-items: center;
   gap: 14px;
   margin: 36px 0 24px;
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: "Source Serif 4", ui-serif, Georgia, serif;
   font-size: 13px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
