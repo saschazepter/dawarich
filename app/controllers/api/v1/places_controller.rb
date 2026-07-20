@@ -192,7 +192,7 @@ module Api
 
       def within_duplicate_radius?(external_place, saved)
         coords = [external_place[:latitude], external_place[:longitude], saved[:latitude], saved[:longitude]]
-        return true if coords.any?(&:blank?)
+        return false if coords.any?(&:blank?)
 
         Geocoder::Calculations.distance_between(
           [external_place[:latitude].to_f, external_place[:longitude].to_f],

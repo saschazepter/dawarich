@@ -5,8 +5,8 @@ require 'rails_helper'
 RSpec.describe 'Existing places in visit search', type: :request do
   let(:user) { create(:user) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
-  let(:latitude) { 52.437 }
-  let(:longitude) { 13.539 }
+  let(:latitude) { 51.3402 }
+  let(:longitude) { 12.3712 }
 
   before do
     allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
@@ -83,5 +83,22 @@ RSpec.describe 'Existing places in visit search', type: :request do
         headers: headers
 
     expect(JSON.parse(response.body).fetch('places').pluck('id')).not_to include(other_place.id)
+  end
+
+  it 'does not surface a same-named saved place on the other side of the world' do
+    faraway = create(
+      :place,
+      user: user,
+      name: 'Home',
+      source: :manual,
+      latitude: 35.6762,
+      longitude: 139.6503
+    )
+
+    get '/api/v1/places/search',
+        params: { q: 'Home', lat: latitude, lon: longitude },
+        headers: headers
+
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).not_to include(faraway.id)
   end
 end
