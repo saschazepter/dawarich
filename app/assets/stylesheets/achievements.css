@@ -1140,3 +1140,73 @@
   background: rgb(216 180 90 / 16%);
   color: #d8b45a;
 }
+
+.ach-stages {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.ach-stage {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid rgb(148 163 184 / 16%);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12.5px;
+  color: #8a929b;
+  opacity: 0.55;
+}
+
+.ach-stage--reached {
+  opacity: 1;
+  color: #e8e4da;
+  background: rgb(255 255 255 / 3%);
+}
+
+.ach-stage-pip {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid currentcolor;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ach-stage-name {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.ach-stage--rare {
+  --stage: #4a90d9;
+}
+.ach-stage--epic {
+  --stage: #a45ee5;
+}
+.ach-stage--legendary {
+  --stage: #e0a13e;
+}
+
+.ach-stage--reached.ach-stage--rare,
+.ach-stage--reached.ach-stage--epic,
+.ach-stage--reached.ach-stage--legendary {
+  border-color: color-mix(in oklab, var(--stage) 55%, transparent);
+}
+
+.ach-stage--reached .ach-stage-pip {
+  color: var(--stage);
+  background: color-mix(in oklab, var(--stage) 16%, transparent);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--stage) 45%, transparent);
+}

@@ -50,6 +50,7 @@ class AchievementsController < ApplicationController
     @continents = presenters_for(by_kind.fetch('continent', []))
     @tiers = presenters_for(by_kind.fetch('region_set', []))
     @orphans = presenters_for(by_kind.fetch('country', []).select { |set| set.parent_key.nil? })
+    @world = Achievements::WorldStagesPresenter.new(state: @state)
     @summary = Achievements::SummaryPresenter.new(state: @state)
   end
 

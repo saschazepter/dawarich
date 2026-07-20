@@ -34,13 +34,7 @@
         <div class="ach-divider"><span>World</span></div>
 
         <div class="ach-grid">
-          <% @tiers.each_with_index do |set, index| %>
-            <%= link_to achievement_path(set.definition.key), class: 'ach-card-link' do %>
-              <%= render 'card', reveal_delay: 0.1 + (0.15 * [index, 10].min),
-                                 celebrate: set.celebrate?,
-                                 **set.card_attributes %>
-            <% end %>
-          <% end %>
+          <%= render 'card', celebrate: @world.celebrate?, stages: @world.stages, **@world.card_attributes %>
         </div>
 
         <p class="ach-footnote">

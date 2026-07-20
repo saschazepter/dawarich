@@ -1,4 +1,4 @@
-<%# locals: (name:, rarity:, map_lat:, map_lon:, map_zoom:, marker_lat: nil, marker_lon: nil, description: nil, flavor: nil, place: nil, size: :md, percent: 0, completed: false, locked: false, earned_label: nil, celebrate: false, reveal_delay: 0.1) %>
+<%# locals: (name:, rarity:, map_lat:, map_lon:, map_zoom:, marker_lat: nil, marker_lon: nil, description: nil, flavor: nil, place: nil, size: :md, percent: 0, completed: false, locked: false, earned_label: nil, celebrate: false, reveal_delay: 0.1, stages: nil) %>
 <div class="ach-card-wrap <%= 'ach-card-wrap--celebrate' if celebrate %>" style="--reveal-delay: <%= reveal_delay %>s;"
      data-controller="achievement-card"
      data-achievement-card-locked-value="<%= locked %>"
@@ -36,6 +36,16 @@
         <div class="ach-body">
           <p class="ach-desc"><%= description %></p>
           <div class="ach-flavor"><%= flavor %></div>
+          <% if stages %>
+            <ol class="ach-stages">
+              <% stages.each do |stage| %>
+                <li class="ach-stage ach-stage--<%= stage[:rarity].downcase %> <%= 'ach-stage--reached' if stage[:reached] %>">
+                  <span class="ach-stage-pip"><%= stage[:reached] ? '✓' : stage[:threshold] %></span>
+                  <span class="ach-stage-name"><%= stage[:name] %></span>
+                </li>
+              <% end %>
+            </ol>
+          <% end %>
         </div>
       <% end %>
       <div class="ach-rarity-row">
