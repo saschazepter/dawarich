@@ -23,6 +23,11 @@ class ReverseGeocoding::Points::FetchData
   private
 
   WRITE_MAX_RETRIES = 3
+  WRITE_CONTENTION_ERRORS = [
+    ActiveRecord::Deadlocked,
+    ActiveRecord::LockWaitTimeout,
+    ActiveRecord::QueryCanceled
+  ].freeze
 
   def update_point_with_geocoding_data
     response = Geocoder.search([point.lat, point.lon]).first
@@ -54,11 +59,11 @@ class ReverseGeocoding::Points::FetchData
     retries = 0
     begin
       yield
-    rescue ActiveRecord::Deadlocked, ActiveRecord::QueryCanceled => e
+    rescue *WRITE_CONTENTION_ERRORS => e
       retries += 1
       raise e if retries > WRITE_MAX_RETRIES
 
-      sleep(0.1 * retries)
+      sleep((0.1 * retries) + (rand * 0.05))
       retry
     end
   end
