@@ -34,13 +34,18 @@ RSpec.describe 'Visit detection spatial extent' do
     expect(clusters.first[:point_count]).to eq(8)
   end
 
+  let(:base_latitude) { 51.3402 }
+  let(:base_longitude) { 12.3712 }
+
   def create_path_points(count:, step_degrees:)
     count.times do |index|
+      longitude = base_longitude + (index * step_degrees)
+
       create(:point,
              user: user,
-             longitude: index * step_degrees,
-             latitude: 0,
-             lonlat: "POINT(#{index * step_degrees} 0)",
+             longitude: longitude,
+             latitude: base_latitude,
+             lonlat: "POINT(#{longitude} #{base_latitude})",
              accuracy: 5,
              timestamp: start_time + (index * 60))
     end

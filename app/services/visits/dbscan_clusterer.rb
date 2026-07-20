@@ -9,7 +9,7 @@ module Visits
     DENSITY_MAX_GAP_SECONDS = 12 * 3600
     DENSITY_MAX_DISTANCE_METERS = 50
     STATIONARY_SPEED_MPS = 1.4
-    MAX_CLUSTER_RADIUS_MULTIPLIER = 3
+    MAX_CLUSTER_RADIUS_MULTIPLIER = Visits::StayPointDetector::DRIFT_CAP_FACTOR
 
     attr_reader :user, :start_at, :end_at
 

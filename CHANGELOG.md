@@ -9,9 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Photoprism photo imports no longer fail with an HTTP 400: the `after` and `before` filters are now sent as plain `YYYY-MM-DD` dates, which Photoprism's search API requires (recent Photoprism rejects full timestamps, including the `before` value shipped in 1.9.2). Since a bare `before` date is coarser than the requested range, results are additionally bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
-- Cloud: for Lite users viewing a single import on the map, the points counter no longer includes unrelated points from the same date range (the `X-Total-Points-In-Range` header is now scoped to the import).
-- Visit detection no longer turns long slow walks into one large suggested visit centered somewhere the user never stopped (#2970).
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
 - Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0) and recalculates affected stats and tracks.
 
@@ -96,7 +93,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
 - Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
 - Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
-- Photoprism photo imports no longer fail with an HTTP 400: the `after`/`before` filters are now sent as plain `YYYY-MM-DD` dates, as recent Photoprism requires (it rejects the full timestamps shipped in 1.9.2). Results are still bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
 
 
 ## [1.9.2] - 2026-06-25
