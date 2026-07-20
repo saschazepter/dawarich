@@ -48,7 +48,7 @@ class ReverseGeocoding::Points::FetchData
   rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
     Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
   rescue OpenSSL::SSL::SSLError => e
-    if e.message.include?('unexpected eof while reading')
+    if ReverseGeocoding::ProviderErrors.transient_tls?(e)
       Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
     else
       Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
