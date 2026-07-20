@@ -93,6 +93,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
 - Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
 - Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
+- Photoprism photo imports no longer fail with an HTTP 400: the `after`/`before` filters are now sent as plain `YYYY-MM-DD` dates, as recent Photoprism requires (it rejects the full timestamps shipped in 1.9.2). Results are still bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
 
 
 ## [1.9.2] - 2026-06-25
