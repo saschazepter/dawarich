@@ -1,39 +1,29 @@
-<div class="card bg-base-200 shadow-md">
-  <div class="card-body">
-    <h2 class="card-title">
-      <%= set.definition.name %>
-      <% if set.completed? %><span class="badge badge-success">Completed</span><% end %>
-    </h2>
+<% interactive = local_assigns.fetch(:interactive, true) %>
+<div class="ach-slot">
+  <%= render 'achievements/card',
+             reveal_delay: local_assigns.fetch(:reveal_delay, 0.1),
+             **set.card_attributes %>
 
-    <div class="flex items-center gap-3">
-      <progress class="progress progress-primary w-full" value="<%= set.earned_count %>" max="<%= set.total %>"></progress>
-      <span class="whitespace-nowrap font-mono"><%= set.earned_count %>/<%= set.total %></span>
+  <details class="ach-details">
+    <summary><%= set.display_count %>/<%= set.target %> regions</summary>
+    <ul class="ach-regions">
+      <% set.regions.each do |region| %>
+        <li class="<%= 'ach-region--pending' unless region[:earned_at] %>">
+          <span><%= region[:name] %></span>
+          <span><%= region[:earned_at] ? Date.parse(region[:earned_at]).strftime('%-d %b %Y') : '—' %></span>
+        </li>
+      <% end %>
+    </ul>
+  </details>
+
+  <% if interactive %>
+    <div class="ach-actions">
+      <%= button_to set.sharing_enabled? ? 'Disable sharing' : 'Share',
+                    toggle_sharing_achievement_path(set.definition.key),
+                    method: :patch, class: 'ach-btn' %>
+      <% if set.sharing_enabled? %>
+        <%= link_to 'Public link', shared_achievement_path(set.sharing_uuid), class: 'ach-btn' %>
+      <% end %>
     </div>
-
-    <div class="collapse collapse-arrow bg-base-100 mt-2">
-      <input type="checkbox" />
-      <div class="collapse-title">Regions</div>
-      <div class="collapse-content">
-        <ul>
-          <% set.regions.each do |region| %>
-            <li class="flex justify-between py-1 <%= 'opacity-40' unless region[:earned_at] %>">
-              <span><%= region[:name] %></span>
-              <span><%= region[:earned_at] ? Date.parse(region[:earned_at]).strftime('%d %b %Y') : '—' %></span>
-            </li>
-          <% end %>
-        </ul>
-      </div>
-    </div>
-
-    <% if set.progress %>
-      <div class="card-actions justify-end mt-2">
-        <%= button_to set.sharing_enabled? ? 'Disable sharing' : 'Share',
-                      toggle_sharing_achievement_path(set.definition.key),
-                      method: :patch, class: 'btn btn-sm' %>
-        <% if set.sharing_enabled? %>
-          <%= link_to 'Public link', shared_achievement_path(set.sharing_uuid), class: 'btn btn-sm btn-primary' %>
-        <% end %>
-      </div>
-    <% end %>
-  </div>
+  <% end %>
 </div>

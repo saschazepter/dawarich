@@ -199,7 +199,7 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
-  resources :achievements, only: :index, param: :key do
+  resources :achievements, only: %i[index show], param: :key do
     member do
       patch :toggle_sharing
     end

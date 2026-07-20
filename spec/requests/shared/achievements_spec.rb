@@ -4,13 +4,18 @@ require 'rails_helper'
 
 RSpec.describe 'Shared achievements' do
   describe 'GET /shared/achievements/:uuid' do
+    let(:user) { create(:user) }
+    let!(:exploration) do
+      create(:achievement_progress, user: user, achievement_key: 'exploration',
+                                    state: { 'earned' => { 'DE-BY' => '2026-07-01T10:00:00Z' } })
+    end
     let(:progress) do
       create(
         :achievement_progress,
-        achievement_key: 'explorer_germany',
+        user: user,
+        achievement_key: 'country_de',
         sharing_enabled: true,
-        sharing_uuid: SecureRandom.uuid,
-        state: { 'earned' => { 'DE-BY' => '2026-07-01T10:00:00Z' } }
+        sharing_uuid: SecureRandom.uuid
       )
     end
 

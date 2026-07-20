@@ -12,37 +12,146 @@ RSpec.describe 'Achievements' do
       before { Flipper.enable(:achievements) }
       after { Flipper.disable(:achievements) }
 
-      it 'renders both sets with progress' do
-        create(
-          :achievement_progress,
-          user:, achievement_key: 'explorer_germany',
-          state: { 'earned' => { 'DE-BY' => '2026-07-01T10:00:00Z' }, 'dwell' => { 'DE-BY' => 4200 }, 'cursor' => 1 }
-        )
+      def exploration(earned)
+        create(:achievement_progress, user:, achievement_key: 'exploration', state: { 'earned' => earned })
+      end
+
+      it 'renders continents and world tiers rather than every set' do
+        exploration('DE-BY' => '2026-07-01T10:00:00Z', 'DE' => '2026-07-01T10:00:00Z')
 
         get achievements_path
 
-        expect(response.body).to include('Germany Explorer')
-        expect(response.body).to include('USA Explorer')
-        expect(response.body).to include('1/16')
-        expect(response.body).to include('0/50')
+        expect(response.body).to include('Europe Explorer')
+        expect(response.body).to include('Border Hopper')
+        expect(response.body).not_to include('Germany Explorer')
+      end
+
+      it 'counts distinct codes in the summary instead of summing sets' do
+        exploration('DE' => '2026-07-01T10:00:00Z', 'FR' => '2026-07-02T10:00:00Z')
+
+        get achievements_path
+
+        expect(response.body).to include('2 of 238 countries')
+      end
+
+      describe 'first-view celebration' do
+        it 'celebrates a newly completed set exactly once' do
+          all_earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-19' }
+          progress = exploration(all_earned)
+
+          get achievement_path('country_de')
+
+          expect(response.body).to include('ach-card-wrap--celebrate')
+          expect(progress.reload.state.dig('celebrated', 'country_de')).to be_present
+
+          get achievement_path('country_de')
+
+          expect(response.body).not_to include('ach-card-wrap--celebrate')
+        end
+      end
+
+      describe 'GET /achievements/:key' do
+        it 'renders a country page with its region cards' do
+          exploration('DE-BY' => '2026-07-01T10:00:00Z')
+
+          get achievement_path('country_de')
+
+          expect(response.body).to include('Germany Explorer')
+          expect(response.body).to include('Bavaria')
+          expect(response.body).to include('Saxony')
+        end
+
+        it 'paginates a continent page at ten cards, earned first' do
+          exploration('SE' => '2026-07-01T10:00:00Z')
+
+          get achievement_path('continent_europe')
+
+          expect(response.body.scan(/ach-card--sm/).size).to eq(10)
+          expect(response.body).to include('ach-pagination')
+          expect(response.body.index('Sweden')).to be < response.body.index('Albania')
+        end
+
+        it 'renders a continent page with country cards, linking only gridded ones' do
+          exploration('DE' => '2026-07-01T10:00:00Z', 'FR' => '2026-07-02T10:00:00Z')
+
+          get achievement_path('continent_europe')
+
+          expect(response.body).to include('Europe Explorer')
+          expect(response.body).to include(achievement_path('country_de'))
+          expect(response.body).to include('France')
+          expect(response.body).not_to include(achievement_path('country_fr'))
+        end
+
+        it 'sends a flat country to its continent instead of 404ing' do
+          get achievement_path('country_fr')
+
+          expect(response).to redirect_to(achievement_path('continent_europe'))
+        end
+
+        it 'still 404s a flat country with no continent' do
+          get achievement_path('country_aq')
+
+          expect(response).to have_http_status(:not_found)
+        end
+
+        it 'renders a world tier as a paginated compact list, earned first' do
+          exploration('ZW' => '2026-07-01T10:00:00Z')
+
+          get achievement_path('border_hopper')
+
+          expect(response.body).to include('ach-list')
+          expect(response.body).not_to include('ach-child-grid')
+          expect(response.body.index('Zimbabwe')).to be < response.body.index('Afghanistan')
+        end
+
+        it 'paginates the tier list at ten per page' do
+          get achievement_path('border_hopper')
+          first_page = response.body.scan(/<li class="ach-row/).size
+
+          get achievement_path('border_hopper', page: 2)
+
+          expect(first_page).to eq(10)
+          expect(response.body).to include('ach-row')
+        end
+
+        it 'returns 404 for the old pre-rename keys' do
+          get achievement_path('explorer_germany')
+
+          expect(response).to have_http_status(:not_found)
+        end
+
+        it 'returns 404 for an unknown key' do
+          get achievement_path('explorer_atlantis')
+
+          expect(response).to have_http_status(:not_found)
+        end
       end
 
       describe 'PATCH /achievements/:key/toggle_sharing' do
         it 'enables sharing and generates a uuid once' do
-          progress = create(:achievement_progress, user:, achievement_key: 'explorer_germany')
+          progress = create(:achievement_progress, user:, achievement_key: 'country_de')
 
-          patch toggle_sharing_achievement_path('explorer_germany')
+          patch toggle_sharing_achievement_path('country_de')
           expect(progress.reload.sharing_enabled).to be(true)
           uuid = progress.sharing_uuid
           expect(uuid).to be_present
 
-          patch toggle_sharing_achievement_path('explorer_germany')
+          patch toggle_sharing_achievement_path('country_de')
           expect(progress.reload.sharing_enabled).to be(false)
           expect(progress.sharing_uuid).to eq(uuid)
         end
 
-        it 'returns 404 when no progress row exists' do
-          patch toggle_sharing_achievement_path('explorer_germany')
+        it 'creates the sharing carrier on demand' do
+          expect { patch toggle_sharing_achievement_path('country_de') }
+            .to change { user.achievement_progresses.count }.by(1)
+
+          carrier = user.achievement_progresses.find_by(achievement_key: 'country_de')
+          expect(carrier.sharing_enabled).to be(true)
+          expect(carrier.state).to eq({})
+        end
+
+        it 'returns 404 for a key outside the registry' do
+          patch toggle_sharing_achievement_path('explorer_atlantis')
 
           expect(response).to have_http_status(:not_found)
         end

@@ -2,25 +2,36 @@
 
 module Achievements
   class SetPresenter
-    attr_reader :definition, :progress
+    DEFAULT_CHILD_ZOOM = 6
 
-    def initialize(definition:, progress:)
+    attr_reader :definition, :state, :sharing
+
+    def initialize(definition:, state: {}, sharing: nil)
       @definition = definition
-      @progress = progress
+      @state = state || {}
+      @sharing = sharing
+    end
+
+    delegate :total, :target, :flat?, :level, :parent_key, to: :definition
+
+    def compact?
+      definition.kind == 'region_set'
     end
 
     def earned
-      progress&.state&.fetch('earned', {}) || {}
+      @earned ||= state.fetch('earned', {}).slice(*definition.region_codes)
     end
 
     def earned_count
       earned.size
     end
 
-    delegate :total, to: :definition
-
     def completed?
-      earned_count == total
+      earned_count >= target
+    end
+
+    def display_count
+      [earned_count, target].min
     end
 
     def regions
@@ -30,11 +41,152 @@ module Achievements
     end
 
     def sharing_enabled?
-      progress&.sharing_enabled || false
+      sharing&.sharing_enabled || false
     end
 
     def sharing_uuid
-      progress&.sharing_uuid
+      sharing&.sharing_uuid
+    end
+
+    def percent
+      return 0 if target.zero?
+
+      [(earned_count * 100.0 / target).round, 100].min
+    end
+
+    def locked?
+      earned_count.zero?
+    end
+
+    def completed_on
+      return nil unless completed?
+
+      earned.values.map { |date| Date.parse(date) }.sort[target - 1]
+    end
+
+    def earned_label
+      return 'Locked' if locked?
+      return "Unlocked · #{completed_on.strftime('%-d %b %Y')}" if completed?
+
+      "In progress — #{percent}%"
+    end
+
+    def celebrate?
+      completed? && state.dig('celebrated', definition.key).blank?
+    end
+
+    def rarity
+      definition.card['rarity']
+    end
+
+    def description
+      definition.card['description']
+    end
+
+    def flavor
+      definition.card['flavor']
+    end
+
+    def place
+      definition.card['place']
+    end
+
+    def card_attributes
+      art = definition.card['art']
+      marker = definition.card['marker'] || art
+
+      {
+        name: definition.name,
+        description: description,
+        flavor: flavor,
+        rarity: rarity,
+        place: place,
+        map_lat: art['lat'],
+        map_lon: art['lon'],
+        map_zoom: art['zoom'],
+        marker_lat: marker['lat'],
+        marker_lon: marker['lon'],
+        percent: percent,
+        completed: completed?,
+        locked: locked?,
+        earned_label: earned_label
+      }
+    end
+
+    def region_cards
+      cards = level == :subdivision ? subdivision_cards : country_cards
+
+      cards.sort_by { |card| [card[:completed] ? 0 : 1, card[:name]] }
+    end
+
+    def region_rows
+      definition.regions
+                .map { |code, name| region_row(code, name) }
+                .sort_by { |row| [row[:earned_at] ? 0 : 1, row[:name]] }
+    end
+
+    private
+
+    def region_row(code, name)
+      child = level == :country ? Registry.find("country_#{code.downcase}") : nil
+
+      {
+        code: code,
+        name: child ? child.card['place'] : name,
+        earned_at: earned[code],
+        key: child&.level == :subdivision ? child.key : nil
+      }
+    end
+
+    def subdivision_cards
+      art = definition.card['art']
+      zoom = definition.card.fetch('child_zoom', DEFAULT_CHILD_ZOOM)
+      rarities = definition.card.fetch('rarities', {})
+
+      definition.regions.map do |code, name|
+        lat, lon = region_centroids[code] || [art['lat'], art['lon']]
+
+        child_card(name: name, rarity: rarities.fetch(code, 'Common'), lat: lat, lon: lon,
+                   zoom: zoom, earned_at: earned[code])
+      end
+    end
+
+    def country_cards
+      definition.region_codes.filter_map do |code|
+        child = Registry.find("country_#{code.downcase}")
+        next if child.nil?
+
+        art = child.card['art']
+        child_card(name: child.card['place'], rarity: child.card['rarity'], lat: art['lat'],
+                   lon: art['lon'], zoom: art['zoom'], earned_at: earned[code],
+                   key: child.level == :subdivision ? child.key : nil)
+      end
+    end
+
+    def child_card(name:, rarity:, lat:, lon:, zoom:, earned_at:, key: nil)
+      {
+        name: name,
+        key: key,
+        rarity: rarity,
+        map_lat: lat,
+        map_lon: lon,
+        map_zoom: zoom,
+        marker_lat: lat,
+        marker_lon: lon,
+        percent: earned_at ? 100 : 0,
+        completed: earned_at.present?,
+        locked: earned_at.blank?,
+        earned_label: earned_at ? "Unlocked · #{Date.parse(earned_at).strftime('%-d %b %Y')}" : nil
+      }
+    end
+
+    def region_centroids
+      @region_centroids ||= Region
+                            .where(code: definition.region_codes)
+                            .pluck(:code,
+                                   Arel.sql('ST_Y(ST_Centroid(geom::geometry))'),
+                                   Arel.sql('ST_X(ST_Centroid(geom::geometry))'))
+                            .to_h { |code, lat, lon| [code, [lat, lon]] }
     end
   end
 end

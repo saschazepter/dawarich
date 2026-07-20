@@ -1,0 +1,62 @@
+
+<div class="container mx-auto px-4 py-8">
+  <div class="ach-page">
+    <div class="ach-layout">
+      <%= render 'sidebar', continents: @continents, tiers: @tiers, summary: @summary,
+                            active_key: @sidebar_key %>
+
+      <div class="ach-main">
+        <% if @set.parent_key %>
+          <div class="ach-breadcrumb">
+            <%= link_to 'Achievements', achievements_path %>
+            <span>›</span>
+            <%= link_to @set.definition.continent, achievement_path(@set.parent_key) %>
+          </div>
+        <% end %>
+
+        <div class="ach-set-hero">
+          <%= render 'card', celebrate: @set.celebrate?, **@set.card_attributes %>
+
+          <div class="ach-actions">
+            <%= button_to @set.sharing_enabled? ? 'Disable sharing' : 'Share',
+                          toggle_sharing_achievement_path(@set.definition.key),
+                          method: :patch, class: 'ach-btn' %>
+            <% if @set.sharing_enabled? %>
+              <%= link_to 'Public link', shared_achievement_path(@set.sharing_uuid), class: 'ach-btn' %>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="ach-divider">
+          <span><%= @set.level == :country ? 'Countries' : 'Regions' %> —
+            <%= @set.display_count %>/<%= @set.target %></span>
+        </div>
+
+        <% if @set.compact? %>
+          <%= render 'compact_list', rows: @children %>
+        <% else %>
+          <div class="ach-child-grid">
+            <% @children.each_with_index do |region_card, index| %>
+              <% key = region_card[:key] %>
+              <% card = region_card.except(:key) %>
+              <% if key %>
+                <%= link_to achievement_path(key), class: 'ach-card-link' do %>
+                  <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min, **card %>
+                <% end %>
+              <% else %>
+                <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min, **card %>
+              <% end %>
+            <% end %>
+          </div>
+
+          <div class="ach-pagination"><%= paginate @children %></div>
+        <% end %>
+
+        <p class="ach-footnote">
+          Region detection is based on approximate boundaries.
+          Map art: Protomaps © OpenStreetMap contributors
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

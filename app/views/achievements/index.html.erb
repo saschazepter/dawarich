@@ -1,11 +1,54 @@
+
 <div class="container mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold mb-6">Achievements</h1>
+  <div class="ach-page">
+    <div class="ach-layout">
+      <%= render 'sidebar', continents: @sets, tiers: @tiers, summary: @summary %>
 
-  <div class="grid gap-6 md:grid-cols-2">
-    <% @sets.each do |set| %>
-      <%= render 'set_card', set: set %>
-    <% end %>
+      <div class="ach-main">
+        <div class="ach-header">
+          <div class="ach-kicker">Dawarich</div>
+          <h1 class="ach-title">Achievements</h1>
+          <p class="ach-hint">
+            <%= @summary.earned_countries %> of <%= @summary.total_countries %> countries ·
+            <%= @summary.earned_subdivisions %> of <%= @summary.total_subdivisions %> regions
+          </p>
+        </div>
+
+        <div class="ach-divider"><span>Continents</span></div>
+
+        <div class="ach-grid">
+          <% @sets.each_with_index do |set, index| %>
+            <%= link_to achievement_path(set.definition.key), class: 'ach-card-link' do %>
+              <%= render 'card', reveal_delay: 0.1 + (0.15 * [index, 10].min),
+                                 celebrate: set.celebrate?,
+                                 **set.card_attributes %>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="ach-grid">
+          <% @orphans.each do |set| %>
+            <%= render 'card', celebrate: set.celebrate?, **set.card_attributes %>
+          <% end %>
+        </div>
+
+        <div class="ach-divider"><span>World</span></div>
+
+        <div class="ach-grid">
+          <% @tiers.each_with_index do |set, index| %>
+            <%= link_to achievement_path(set.definition.key), class: 'ach-card-link' do %>
+              <%= render 'card', reveal_delay: 0.1 + (0.15 * [index, 10].min),
+                                 celebrate: set.celebrate?,
+                                 **set.card_attributes %>
+            <% end %>
+          <% end %>
+        </div>
+
+        <p class="ach-footnote">
+          Region detection is based on approximate boundaries.
+          Map art: Protomaps © OpenStreetMap contributors
+        </p>
+      </div>
+    </div>
   </div>
-
-  <p class="text-xs opacity-60 mt-8">Region detection is based on approximate boundaries.</p>
 </div>

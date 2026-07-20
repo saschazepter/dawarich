@@ -9,6 +9,10 @@ class Shared::AchievementsController < ApplicationController
       return redirect_to root_path, alert: 'Shared achievement not found or no longer available'
     end
 
-    @set = Achievements::SetPresenter.new(definition: definition, progress: progress)
+    exploration = Achievements::Progress.exploration_for(progress.user)
+
+    @set = Achievements::SetPresenter.new(
+      definition: definition, state: exploration.state, sharing: progress
+    )
   end
 end
