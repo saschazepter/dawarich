@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Photon place names no longer show generic "Yes" categories in visits (https://github.com/Freika/dawarich/issues/3050)
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
 - Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0) and recalculates affected stats and tracks.
 
@@ -78,7 +79,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Family location history now actually shows up on Map v2: the history endpoint read coordinates from the legacy `latitude`/`longitude` columns, which are empty on instances that only store the PostGIS `lonlat` value, so nothing was drawn. Coordinates are now derived from `lonlat` (#2977)
-- Photon place names no longer show generic "Yes" categories in visits (https://github.com/Freika/dawarich/issues/3050)
 - Declining the "Move the visit here?" prompt when picking a distant place for a Map v2 visit no longer renames the visit to that place.
 - Place visit detection no longer leaves an empty duplicate visit behind when a new point bridges two previously separate visits at the same place — they are now merged into one. The nightly re-scan also leaves confirmed visits untouched, so a new nearby point can no longer pull points out of a visit you already confirmed.
 - Re-evaluating anomalous points now refreshes the map immediately instead of occasionally serving a cached copy of the points until the next change.
