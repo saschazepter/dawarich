@@ -9,47 +9,46 @@ module Achievements
     end
 
     def call
-      Registry.region_sets.each { |definition| check_set(definition) }
+      cursor = latest_timestamp
+      return if cursor.nil?
+
+      progress = Progress.find_or_create_by!(user_id: user.id, achievement_key: Progress::EXPLORATION_KEY)
+      newly_earned = []
+
+      progress.with_lock do
+        previous = progress.state['cursor'].to_i
+        next if previous.positive? && cursor <= previous && !recompute?(previous)
+
+        replace = recompute?(previous)
+        deltas = collect_deltas(replace ? 0 : previous)
+        progress.update!(state: merged_state(progress.state, deltas, newly_earned, replace: replace, cursor: cursor))
+      end
+
+      award_and_notify(progress.reload, newly_earned)
     end
 
     private
 
     attr_reader :user, :notify, :oldest_timestamp
 
-    def check_set(definition)
-      progress = Progress.find_or_create_by!(user: user, achievement_key: definition.key)
-      newly_earned = []
-      earned_total = 0
-      completed_now = false
-
-      progress.with_lock do
-        cursor = progress.state['cursor'].to_i
-        recompute = recompute?(cursor)
-        result = RegionDwellCalculator.new(
-          user, codes: definition.region_codes, since: recompute ? 0 : cursor
-        ).call
-        next if result.nil?
-
-        state = merge_result(progress.state, result, newly_earned, replace: recompute)
-        progress.update!(state: state)
-        earned_total = state['earned'].size
-        completed_now = award(definition) if complete?(state, definition)
-      end
-
-      send_notifications(definition, newly_earned, earned_total, completed_now)
+    def latest_timestamp
+      user.points.not_anomaly.where.not(lonlat: nil).maximum(:timestamp)
     end
 
     def recompute?(cursor)
       oldest_timestamp.present? && cursor.positive? && oldest_timestamp < cursor
     end
 
-    def merge_result(state, result, newly_earned, replace:)
+    def collect_deltas(since)
+      CountryDwellCalculator.new(user, since: since).call
+                            .merge(GridDwellCalculator.new(user, table: 'regions', since: since).call)
+    end
+
+    def merged_state(state, deltas, newly_earned, replace:, cursor:)
       dwell = replace ? {} : state.fetch('dwell', {})
       earned = state.fetch('earned', {})
 
-      result.deltas.each do |code, delta|
-        dwell[code] = dwell.fetch(code, 0) + delta
-      end
+      deltas.each { |code, delta| dwell[code] = dwell.fetch(code, 0) + delta }
 
       dwell.each do |code, seconds|
         next if earned.key?(code) || seconds < threshold_seconds
@@ -58,43 +57,71 @@ module Achievements
         newly_earned << code
       end
 
-      state.merge('cursor' => result.new_cursor, 'dwell' => dwell, 'earned' => earned)
+      state.merge('cursor' => cursor, 'dwell' => dwell, 'earned' => earned)
     end
 
     def threshold_seconds
       @threshold_seconds ||= user.safe_settings.min_minutes_spent_in_city * 60
     end
 
-    def complete?(state, definition)
-      (definition.region_codes - state['earned'].keys).empty?
+    def award_and_notify(progress, newly_earned)
+      earned = progress.state.fetch('earned', {})
+      completed = Registry.all.filter_map { |definition| definition if award?(definition, earned) }
+
+      notify_regions(newly_earned, earned)
+      completed.each { |definition| notify_completion(definition) }
     end
 
-    def award(definition)
-      achievement = UserAchievement.find_or_create_by!(user: user, achievement_key: definition.key) do |ua|
-        ua.earned_at = Time.current
-      end
+    def award?(definition, earned)
+      return false if (definition.region_codes & earned.keys).size < definition.target
 
-      achievement.previously_new_record?
+      UserAchievement.find_or_create_by!(user: user, achievement_key: definition.key) do |award|
+        award.earned_at = Time.current
+      end.previously_new_record?
     end
 
-    def send_notifications(definition, newly_earned, earned_total, completed_now)
+    def notify_regions(newly_earned, earned)
       return unless notify
 
       newly_earned.each do |code|
+        definition = announcer_for(code)
+        next if definition.nil?
+
         ::Notifications::Create.new(
           user: user, kind: :info,
           title: "#{definition.regions[code]} explored!",
-          content: "#{definition.name}: #{earned_total}/#{definition.total} regions visited."
+          content: "#{definition.name}: #{[(definition.region_codes & earned.keys).size, definition.target].min}" \
+                   "/#{definition.target} regions visited."
         ).call
       end
+    end
 
-      return unless completed_now
+    def notify_completion(definition)
+      return unless notify
 
       ::Notifications::Create.new(
         user: user, kind: :info,
         title: "#{definition.name} completed!",
-        content: "You explored all #{definition.total} regions."
+        content: "You explored #{definition.threshold ? definition.target : "all #{definition.total}"} regions."
       ).call
+    end
+
+    def announcer_for(code)
+      announcers[code]
+    end
+
+    def announcers
+      @announcers ||= (gridded_countries + continents).each_with_object({}) do |definition, index|
+        definition.region_codes.each { |code| index[code] ||= definition }
+      end
+    end
+
+    def gridded_countries
+      Registry.all.select { |definition| definition.kind == 'country' && definition.level == :subdivision }
+    end
+
+    def continents
+      Registry.all.select { |definition| definition.kind == 'continent' }
     end
   end
 end

@@ -4,99 +4,135 @@ require 'rails_helper'
 
 RSpec.describe Achievements::RegionSetChecker do
   let(:user) { create(:user) }
-  let(:definition) do
-    Achievements::Definition.new(
-      key: 'explorer_test', kind: 'region_set', name: 'Test Explorer',
-      country: 'TT', regions: { 'TT-01' => 'Testland' }
-    )
-  end
-  let!(:region) { create(:region, code: 'TT-01', geom: 'MULTIPOLYGON (((0 0, 0 1, 1 1, 1 0, 0 0)))') }
   let(:base_ts) { DateTime.new(2026, 1, 1).to_i }
+  let(:bavaria) { 'MULTIPOLYGON (((11.0 48.0, 11.0 49.0, 12.0 49.0, 12.0 48.0, 11.0 48.0)))' }
 
-  before { allow(Achievements::Registry).to receive(:region_sets).and_return([definition]) }
-
-  def create_dwell_points(count:, step: 600)
-    count.times { |i| create(:point, user:, longitude: 0.5, latitude: 0.5, timestamp: base_ts + (i * step)) }
+  def exploration
+    Achievements::Progress.find_by(user: user, achievement_key: 'exploration')
   end
 
-  def run_checker(notify: true)
-    described_class.new(user, notify: notify).call
+  def create_dwell_points(count: 8, lon: 11.5, lat: 48.5, step: 600)
+    count.times do |i|
+      create(:point, user:, longitude: lon, latitude: lat, timestamp: base_ts + (i * step))
+    end
   end
 
-  describe '#call' do
-    context 'when dwell crosses the threshold' do
-      before { create_dwell_points(count: 8) }
+  def seed_germany(with_country_id: true)
+    create(:region, code: 'DE-BY', geom: bavaria)
+    germany = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU', geom: bavaria)
+    create_dwell_points
+    user.points.update_all(country_id: germany.id) if with_country_id
+  end
 
-      it 'marks the region earned in state' do
-        run_checker
+  describe 'the two mechanisms' do
+    before { seed_germany }
 
-        progress = user.achievement_progresses.find_by!(achievement_key: 'explorer_test')
-        expect(progress.state['earned']).to have_key('TT-01')
-        expect(progress.state['dwell']['TT-01']).to eq(4200)
-      end
+    it 'credits the subdivision and the country from one pass' do
+      described_class.new(user, notify: false).call
 
-      it 'creates a region notification and a completion notification' do
-        expect { run_checker }.to change(Notification, :count).by(2)
-        expect(Notification.pluck(:title)).to include('Testland explored!', 'Test Explorer completed!')
-      end
-
-      it 'creates the award once' do
-        run_checker
-
-        expect(user.user_achievements.where(achievement_key: 'explorer_test').count).to eq(1)
-      end
-
-      it 'is idempotent on re-run' do
-        run_checker
-
-        expect { run_checker }.not_to change(Notification, :count)
-        expect(user.user_achievements.count).to eq(1)
-      end
-
-      it 'suppresses notifications when notify is false' do
-        expect { run_checker(notify: false) }.not_to change(Notification, :count)
-        expect(user.user_achievements.count).to eq(1)
-      end
+      expect(exploration.state['earned'].keys).to include('DE-BY', 'DE')
     end
 
-    context 'when dwell stays below the threshold' do
-      before { create_dwell_points(count: 2) }
+    it 'keeps a single shared cursor' do
+      described_class.new(user, notify: false).call
 
-      it 'accumulates dwell without earning' do
-        run_checker
-
-        progress = user.achievement_progresses.find_by!(achievement_key: 'explorer_test')
-        expect(progress.state['dwell']['TT-01']).to eq(600)
-        expect(progress.state['earned']).to be_blank
-        expect(user.user_achievements).to be_empty
-      end
+      expect(exploration.state['cursor']).to eq(base_ts + (7 * 600))
     end
 
-    context 'when older points arrive after the cursor advanced' do
-      it 'recomputes dwell from scratch without double-counting' do
-        create_dwell_points(count: 3)
-        run_checker
+    it 'withholds the country award until every subdivision is earned' do
+      described_class.new(user, notify: false).call
 
-        3.times { |i| create(:point, user:, longitude: 0.5, latitude: 0.5, timestamp: base_ts - 3600 + (i * 600)) }
-        described_class.new(user, oldest_timestamp: base_ts - 3600).call
+      expect(user.user_achievements.pluck(:achievement_key)).not_to include('country_de')
+    end
 
-        progress = user.achievement_progresses.find_by!(achievement_key: 'explorer_test')
-        expect(progress.state['dwell']['TT-01']).to eq(4200)
-      end
+    it 'never revokes an earned code' do
+      described_class.new(user, notify: false).call
+      user.points.delete_all
+      create_dwell_points(count: 2, lon: 0.5, lat: 0.5)
+      described_class.new(user, notify: false).call
 
-      it 'never revokes an earned region when recomputed dwell falls below the threshold' do
-        create_dwell_points(count: 8)
-        run_checker
-        user.points.order(timestamp: :desc).limit(5).destroy_all
+      expect(exploration.state['earned']).to have_key('DE-BY')
+    end
+  end
 
-        expect { described_class.new(user, oldest_timestamp: base_ts - 3600).call }
-          .not_to change(Notification, :count)
+  describe 'flat countries' do
+    let(:normandy) { 'MULTIPOLYGON (((2.0 48.0, 2.0 49.0, 3.0 49.0, 3.0 48.0, 2.0 48.0)))' }
 
-        progress = user.achievement_progresses.find_by!(achievement_key: 'explorer_test')
-        expect(progress.state['dwell']['TT-01']).to eq(1200)
-        expect(progress.state['earned']).to have_key('TT-01')
-        expect(user.user_achievements.where(achievement_key: 'explorer_test').count).to eq(1)
-      end
+    before do
+      france = create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA', geom: normandy)
+      create_dwell_points(lon: 2.5, lat: 48.5)
+      user.points.update_all(country_id: france.id)
+    end
+
+    it 'awards a flat country as soon as it is visited' do
+      described_class.new(user, notify: false).call
+
+      expect(user.user_achievements.pluck(:achievement_key)).to include('country_fr')
+    end
+  end
+
+  describe 'country_id fallback' do
+    before { seed_germany(with_country_id: false) }
+
+    it 'still earns the country through the spatial path' do
+      described_class.new(user, notify: false).call
+
+      expect(exploration.state['earned']).to have_key('DE')
+    end
+  end
+
+  describe 'notifications' do
+    before { seed_germany }
+
+    it 'announces a subdivision through its country set' do
+      described_class.new(user, notify: true).call
+
+      expect(user.notifications.pluck(:title)).to include('Bavaria explored!')
+    end
+
+    it 'announces a country through its continent set' do
+      described_class.new(user, notify: true).call
+
+      expect(user.notifications.pluck(:title)).to include('Germany explored!')
+    end
+
+    it 'sends nothing when notifications are off' do
+      described_class.new(user, notify: false).call
+
+      expect(user.notifications).to be_empty
+    end
+
+    it 'is idempotent on re-run' do
+      described_class.new(user, notify: true).call
+
+      expect { described_class.new(user, notify: true).call }.not_to change(Notification, :count)
+    end
+  end
+
+  describe 'historical import recompute' do
+    before { seed_germany }
+
+    it 'replaces dwell rather than doubling it' do
+      described_class.new(user, notify: false).call
+      first = exploration.state['dwell']['DE-BY']
+
+      described_class.new(user, notify: false, oldest_timestamp: base_ts - 1000).call
+
+      expect(exploration.state['dwell']['DE-BY']).to eq(first)
+    end
+  end
+
+  describe 'when dwell stays below the threshold' do
+    before do
+      create(:region, code: 'DE-BY', geom: bavaria)
+      create_dwell_points(count: 2)
+    end
+
+    it 'accumulates dwell without earning' do
+      described_class.new(user, notify: false).call
+
+      expect(exploration.state['dwell']['DE-BY']).to eq(600)
+      expect(exploration.state['earned']).to be_empty
     end
   end
 end
