@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Traccar KML exports now import LineString points using the time range in each track name instead of completing with zero points (#3120)
+- Traccar KML exports now import LineString points instead of completing with zero points. Traccar records only a start and end time per track, so each point in between is given an estimated time spread evenly across that range (#3120)
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
 - Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0) and recalculates affected stats and tracks.
 

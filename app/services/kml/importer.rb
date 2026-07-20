@@ -254,9 +254,13 @@ class Kml::Importer
     match = name&.match(/\A(\d{4}-\d{2}-\d{2} \d{2}:\d{2}) - (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\z/)
     return unless match
 
-    [Time.zone.parse(match[1]).to_i, Time.zone.parse(match[2]).to_i]
+    [user_time_zone.parse(match[1]).to_i, user_time_zone.parse(match[2]).to_i]
   rescue ArgumentError
     nil
+  end
+
+  def user_time_zone
+    @user_time_zone ||= Time.find_zone(User.find(user_id).timezone_iana) || Time.zone
   end
 
   def interpolate_timestamps(timestamp_range, count)
