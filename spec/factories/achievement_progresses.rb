@@ -3,6 +3,6 @@
 FactoryBot.define do
   factory :achievement_progress, class: 'Achievements::Progress' do
     user
-    achievement_key { 'explorer_germany' }
+    achievement_key { 'country_de' }
   end
 end

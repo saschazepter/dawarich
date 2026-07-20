@@ -3,7 +3,7 @@
 FactoryBot.define do
   factory :user_achievement do
     user
-    achievement_key { 'explorer_germany' }
+    achievement_key { 'country_de' }
     earned_at { Time.current }
   end
 end
