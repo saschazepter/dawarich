@@ -305,7 +305,7 @@
 }
 
 .ach-plate-name {
-  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-family: Fraunces, ui-serif, Georgia, serif;
   font-weight: 700;
   font-size: 17px;
   color: #f2ede0;
@@ -360,7 +360,7 @@
 }
 
 .ach-rarity {
-  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-family: Fraunces, ui-serif, Georgia, serif;
   font-size: 11.5px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
@@ -411,7 +411,7 @@
 }
 
 .ach-badge-text {
-  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-family: Fraunces, ui-serif, Georgia, serif;
   font-weight: 700;
   font-size: 13px;
   color: #fff;
@@ -599,7 +599,7 @@
   box-shadow:
     0 0 0 6px rgba(216, 180, 90, 0.15),
     inset 0 0 24px rgba(216, 180, 90, 0.2);
-  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-family: Fraunces, ui-serif, Georgia, serif;
   font-size: 46px;
   font-weight: 700;
   color: #d8b45a;
