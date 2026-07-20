@@ -1,76 +1,91 @@
-explorer_usa:
+_continents:
+  Africa:
+    flavor: “Cradle of everything, and still the least travelled.”
+    child_zoom: 3.0
+    art:
+      lat: 2.0
+      lon: 20.0
+      zoom: 1.4
+  Asia:
+    flavor: “Half the world lives here. Go meet them.”
+    child_zoom: 3.0
+    art:
+      lat: 34.0
+      lon: 90.0
+      zoom: 1.3
+  Europe:
+    flavor: “From Lisbon to the Urals.”
+    child_zoom: 3.2
+    art:
+      lat: 54.0
+      lon: 15.0
+      zoom: 2.3
+  North America:
+    flavor: “Three countries, and everything in between.”
+    child_zoom: 2.8
+    art:
+      lat: 42.0
+      lon: -100.0
+      zoom: 1.5
+  Oceania:
+    flavor: “Mostly ocean. That is rather the point.”
+    child_zoom: 2.8
+    art:
+      lat: -22.0
+      lon: 140.0
+      zoom: 1.5
+  South America:
+    flavor: “Andes on one side, Atlantic on the other.”
+    child_zoom: 3.0
+    art:
+      lat: -20.0
+      lon: -60.0
+      zoom: 1.7
+
+border_hopper:
   kind: region_set
-  name: USA Explorer
-  country: US
-  regions:
-    US-AL: Alabama
-    US-AK: Alaska
-    US-AZ: Arizona
-    US-AR: Arkansas
-    US-CA: California
-    US-CO: Colorado
-    US-CT: Connecticut
-    US-DE: Delaware
-    US-FL: Florida
-    US-GA: Georgia
-    US-HI: Hawaii
-    US-ID: Idaho
-    US-IL: Illinois
-    US-IN: Indiana
-    US-IA: Iowa
-    US-KS: Kansas
-    US-KY: Kentucky
-    US-LA: Louisiana
-    US-ME: Maine
-    US-MD: Maryland
-    US-MA: Massachusetts
-    US-MI: Michigan
-    US-MN: Minnesota
-    US-MS: Mississippi
-    US-MO: Missouri
-    US-MT: Montana
-    US-NE: Nebraska
-    US-NV: Nevada
-    US-NH: New Hampshire
-    US-NJ: New Jersey
-    US-NM: New Mexico
-    US-NY: New York
-    US-NC: North Carolina
-    US-ND: North Dakota
-    US-OH: Ohio
-    US-OK: Oklahoma
-    US-OR: Oregon
-    US-PA: Pennsylvania
-    US-RI: Rhode Island
-    US-SC: South Carolina
-    US-SD: South Dakota
-    US-TN: Tennessee
-    US-TX: Texas
-    US-UT: Utah
-    US-VT: Vermont
-    US-VA: Virginia
-    US-WA: Washington
-    US-WV: West Virginia
-    US-WI: Wisconsin
-    US-WY: Wyoming
-explorer_germany:
+  name: Border Hopper
+  continent: World
+  threshold: 5
+  card:
+    rarity: Rare
+    description: Spend time in 5 different countries.
+    flavor: “Lines on a map were never going to stop you.”
+    place: The World
+    child_zoom: 3.2
+    art:
+      lat: 24.0
+      lon: 10.0
+      zoom: 0.7
+
+globetrotter:
   kind: region_set
-  name: Germany Explorer
-  country: DE
-  regions:
-    DE-BW: Baden-Württemberg
-    DE-BY: Bavaria
-    DE-BE: Berlin
-    DE-BB: Brandenburg
-    DE-HB: Bremen
-    DE-HH: Hamburg
-    DE-HE: Hesse
-    DE-MV: Mecklenburg-Vorpommern
-    DE-NI: Lower Saxony
-    DE-NW: North Rhine-Westphalia
-    DE-RP: Rhineland-Palatinate
-    DE-SL: Saarland
-    DE-SN: Saxony
-    DE-ST: Saxony-Anhalt
-    DE-SH: Schleswig-Holstein
-    DE-TH: Thuringia
+  name: Globetrotter
+  continent: World
+  threshold: 15
+  card:
+    rarity: Epic
+    description: Spend time in 15 different countries.
+    flavor: “The stamps stopped fitting on one page.”
+    place: The World
+    child_zoom: 3.2
+    art:
+      lat: 24.0
+      lon: 10.0
+      zoom: 0.7
+
+world_traveler:
+  kind: region_set
+  name: World Traveler
+  continent: World
+  threshold: 50
+  card:
+    rarity: Legendary
+    description: Spend time in 50 different countries.
+    flavor: “Fifty countries in, and still counting.”
+    place: The World
+    child_zoom: 3.2
+    art:
+      lat: 24.0
+      lon: 10.0
+      zoom: 0.7
