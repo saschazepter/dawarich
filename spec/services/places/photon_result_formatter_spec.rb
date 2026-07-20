@@ -56,5 +56,14 @@ RSpec.describe Places::PhotonResultFormatter do
       expect(described_class.call(city_only, fallback_lat: lat, fallback_lon: lon)[:name]).to eq('Berlin')
       expect(described_class.call(empty, fallback_lat: lat, fallback_lon: lon)[:name]).to eq('Unknown Place')
     end
+
+    it 'falls back past a generic OSM boolean name' do
+      generic = instance_double(
+        Geocoder::Result::Photon,
+        data: { 'properties' => { 'name' => 'yes', 'street' => 'Sterndamm', 'housenumber' => '7' } }
+      )
+
+      expect(described_class.call(generic, fallback_lat: lat, fallback_lon: lon)[:name]).to eq('Sterndamm 7')
+    end
   end
 end

@@ -29,7 +29,7 @@ module Places
 
     def extract_name(data)
       properties = data['properties'] || {}
-      properties['name'] ||
+      ::Visits::Names::Builder.meaningful_component(properties['name']) ||
         [properties['street'], properties['housenumber']].compact.join(' ').presence ||
         properties['city'] ||
         'Unknown Place'
