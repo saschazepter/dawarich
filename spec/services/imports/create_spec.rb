@@ -127,6 +127,28 @@ RSpec.describe Imports::Create do
             .with(instance_of(StandardError), 'Import failed')
         end
       end
+
+      context 'when the archive exceeds the extraction limits' do
+        before do
+          allow(OwnTracks::Importer).to receive(:new).with(import, user.id, kind_of(String)).and_raise(
+            Imports::ZipExtractor::ArchiveLimitExceeded, 'Archive too large (max 1 bytes)'
+          )
+        end
+
+        it 'does not report an oversized archive as an application error' do
+          allow(ExceptionReporter).to receive(:call)
+
+          service.call
+
+          expect(ExceptionReporter).not_to have_received(:call)
+        end
+
+        it 'still fails the import so the user sees it' do
+          service.call
+
+          expect(import.reload.status).to eq('failed')
+        end
+      end
     end
 
     context 'when the uploaded file format is unsupported' do

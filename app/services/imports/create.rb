@@ -55,6 +55,7 @@ class Imports::Create
   def expected_import_failure?(error)
     error.is_a?(Imports::SourceDetector::UnknownSourceError) ||
       error.is_a?(Archive::Unzipper::ArchiveTooLarge) ||
+      error.is_a?(Imports::ZipExtractor::ArchiveLimitExceeded) ||
       error.is_a?(Csv::Detector::DetectionError)
   end
 
