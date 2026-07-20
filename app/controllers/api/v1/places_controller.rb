@@ -137,11 +137,8 @@ module Api
         user_places = Places::UserSearch.new(
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, limit: limit, query: query
         ).call
-        user_place_names = user_places.to_h do |place|
-          [place[:name].to_s.strip.downcase, true]
-        end
         external_places.reject! do |place|
-          user_place_names.key?(place[:name].to_s.strip.downcase)
+          duplicate_of_saved_place?(place, user_places)
         end
         places = (user_places + external_places).first(limit)
 
@@ -178,6 +175,30 @@ module Api
         tag_ids_param = Array(params.dig(:place, :tag_ids)).compact
         tags = current_api_user.tags.where(id: tag_ids_param)
         @place.tags = tags
+      end
+
+      DUPLICATE_PLACE_RADIUS_METERS = 100
+
+      def duplicate_of_saved_place?(external_place, user_places)
+        name = external_place[:name].to_s.strip.downcase
+        return false if name.blank?
+
+        user_places.any? do |saved|
+          next false unless saved[:name].to_s.strip.downcase == name
+
+          within_duplicate_radius?(external_place, saved)
+        end
+      end
+
+      def within_duplicate_radius?(external_place, saved)
+        coords = [external_place[:latitude], external_place[:longitude], saved[:latitude], saved[:longitude]]
+        return true if coords.any?(&:blank?)
+
+        Geocoder::Calculations.distance_between(
+          [external_place[:latitude].to_f, external_place[:longitude].to_f],
+          [saved[:latitude].to_f, saved[:longitude].to_f],
+          units: :km
+        ) * 1000 <= DUPLICATE_PLACE_RADIUS_METERS
       end
 
       def serialize_place(place)

@@ -16,7 +16,7 @@ module Places
     def call
       nearby = base_scope.near([@latitude, @longitude], @radius, :km)
       scope = if @query.length >= MIN_QUERY_LENGTH
-                nearby.or(base_scope.where('name ILIKE ?', "%#{Place.sanitize_sql_like(@query)}%"))
+                nearby.where('name ILIKE ?', "%#{Place.sanitize_sql_like(@query)}%")
               else
                 nearby
               end
