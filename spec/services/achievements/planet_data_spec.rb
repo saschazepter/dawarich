@@ -52,6 +52,13 @@ RSpec.describe 'planet achievement data' do
     expect(czechia['CZ-10']).to eq('Prague')
   end
 
+  it 'grids the permissive geoBoundaries countries Natural Earth could not cover' do
+    expect(countries.fetch('KE')['subdivisions'].size).to eq(47)
+    expect(countries.fetch('KE')['subdivisions']).to include('KE-30' => 'Nairobi City')
+    expect(countries.fetch('ZA')['subdivisions']['ZA-WC']).to eq('Western Cape')
+    expect(countries.fetch('CI')['subdivisions'].size).to eq(14)
+  end
+
   it 'keeps Norway a string key rather than a boolean' do
     expect(continents.dig('Europe', 'countries')).to have_key('NO')
   end

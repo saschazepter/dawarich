@@ -80,6 +80,7 @@ module Achievements
     COVERAGE_GATE = 0.8
     CSV_PATH = 'lib/assets/world_administrative_subdivisions.csv'
     NAMES_PATH = 'lib/assets/ne_admin1_names.csv'
+    SUPPLEMENT_PATH = 'lib/assets/admin1_supplement.geojson'
     YAML_PATH = 'config/achievements/planet.yml'
     GEOJSON_PATH = 'lib/assets/admin1_world.geojson'
 
@@ -115,7 +116,16 @@ module Achievements
     end
 
     def features
-      @features ||= Oj.load(File.read(source_geojson))['features']
+      @features ||= begin
+        supplement_countries = supplement_features.map { |f| f['properties']['iso_3166_2'][0, 2] }.to_set
+        natural_earth = Oj.load(File.read(source_geojson))['features']
+                          .reject { |f| supplement_countries.include?(f['properties']['iso_3166_2'][0, 2]) }
+        natural_earth + supplement_features
+      end
+    end
+
+    def supplement_features
+      @supplement_features ||= Oj.load(File.read(Rails.root.join(SUPPLEMENT_PATH)))['features']
     end
 
     def available_codes
