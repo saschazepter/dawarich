@@ -44,6 +44,14 @@ RSpec.describe 'planet achievement data' do
     end
   end
 
+  it 'recovers Czechia via the Natural Earth code aliases' do
+    czechia = countries.fetch('CZ')['subdivisions']
+
+    expect(czechia.keys).to include('CZ-10', 'CZ-64')
+    expect(czechia.size).to eq(14)
+    expect(czechia['CZ-10']).to eq('Prague')
+  end
+
   it 'keeps Norway a string key rather than a boolean' do
     expect(continents.dig('Europe', 'countries')).to have_key('NO')
   end

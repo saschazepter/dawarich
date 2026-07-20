@@ -35,6 +35,7 @@ require 'csv'
 module Achievements
   class PlanetParents
     PARENTS_PATH = 'lib/assets/iso_3166_2_parents.csv'
+    ALIASES_PATH = 'lib/assets/ne_code_aliases.csv'
 
     def initialize(iso_json)
       @iso_json = iso_json
@@ -51,14 +52,21 @@ module Achievements
           first_level = resolve(code, parents)
           csv << [code, first_level] if first_level
         end
+        aliases.each { |ne_code, iso_code| csv << [ne_code, iso_code] }
       end
 
-      puts "wrote #{path} (#{entries.size} ISO entries, #{parents.count { |_, p| p }} children)"
+      puts "wrote #{path} (#{entries.size} ISO entries, #{parents.count { |_, p| p }} children, " \
+           "#{aliases.size} Natural Earth aliases)"
     end
 
     private
 
     attr_reader :iso_json
+
+    def aliases
+      @aliases ||= CSV.read(Rails.root.join(ALIASES_PATH), headers: true)
+                      .map { |row| [row['ne_code'], row['iso_code']] }
+    end
 
     def resolve(code, parents)
       seen = parents[code]
@@ -163,10 +171,19 @@ module Achievements
     end
 
     def english_names
-      @english_names ||= CSV.read(Rails.root.join(NAMES_PATH), headers: true)
-                            .reverse_each
-                            .to_h { |row| [row['iso_3166_2'], row['name_en']] }
-                            .compact
+      @english_names ||= begin
+        names = CSV.read(Rails.root.join(NAMES_PATH), headers: true)
+                   .reverse_each
+                   .to_h { |row| [row['iso_3166_2'], row['name_en']] }
+                   .compact
+        aliases.each { |ne_code, iso_code| names[iso_code] ||= names[ne_code] if names[ne_code] }
+        names
+      end
+    end
+
+    def aliases
+      @aliases ||= CSV.read(Rails.root.join(PlanetParents::ALIASES_PATH), headers: true)
+                      .to_h { |row| [row['ne_code'], row['iso_code']] }
     end
 
     def gridded_codes

@@ -82,7 +82,7 @@ RSpec.describe Achievements::Registry do
   describe '.subdivision_sets' do
     it 'returns only sets whose regions are subdivisions' do
       expect(described_class.subdivision_sets.map(&:level).uniq).to eq([:subdivision])
-      expect(described_class.subdivision_sets.size).to eq(175)
+      expect(described_class.subdivision_sets.size).to eq(176)
     end
   end
 end

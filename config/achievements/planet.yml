@@ -2383,7 +2383,21 @@ continents:
           lat: 49.732
           lon: 15.314
           zoom: 4.7
-        subdivisions: {}
+        subdivisions:
+          CZ-10: Prague
+          CZ-20: Central Bohemian
+          CZ-31: South Bohemian
+          CZ-32: Plzeň-
+          CZ-41: Karlovy Vary
+          CZ-42: Ústí nad Labem
+          CZ-51: Liberec
+          CZ-52: Hradec Králové
+          CZ-53: Pardubice
+          CZ-63: Vysočina
+          CZ-64: South Moravian
+          CZ-71: Olomouc
+          CZ-72: Zlín
+          CZ-80: Moravian-Silesian
       DK:
         name: Denmark
         art:
