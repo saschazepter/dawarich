@@ -4,6 +4,9 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   BATCH_SIZE = 50_000
+  DROP_LOCK_TIMEOUT = '5s'
+  DROP_MAX_ATTEMPTS = 10
+  DROP_BACKOFF_SECONDS = 3
 
   def up
     return unless column_exists?(:points, :latitude) || column_exists?(:points, :longitude)
@@ -32,12 +35,44 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
       Rails.logger.info "[DropLegacyLatLonFromPoints] backfilled lonlat for #{backfilled} points"
     end
 
-    execute "SET lock_timeout = '5s'"
-    # Single statement so both columns drop atomically and a rerun never sees
-    # only one of them missing.
-    execute 'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude'
-    execute 'RESET lock_timeout'
-    Rails.logger.info '[DropLegacyLatLonFromPoints] done'
+    drop_legacy_columns
+  end
+
+  # The drop needs ACCESS EXCLUSIVE on points. On a live instance the ingestion
+  # workers write constantly, so a single short attempt loses the race and
+  # aborted the whole migration, which crash-looped the container: the next boot
+  # replayed the migration from scratch and lost the race again.
+  #
+  # The lock timeout stays short so a waiting drop never queues ahead of writers
+  # and stalls the app. If every attempt loses, the drop is handed to a
+  # background job that keeps retrying, so boot completes instead of looping.
+  def drop_legacy_columns
+    attempts = 0
+
+    begin
+      attempts += 1
+      execute "SET lock_timeout = '#{DROP_LOCK_TIMEOUT}'"
+      # Single statement so both columns drop atomically and a rerun never sees
+      # only one of them missing.
+      execute 'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude'
+      Rails.logger.info '[DropLegacyLatLonFromPoints] done'
+    rescue ActiveRecord::LockWaitTimeout, ActiveRecord::StatementTimeout => e
+      if attempts < DROP_MAX_ATTEMPTS
+        Rails.logger.warn(
+          "[DropLegacyLatLonFromPoints] could not acquire lock (attempt #{attempts}/#{DROP_MAX_ATTEMPTS}): #{e.message}"
+        )
+        sleep(DROP_BACKOFF_SECONDS * attempts)
+        retry
+      end
+
+      Rails.logger.warn(
+        "[DropLegacyLatLonFromPoints] could not acquire lock in #{DROP_MAX_ATTEMPTS} attempts; " \
+        'handing the drop to DataMigrations::DropLegacyLatLonJob'
+      )
+      DataMigrations::DropLegacyLatLonJob.perform_later
+    ensure
+      execute 'RESET lock_timeout'
+    end
   end
 
   def down
