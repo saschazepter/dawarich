@@ -70,9 +70,45 @@ RSpec.describe Achievements::SetPresenter do
       set = presenter('continent_europe', earned: { 'DE' => '2026-05-01' })
       germany = set.region_cards.find { |card| card[:name] == 'Germany' }
 
-      expect(germany[:completed]).to be(true)
       expect(germany[:key]).to eq('country_de')
       expect(germany[:map_lat]).to be_within(0.5).of(51.087)
+    end
+
+    it 'shows a gridded country at its own subdivision progress, not merely visited' do
+      set = presenter('continent_europe', earned: { 'DE' => '2026-05-01', 'DE-BY' => '2026-05-02',
+                                                    'DE-SN' => '2026-05-03', 'DE-BE' => '2026-05-04' })
+      germany = set.region_cards.find { |card| card[:name] == 'Germany' }
+
+      expect(germany[:percent]).to eq(19)
+      expect(germany[:completed]).to be(false)
+      expect(germany[:locked]).to be(false)
+      expect(germany[:earned_label]).to eq('In progress — 19%')
+    end
+
+    it 'marks a visited country with no earned subdivisions as visited, not locked' do
+      set = presenter('continent_europe', earned: { 'DE' => '2026-05-01' })
+      germany = set.region_cards.find { |card| card[:name] == 'Germany' }
+
+      expect(germany[:locked]).to be(false)
+      expect(germany[:completed]).to be(false)
+      expect(germany[:earned_label]).to eq('Visited')
+    end
+
+    it 'completes a gridded country only when every subdivision is earned' do
+      all = Achievements::Registry.find('country_de').region_codes.index_with { '2026-05-01' }
+      set = presenter('continent_europe', earned: all.merge('DE' => '2026-05-01'))
+      germany = set.region_cards.find { |card| card[:name] == 'Germany' }
+
+      expect(germany[:completed]).to be(true)
+      expect(germany[:percent]).to eq(100)
+    end
+
+    it 'still completes a flat country on its own code' do
+      set = presenter('continent_europe', earned: { 'FR' => '2026-05-01' })
+      france = set.region_cards.find { |card| card[:name] == 'France' }
+
+      expect(france[:completed]).to be(true)
+      expect(france[:percent]).to eq(100)
     end
 
     it 'leaves flat countries unlinked' do

@@ -116,7 +116,7 @@ module Achievements
     def region_cards
       cards = level == :subdivision ? subdivision_cards : country_cards
 
-      cards.sort_by { |card| [card[:completed] ? 0 : 1, card[:name]] }
+      cards.sort_by { |card| [card[:locked] ? 1 : 0, card[:name]] }
     end
 
     def region_rows
@@ -156,11 +156,35 @@ module Achievements
         child = Registry.find("country_#{code.downcase}")
         next if child.nil?
 
-        art = child.card['art']
-        child_card(name: child.card['place'], rarity: child.card['rarity'], lat: art['lat'],
-                   lon: art['lon'], zoom: art['zoom'], earned_at: earned[code],
-                   key: child.level == :subdivision ? child.key : nil)
+        country_card(child, visited_at: earned[code])
       end
+    end
+
+    def country_card(child, visited_at:)
+      art = child.card['art']
+      progress = self.class.new(definition: child, state: state)
+
+      {
+        name: child.card['place'],
+        key: child.level == :subdivision ? child.key : nil,
+        rarity: child.card['rarity'],
+        map_lat: art['lat'],
+        map_lon: art['lon'],
+        map_zoom: art['zoom'],
+        marker_lat: art['lat'],
+        marker_lon: art['lon'],
+        percent: progress.percent,
+        completed: progress.completed?,
+        locked: visited_at.blank? && progress.locked?,
+        earned_label: country_label(progress, visited_at)
+      }
+    end
+
+    def country_label(progress, visited_at)
+      return progress.earned_label if progress.completed? || progress.percent.positive?
+      return 'Visited' if visited_at.present?
+
+      'Locked'
     end
 
     def child_card(name:, rarity:, lat:, lon:, zoom:, earned_at:, key: nil)
