@@ -198,6 +198,18 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when the geocoder is misconfigured rather than briefly unavailable' do
+    [Geocoder::InvalidApiKey, Geocoder::ConfigurationError, Geocoder::OverQueryLimitError].each do |error_class|
+      it "still reports #{error_class} so the outage is not silent" do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(error_class.new('misconfigured'))
+
+        expect { fetch_data }.not_to raise_error
+        expect(ExceptionReporter).to have_received(:call)
+      end
+    end
+  end
+
   context 'when the geocoder provider closes the TLS connection unexpectedly' do
     before do
       allow(ExceptionReporter).to receive(:call)
