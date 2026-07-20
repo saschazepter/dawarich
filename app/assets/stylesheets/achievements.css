@@ -282,15 +282,6 @@
   filter: blur(2px);
 }
 
-.ach-place {
-  position: absolute;
-  left: 12px;
-  bottom: 8px;
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: rgba(232, 228, 218, 0.75);
-}
 
 .ach-plate {
   position: relative;
