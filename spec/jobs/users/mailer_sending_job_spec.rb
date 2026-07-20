@@ -104,6 +104,14 @@ RSpec.describe Users::MailerSendingJob, type: :job do
             described_class.perform_now(user.id, email_type)
           end.not_to raise_error
         end
+
+        it "logs that #{email_type} was skipped" do
+          allow(Rails.logger).to receive(:info)
+
+          described_class.perform_now(user.id, email_type)
+
+          expect(Rails.logger).to have_received(:info).with(/skipping legacy Manager-owned email_type=#{email_type}/)
+        end
       end
     end
 
