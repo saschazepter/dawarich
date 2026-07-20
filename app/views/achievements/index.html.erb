@@ -24,11 +24,10 @@
                                  **set.card_attributes %>
             <% end %>
           <% end %>
-        </div>
-
-        <div class="ach-grid">
-          <% @orphans.each do |set| %>
-            <%= render 'card', celebrate: set.celebrate?, **set.card_attributes %>
+          <% @orphans.each_with_index do |set, index| %>
+            <%= render 'card', reveal_delay: 0.1 + (0.15 * [@sets.size + index, 10].min),
+                               celebrate: set.celebrate?,
+                               **set.card_attributes %>
           <% end %>
         </div>
 
