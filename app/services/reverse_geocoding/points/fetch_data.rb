@@ -22,13 +22,18 @@ class ReverseGeocoding::Points::FetchData
 
   private
 
-  DEADLOCK_MAX_RETRIES = 3
+  WRITE_MAX_RETRIES = 3
+  WRITE_CONTENTION_ERRORS = [
+    ActiveRecord::Deadlocked,
+    ActiveRecord::LockWaitTimeout,
+    ActiveRecord::QueryCanceled
+  ].freeze
 
   def update_point_with_geocoding_data
     response = Geocoder.search([point.lat, point.lon]).first
 
     if response.blank?
-      with_deadlock_retry { point.update!(reverse_geocoded_at: Time.current) }
+      with_write_retry { point.update!(reverse_geocoded_at: Time.current) }
       return
     end
 
@@ -36,7 +41,7 @@ class ReverseGeocoding::Points::FetchData
 
     country_record = Country.find_by(name: response.country) if response.country
 
-    with_deadlock_retry do
+    with_write_retry do
       point.update!(
         city: response.city,
         country_name: response.country,
@@ -59,15 +64,15 @@ class ReverseGeocoding::Points::FetchData
     ExceptionReporter.call(e)
   end
 
-  def with_deadlock_retry
+  def with_write_retry
     retries = 0
     begin
       yield
-    rescue ActiveRecord::Deadlocked => e
+    rescue *WRITE_CONTENTION_ERRORS => e
       retries += 1
-      raise e if retries > DEADLOCK_MAX_RETRIES
+      raise e if retries > WRITE_MAX_RETRIES
 
-      sleep(0.1 * retries)
+      sleep((0.1 * retries) + (rand * 0.05))
       retry
     end
   end

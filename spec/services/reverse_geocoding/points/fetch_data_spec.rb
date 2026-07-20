@@ -59,6 +59,37 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
         expect(Geocoder).to have_received(:search).with([point.lat, point.lon])
       end
 
+      described_class::WRITE_CONTENTION_ERRORS.each do |error_class|
+        it "retries when the point update raises #{error_class}" do
+          attempts = 0
+          allow(Point).to receive(:find).with(point.id).and_return(point)
+          allow(point).to receive(:update!).and_wrap_original do |method, *args|
+            attempts += 1
+            raise error_class, 'write contention' if attempts == 1
+
+            method.call(*args)
+          end
+          service = described_class.new(point.id)
+          allow(service).to receive(:sleep)
+
+          expect { service.call }.to change { point.reload.city }.from(nil).to('Berlin')
+          expect(attempts).to eq(2)
+        end
+      end
+
+      it 'gives up after exhausting the retry budget and reports the failure' do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Point).to receive(:find).with(point.id).and_return(point)
+        allow(point).to receive(:update!).and_raise(ActiveRecord::QueryCanceled, 'write contention')
+        service = described_class.new(point.id)
+        allow(service).to receive(:sleep)
+
+        service.call
+
+        expect(point).to have_received(:update!).exactly(described_class::WRITE_MAX_RETRIES + 1).times
+        expect(ExceptionReporter).to have_received(:call)
+      end
+
       context 'when store_geodata? is disabled' do
         before do
           allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
