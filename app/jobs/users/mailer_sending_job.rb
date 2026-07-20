@@ -23,7 +23,12 @@ class Users::MailerSendingJob < ApplicationJob
   def perform(user_id, email_type, **options)
     user = find_user_or_skip(user_id) || return
 
-    return if LEGACY_MANAGER_EMAIL_TYPES.include?(email_type.to_s)
+    if LEGACY_MANAGER_EMAIL_TYPES.include?(email_type.to_s)
+      Rails.logger.info(
+        "[Users::MailerSendingJob] skipping legacy Manager-owned email_type=#{email_type} user_id=#{user.id}"
+      )
+      return
+    end
 
     mailer_class_name, action = MAILER_REGISTRY.fetch(email_type.to_s) do
       raise UnknownEmailType, "Unknown email_type=#{email_type.inspect} user_id=#{user.id}"
