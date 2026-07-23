@@ -16,13 +16,13 @@ RSpec.describe 'Achievements' do
         create(:achievement_progress, user:, achievement_key: 'exploration', state: { 'earned' => earned })
       end
 
-      it 'renders continents and world tiers rather than every set' do
+      it 'renders continents rather than every set' do
         exploration('DE-BY' => '2026-07-01T10:00:00Z', 'DE' => '2026-07-01T10:00:00Z')
 
         get achievements_path
 
         expect(response.body).to include('Europe Explorer')
-        expect(response.body).to include('Border Hopper')
+        expect(response.body).not_to include('Border Hopper')
         expect(response.body).not_to include('Germany Explorer')
       end
 
@@ -77,9 +77,9 @@ RSpec.describe 'Achievements' do
           get achievement_path('continent_europe')
 
           expect(response.body).to include('Europe Explorer')
-          expect(response.body).to include(achievement_path('country_de'))
+          expect(response.body).to include(%(href="#{achievement_path('country_de')}"))
           expect(response.body).to include('France')
-          expect(response.body).not_to include(achievement_path('country_fr'))
+          expect(response.body).not_to include(%(href="#{achievement_path('country_fr')}"))
         end
 
         it 'sends a flat country to its continent instead of 404ing' do
@@ -154,6 +154,30 @@ RSpec.describe 'Achievements' do
           patch toggle_sharing_achievement_path('explorer_atlantis')
 
           expect(response).to have_http_status(:not_found)
+        end
+
+        it 'returns the sharing state and public url as JSON' do
+          patch toggle_sharing_achievement_path('country_de'), as: :json
+
+          expect(response).to have_http_status(:ok)
+          body = response.parsed_body
+          uuid = user.achievement_progresses.find_by(achievement_key: 'country_de').sharing_uuid
+          expect(body['enabled']).to be(true)
+          expect(body['uuid']).to eq(uuid)
+          expect(body['url']).to end_with("/shared/achievements/#{uuid}")
+        end
+
+        it 'honors an explicit desired state and nulls the url when disabled' do
+          patch toggle_sharing_achievement_path('country_de'), params: { enabled: false }, as: :json
+          expect(response.parsed_body).to include('enabled' => false, 'url' => nil)
+
+          patch toggle_sharing_achievement_path('country_de'), params: { enabled: false }, as: :json
+          expect(response.parsed_body['enabled']).to be(false) # idempotent, not a blind toggle
+
+          patch toggle_sharing_achievement_path('country_de'), params: { enabled: true }, as: :json
+          body = response.parsed_body
+          expect(body['enabled']).to be(true)
+          expect(body['url']).to be_present
         end
       end
     end

@@ -15,14 +15,4 @@
       <span class="ach-side-bar"><span style="width: <%= set.percent %>%;"></span></span>
     <% end %>
   <% end %>
-
-  <div class="ach-side-group">World</div>
-  <% tiers.each do |set| %>
-    <%= link_to achievement_path(set.definition.key),
-                class: "ach-side-link #{'ach-side-link--active' if active_key == set.definition.key}" do %>
-      <span><%= set.definition.name %></span>
-      <span class="ach-side-count"><%= set.display_count %>/<%= set.target %></span>
-      <span class="ach-side-bar"><span style="width: <%= set.percent %>%;"></span></span>
-    <% end %>
-  <% end %>
 </nav>

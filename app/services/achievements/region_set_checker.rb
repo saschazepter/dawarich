@@ -12,7 +12,7 @@ module Achievements
       cursor = latest_timestamp
       return if cursor.nil?
 
-      progress = Progress.find_or_create_by!(user_id: user.id, achievement_key: Progress::EXPLORATION_KEY)
+      progress = fetch_progress
       newly_earned = []
 
       progress.with_lock do
@@ -28,6 +28,15 @@ module Achievements
     end
 
     private
+
+    # Race-safe against a concurrent CheckJob for the same user: the uniqueness
+    # validation means create_or_find_by can't be used, so recover from the
+    # database unique index instead.
+    def fetch_progress
+      Progress.find_or_create_by!(user_id: user.id, achievement_key: Progress::EXPLORATION_KEY)
+    rescue ActiveRecord::RecordNotUnique
+      Progress.find_by!(user_id: user.id, achievement_key: Progress::EXPLORATION_KEY)
+    end
 
     attr_reader :user, :notify, :oldest_timestamp
 
@@ -78,6 +87,8 @@ module Achievements
       UserAchievement.find_or_create_by!(user: user, achievement_key: definition.key) do |award|
         award.earned_at = Time.current
       end.previously_new_record?
+    rescue ActiveRecord::RecordNotUnique
+      false # created concurrently by another job; this run did not newly earn it
     end
 
     def notify_regions(newly_earned, earned)

@@ -20,7 +20,8 @@ class AchievementsController < ApplicationController
 
     @set = presenters_for([definition]).first
     @sidebar_key = definition.parent_key || definition.key
-    @children = paginate(@set.compact? ? @set.region_rows : @set.region_cards)
+    children = @set.compact? ? @set.region_rows : attach_sharing(@set.region_cards)
+    @children = paginate(children)
 
     mark_celebrated([@set])
   end
@@ -30,11 +31,20 @@ class AchievementsController < ApplicationController
 
     progress = current_user.achievement_progresses.find_or_create_by!(achievement_key: params[:key])
     progress.update!(
-      sharing_enabled: !progress.sharing_enabled,
+      sharing_enabled: desired_sharing_state(progress),
       sharing_uuid: progress.sharing_uuid || SecureRandom.uuid
     )
 
-    redirect_to achievements_path
+    respond_to do |format|
+      format.html { redirect_to achievements_path }
+      format.json do
+        render json: {
+          enabled: progress.sharing_enabled,
+          uuid: progress.sharing_uuid,
+          url: progress.sharing_enabled ? shared_achievement_url(progress.sharing_uuid) : nil
+        }
+      end
+    end
   end
 
   private
@@ -50,7 +60,6 @@ class AchievementsController < ApplicationController
     @continents = presenters_for(by_kind.fetch('continent', []))
     @tiers = presenters_for(by_kind.fetch('region_set', []))
     @orphans = presenters_for(by_kind.fetch('country', []).select { |set| set.parent_key.nil? })
-    @world = Achievements::WorldStagesPresenter.new(state: @state)
     @summary = Achievements::SummaryPresenter.new(state: @state)
   end
 
@@ -66,6 +75,19 @@ class AchievementsController < ApplicationController
     Kaminari.paginate_array(collection).page(params[:page]).per(ROWS_PER_PAGE)
   end
 
+  # A leaf country card carries its own achievement key, so resolve that key's
+  # current sharing state for the fullscreen Share/Embed controls.
+  def attach_sharing(cards)
+    cards.map do |card|
+      next card unless card[:share_key]
+
+      carrier = @carriers[card[:share_key]]
+      card.merge(share: { key: card[:share_key],
+                          shared: carrier&.sharing_enabled || false,
+                          uuid: carrier&.sharing_uuid })
+    end
+  end
+
   def mark_celebrated(sets)
     keys = sets.select(&:celebrate?).map { |set| set.definition.key }
     return if keys.empty? || !@exploration.persisted?
@@ -79,5 +101,13 @@ class AchievementsController < ApplicationController
 
   def require_feature_enabled
     redirect_to root_path unless Flipper.enabled?(:achievements)
+  end
+
+  # An explicit `enabled` param sets sharing to that state (idempotent, so a
+  # stale client can't flip the wrong way); absent, it falls back to a toggle.
+  def desired_sharing_state(progress)
+    return ActiveModel::Type::Boolean.new.cast(params[:enabled]) if params.key?(:enabled)
+
+    !progress.sharing_enabled
   end
 end

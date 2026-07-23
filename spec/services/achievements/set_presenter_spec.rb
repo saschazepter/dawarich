@@ -117,6 +117,15 @@ RSpec.describe Achievements::SetPresenter do
 
       expect(france[:key]).to be_nil
     end
+
+    it 'exposes the achievement key of a flat (leaf) country for sharing' do
+      set = presenter('continent_europe')
+      france = set.region_cards.find { |card| card[:name] == 'France' }
+      germany = set.region_cards.find { |card| card[:name] == 'Germany' }
+
+      expect(france[:share_key]).to eq('country_fr')
+      expect(germany[:share_key]).to be_nil
+    end
   end
 
   describe 'a world tier' do

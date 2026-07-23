@@ -7,14 +7,9 @@ class SeedPlanetRegionsAndBackfill < ActiveRecord::Migration[8.1]
     Region.where.not('code LIKE ?', '%-%').delete_all
     return if Country.none?
 
+    # Reference geometry only; the user backfill is enqueued by the idempotent
+    # `rake achievements:backfill` post-deploy task, not from the migration.
     Achievements::LoadRegions.new.call
-
-    user_ids = (User.active.pluck(:id) + User.trial.pluck(:id)).uniq
-    user_ids.each_slice(200).with_index do |batch, index|
-      batch.each do |user_id|
-        Achievements::CheckJob.set(wait: index * 5.minutes).perform_later(user_id, notify: false)
-      end
-    end
   end
 
   def down; end

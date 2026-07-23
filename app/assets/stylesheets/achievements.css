@@ -203,7 +203,8 @@
 }
 
 .ach-card--locked .ach-frame {
-  filter: grayscale(1) brightness(0.8) contrast(0.9);
+  filter: grayscale(1) brightness(0.55) contrast(0.85);
+  opacity: 0.9;
 }
 
 .ach-card--partial .ach-frame {
@@ -252,7 +253,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 14, 18, 0.45);
+  background: rgba(10, 14, 18, 0.62);
 }
 
 .ach-art-lock svg {
@@ -386,7 +387,9 @@
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.6),
     inset 0 0 0 3px rgba(0, 0, 0, 0.25);
-  z-index: 3;
+  /* Above the holo (z-index 4) so the shimmer is overlapped BY the badge,
+     not painted over it. */
+  z-index: 5;
 }
 
 .ach-badge--progress {
@@ -624,47 +627,44 @@
   );
 }
 
-.ach-back-medallion {
+.ach-back-logo {
   position: relative;
   z-index: 1;
-  width: 112px;
-  height: 112px;
-  border-radius: 50%;
+  width: 104px;
+  height: 104px;
+  padding: 9px;
+  border-radius: 22px;
   border: 2px solid #d8b45a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    conic-gradient(
-      from 0deg,
-      rgba(216, 180, 90, 0.22) 0deg 2deg,
-      transparent 2deg 30deg,
-      rgba(216, 180, 90, 0.22) 30deg 32deg,
-      transparent 32deg 60deg
-    ),
-    radial-gradient(circle at 50% 42%, #232c37 0%, #151a21 72%);
+  background: radial-gradient(circle at 50% 42%, #232c37 0%, #151a21 78%);
   box-shadow:
     0 0 0 7px rgba(216, 180, 90, 0.12),
     0 0 0 8px rgba(216, 180, 90, 0.3),
     0 8px 22px rgba(0, 0, 0, 0.55),
     inset 0 0 26px rgba(216, 180, 90, 0.22);
-  font-family: Fraunces, ui-serif, Georgia, serif;
-  font-size: 48px;
-  font-weight: 700;
-  line-height: 1;
-  color: #e6c877;
-  text-shadow: 0 2px 10px rgba(216, 180, 90, 0.45);
 }
 
-.ach-card--sm .ach-back-medallion {
-  width: 74px;
-  height: 74px;
-  font-size: 32px;
+.ach-back-logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 13px;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
+}
+
+.ach-card--sm .ach-back-logo {
+  width: 70px;
+  height: 70px;
+  padding: 6px;
+  border-radius: 16px;
   box-shadow:
     0 0 0 5px rgba(216, 180, 90, 0.12),
     0 0 0 6px rgba(216, 180, 90, 0.3),
     0 6px 16px rgba(0, 0, 0, 0.55),
     inset 0 0 18px rgba(216, 180, 90, 0.22);
+}
+
+.ach-card--sm .ach-back-logo-img {
+  border-radius: 10px;
 }
 
 .ach-card--sm .ach-back::before {
@@ -788,6 +788,13 @@
   100% {
     visibility: hidden;
   }
+}
+
+/* A card rehydrated from the snapshot cache skips the entrance flip so a reload
+   shows the map at once, without replaying the back→front reveal. */
+.ach-card-wrap--instant:not(.ach-card-wrap--celebrate),
+.ach-card-wrap--instant:not(.ach-card-wrap--celebrate) .ach-back {
+  animation: none;
 }
 
 .ach-card-wrap--celebrate {
@@ -1141,72 +1148,175 @@
   color: #d8b45a;
 }
 
-.ach-stages {
-  list-style: none;
-  margin: 6px 0 0;
+.ach-progression {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 11px;
+  border-radius: 999px;
+  border: 1px solid rgb(148 163 184 / 22%);
+  background: rgb(255 255 255 / 4%);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa2ac;
+}
+
+/* Fullscreen card expansion */
+.ach-card-wrap--expandable {
+  cursor: zoom-in;
+}
+
+.ach-modal {
+  border: none;
   padding: 0;
+  max-width: 96vw;
+  max-height: 96vh;
+  overflow: visible;
+  background: transparent;
+  color: #e8e4da;
+}
+
+.ach-modal::backdrop {
+  background: rgb(6 9 12 / 82%);
+  backdrop-filter: blur(6px);
+}
+
+.ach-modal[open] {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 100%;
-}
-
-.ach-stage {
-  display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 5px 10px;
-  border-radius: 8px;
-  border: 1px solid rgb(148 163 184 / 16%);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 12.5px;
-  color: #8a929b;
-  opacity: 0.55;
+  gap: 16px;
 }
 
-.ach-stage--reached {
-  opacity: 1;
+.ach-modal-close {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgb(216 180 90 / 40%);
+  background: rgb(18 22 27 / 90%);
   color: #e8e4da;
-  background: rgb(255 255 255 / 3%);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.ach-stage-pip {
-  width: 20px;
-  height: 20px;
-  flex: none;
+.ach-modal-close:hover {
+  border-color: #d8b45a;
+}
+
+.ach-modal-stage {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  border: 1.5px solid currentcolor;
+  /* Reserve the enlarged card's height so its scaled visual stays clear of
+     the toolbar below it. */
+  min-height: 640px;
+}
+
+/* Enlarge the card for the showcase. Small (subdivision) cards start much
+   smaller, so they scale up more to reach a comparable size. */
+.ach-modal-stage .ach-card-wrap {
+  transform: scale(1.45);
+}
+
+.ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+  transform: scale(2.1);
+}
+
+@media (max-height: 820px) {
+  .ach-modal-stage {
+    min-height: 74vh;
+  }
+
+  .ach-modal-stage .ach-card-wrap {
+    transform: scale(1.2);
+  }
+
+  .ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+    transform: scale(1.7);
+  }
+}
+
+.ach-modal-tools {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+}
+
+.ach-modal-tools[hidden],
+.ach-modal-panel[hidden],
+.ach-modal-unshare[hidden],
+.ach-modal-error[hidden] {
+  display: none;
+}
+
+.ach-modal-error {
+  position: relative;
+  z-index: 2;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgb(224 108 108 / 45%);
+  background: rgb(40 20 22 / 90%);
+  color: #f0b4b4;
+  font-size: 13px;
+}
+
+.ach-modal-panel {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  width: min(440px, 90vw);
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #2b333c;
+  background: rgb(18 22 27 / 92%);
+}
+
+.ach-modal-panel-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9aa4ad;
+}
+
+.ach-modal-copyrow {
+  display: flex;
+  gap: 8px;
+}
+
+.ach-modal-output {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #333b45;
+  background: #0f1318;
+  color: #e8e4da;
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 
-.ach-stage-name {
-  font-weight: 500;
-  letter-spacing: 0.01em;
+.ach-modal-unshare {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: #8a929b;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
-.ach-stage--rare {
-  --stage: #4a90d9;
-}
-.ach-stage--epic {
-  --stage: #a45ee5;
-}
-.ach-stage--legendary {
-  --stage: #e0a13e;
-}
-
-.ach-stage--reached.ach-stage--rare,
-.ach-stage--reached.ach-stage--epic,
-.ach-stage--reached.ach-stage--legendary {
-  border-color: color-mix(in oklab, var(--stage) 55%, transparent);
-}
-
-.ach-stage--reached .ach-stage-pip {
-  color: var(--stage);
-  background: color-mix(in oklab, var(--stage) 16%, transparent);
-  box-shadow: 0 0 10px color-mix(in oklab, var(--stage) 45%, transparent);
+@media (max-width: 640px) {
+  .ach-modal-stage {
+    transform: scale(1);
+  }
 }

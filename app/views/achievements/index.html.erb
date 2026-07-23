@@ -1,8 +1,8 @@
 
 <div class="container mx-auto px-4 py-8">
-  <div class="ach-page">
+  <div class="ach-page" data-controller="card-modal">
     <div class="ach-layout">
-      <%= render 'sidebar', continents: @sets, tiers: @tiers, summary: @summary %>
+      <%= render 'sidebar', continents: @sets, summary: @summary %>
 
       <div class="ach-main">
         <div class="ach-header">
@@ -26,16 +26,13 @@
           <% end %>
           <% @orphans.each_with_index do |set, index| %>
             <%= render 'card', reveal_delay: 0.1 + (0.15 * [@sets.size + index, 10].min),
-                               celebrate: set.celebrate?,
+                               celebrate: set.celebrate?, modal: true,
+                               share: { key: set.definition.key, shared: set.sharing_enabled?, uuid: set.sharing_uuid },
                                **set.card_attributes %>
           <% end %>
         </div>
 
-        <div class="ach-divider"><span>World</span></div>
-
-        <div class="ach-grid">
-          <%= render 'card', celebrate: @world.celebrate?, stages: @world.stages, **@world.card_attributes %>
-        </div>
+        <%= render 'card_modal' %>
 
         <p class="ach-footnote">
           Region detection is based on approximate boundaries.

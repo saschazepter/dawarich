@@ -163,10 +163,12 @@ module Achievements
     def country_card(child, visited_at:)
       art = child.card['art']
       progress = self.class.new(definition: child, state: state)
+      link_key = child.level == :subdivision ? child.key : nil
 
       {
         name: child.card['place'],
-        key: child.level == :subdivision ? child.key : nil,
+        key: link_key,
+        share_key: link_key ? nil : child.key,
         rarity: child.card['rarity'],
         map_lat: art['lat'],
         map_lon: art['lon'],
