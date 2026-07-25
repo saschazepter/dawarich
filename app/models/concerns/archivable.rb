@@ -55,6 +55,10 @@ module Archivable
       end
     end
 
+    def raw_data_lock_order
+      order(Arel.sql('ST_X(lonlat::geometry), ST_Y(lonlat::geometry), timestamp, user_id'))
+    end
+
     private
 
     def with_write_contention_retry
@@ -122,7 +126,7 @@ module Archivable
   end
 
   def check_temporary_restore_cache
-    Rails.cache.read("raw_data:temp:#{user_id}:#{id}")
+    Rails.cache.read("raw_data:temp:#{user_id}:#{id}:#{raw_data_archive_id}")
   end
 
   def fetch_from_archive_file
