@@ -62,20 +62,18 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
         .to include('data-poster-studio-editor-print-order-url-value="http://localhost:3001/api/orders"')
     end
 
-    it 'renders the order section when the poster_ordering flag is enabled' do
-      Flipper.enable(:poster_ordering)
-
+    it 'renders the order section for every user' do
       get map_v2_path
 
       expect(response.body).to include('Order a printed poster')
     end
 
-    it 'omits the order section when the poster_ordering flag is disabled' do
+    it 'renders the order section even when the retired poster_ordering flag is off' do
       Flipper.disable(:poster_ordering)
 
       get map_v2_path
 
-      expect(response.body).not_to include('Order a printed poster')
+      expect(response.body).to include('Order a printed poster')
     end
   end
 
