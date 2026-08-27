@@ -11,6 +11,14 @@ module EnhancedImport
     MAX_LOCK_ATTEMPTS = 60
     LOCK_RETRY_WAIT = 1.minute
 
+    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3 do |job, error|
+      import = Import.find_by(id: job.arguments.first)
+      next if import.nil?
+
+      job.send(:mark_failed!, import, error)
+      ExceptionReporter.call(error)
+    end
+
     def perform(import_id, attempt: 1)
       import = Import.find_by(id: import_id)
       return if import.nil?
@@ -38,6 +46,8 @@ module EnhancedImport
       # Sibling imports from one archive all finish together; wait our turn
       # rather than surfacing a red card the user can do nothing about.
       requeue(import, attempt, e)
+    rescue ActiveRecord::Deadlocked
+      raise
     rescue StandardError => e
       mark_failed!(import, e)
       ExceptionReporter.call(e)
