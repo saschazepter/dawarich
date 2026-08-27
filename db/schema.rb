@@ -569,7 +569,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_200100) do
   create_table "trips", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
-    t.integer "distance"
+    t.bigint "distance"
     t.datetime "ended_at", null: false
     t.datetime "last_recalculated_at"
     t.string "name", null: false

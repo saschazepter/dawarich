@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
+- Trip distance recalculation no longer fails when a long or dense route exceeds the 4-byte integer limit.
 - Trip note text now uses consistent left alignment on every line (#3104).
 - Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
