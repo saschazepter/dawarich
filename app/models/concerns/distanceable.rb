@@ -106,7 +106,7 @@ module Distanceable
         raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
-      distance_in_meters = connection.select_value(<<-SQL.squish)
+      distance_in_meters = connection.select_value(<<~SQL.squish)
         WITH points_with_previous AS (
           SELECT
             lonlat,
@@ -158,7 +158,7 @@ module Distanceable
       end
 
       # Single query to calculate all distances using parameterized query
-      sql_with_params = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish] + params)
+      sql_with_params = ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish] + params)
         WITH point_pairs AS (
           SELECT
             pair_id,
@@ -189,7 +189,7 @@ module Distanceable
     return nil if other_lonlat.nil?
 
     # Calculate distance in meters using PostGIS
-    distance_in_meters = self.class.connection.select_value(<<-SQL.squish)
+    distance_in_meters = self.class.connection.select_value(<<~SQL.squish)
       SELECT ST_Distance(
         ST_GeomFromEWKT('#{lonlat}')::geography,
         ST_GeomFromEWKT('#{other_lonlat}')::geography
