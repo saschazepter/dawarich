@@ -5,8 +5,10 @@ module Distanceable
 
   module ClassMethods
     def total_distance(points = nil, unit = :km)
-      if points.nil?
-        calculate_distance_for_relation(unit)
+      if points.is_a?(ActiveRecord::Relation)
+        calculate_distance_for_relation(unit, points)
+      elsif points.nil?
+        calculate_distance_for_relation(unit, all)
       else
         calculate_distance_for_array(points, unit)
       end
@@ -99,7 +101,7 @@ module Distanceable
 
     private
 
-    def calculate_distance_for_relation(unit)
+    def calculate_distance_for_relation(unit, relation = all)
       unless ::DISTANCE_UNITS.key?(unit.to_sym)
         raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
@@ -109,7 +111,7 @@ module Distanceable
           SELECT
             lonlat,
             LAG(lonlat) OVER (ORDER BY timestamp) as prev_lonlat
-          FROM (#{to_sql}) AS points
+          FROM (#{relation.to_sql}) AS points
         )
         SELECT COALESCE(
           SUM(
