@@ -64,12 +64,90 @@ a.card:hover {
   box-shadow: 0 8px 20px oklch(var(--bc) / 0.05);
 }
 
-/* Button lift on hover */
-.btn-primary:hover,
-.btn-secondary:hover,
-.btn-accent:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px oklch(var(--p) / 0.35);
+/* Raised controls: what can be pressed stands a hair proud of the flat
+   surface. No outline frame; a 1px lower edge and a short soft shadow carry
+   the lift. --press is -1 on hover, 0 at rest and 1 while pressed or
+   selected. Ghost, link, outline and disabled buttons stay flat. */
+:root {
+  --raise-ring: oklch(var(--bc) / 0.06);
+  --raise-edge: oklch(var(--bc) / 0.22);
+  --raise-ambient: rgb(20 20 20 / 0.1);
+}
+
+[data-theme="dawarich-dark"] {
+  --raise-edge: rgb(0 0 0 / 0.85);
+  --raise-ambient: rgb(0 0 0 / 0.45);
+}
+
+.btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-disabled, :disabled),
+.map-button-cluster__btn,
+.layer-tile {
+  --press: 0;
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px var(--raise-ring),
+    0 calc(1px - var(--press) * 1px) 0 var(--raise-edge),
+    0 calc(2px - var(--press) * 1px) calc(2px - var(--press) * 1.4px)
+    var(--raise-ambient);
+  transform: translateY(calc(var(--press) * 1px));
+  transition-property:
+    background-color, border-color, color, box-shadow, transform;
+  transition-duration: 120ms, 120ms, 120ms, 70ms, 70ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (hover: hover) {
+  .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-disabled, :disabled):hover,
+  .map-button-cluster__btn:hover,
+  .layer-tile:hover {
+    --press: -1;
+  }
+}
+
+.btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-disabled, :disabled):active,
+.btn.btn-active:not(.btn-ghost, .btn-link, .btn-outline),
+.map-button-cluster__btn:active,
+.map-button-cluster__btn--active,
+.layer-tile:active {
+  --press: 1;
+}
+
+.btn-primary,
+.map-button-cluster__btn--active {
+  --raise-edge: color-mix(in oklab, oklch(var(--p)) 65%, black);
+}
+.btn-secondary {
+  --raise-edge: color-mix(in oklab, oklch(var(--s)) 65%, black);
+}
+.btn-accent {
+  --raise-edge: color-mix(in oklab, oklch(var(--a)) 65%, black);
+}
+.btn-neutral {
+  --raise-edge: color-mix(in oklab, oklch(var(--n)) 65%, black);
+}
+.btn-info {
+  --raise-edge: color-mix(in oklab, oklch(var(--in)) 65%, black);
+}
+.btn-success {
+  --raise-edge: color-mix(in oklab, oklch(var(--su)) 65%, black);
+}
+.btn-warning {
+  --raise-edge: color-mix(in oklab, oklch(var(--wa)) 65%, black);
+}
+.btn-error {
+  --raise-edge: color-mix(in oklab, oklch(var(--er)) 65%, black);
+}
+
+.layer-tile:has(.layer-tile__input:checked) {
+  --raise-ring: oklch(var(--p) / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .map-button-cluster__btn,
+  .layer-tile {
+    transition-duration: 0ms;
+  }
 }
 
 /* Stat values — tabular nums */
