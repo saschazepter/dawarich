@@ -82,6 +82,13 @@ RSpec.describe Achievements::GridDwellCalculator do
       expect(described_class.new(user, table: 'regions').call).to eq({})
     end
 
+    it 'credits no region to a point inside it even when its cell centre lies outside' do
+      create(:disputed_area, geom: 'POLYGON ((11.6 10, 11.6 12, 11.603 12, 11.603 10, 11.6 10))')
+      6.times { |i| create(:point, user:, longitude: 11.601, latitude: 11.0, timestamp: base_ts + (i * 600)) }
+
+      expect(described_class.new(user, table: 'regions').call).to eq({})
+    end
+
     it 'dates the first visit from points outside it' do
       create(:point, user:, longitude: 10.5, latitude: 11.0, timestamp: base_ts)
       create(:point, user:, longitude: 11.5, latitude: 11.0, timestamp: base_ts + 600)

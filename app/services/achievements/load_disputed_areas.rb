@@ -23,6 +23,8 @@ module Achievements
         DisputedArea.delete_all
         DisputedArea.connection.execute(DisputedArea.sanitize_sql_array([INSERT_SQL, geojson]))
       end
+      # The recalculation enqueued next must not plan against an unanalyzed table.
+      DisputedArea.connection.execute('ANALYZE disputed_areas')
     end
   end
 end

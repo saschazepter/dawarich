@@ -10,8 +10,6 @@ module Achievements
       'countries' => 'iso_a2'
     }.freeze
 
-    CELL_CENTRE_SQL = 'ST_SetSRID(ST_MakePoint((c.gx + 0.5) * %<grid>f, (c.gy + 0.5) * %<grid>f), 4326)'
-
     POINTS_SQL = <<~SQL.freeze
       WITH cells AS (
         SELECT DISTINCT FLOOR(ST_X(lonlat::geometry) / %<grid>f)::int AS gx,
@@ -24,23 +22,23 @@ module Achievements
           AND (anomaly IS DISTINCT FROM TRUE)
       ),
       cell_codes AS (
-        SELECT c.gx, c.gy, m.code
+        SELECT c.gx, c.gy, m.code, #{DisputedArea.near_cell_sql('c.gx', 'c.gy', GRID_DEGREES)} AS near_disputed
         FROM cells c
         LEFT JOIN LATERAL (
           SELECT s.%<code_column>s AS code
           FROM %<table>s s
-          WHERE ST_Intersects(s.geom, #{CELL_CENTRE_SQL})
-            AND NOT #{DisputedArea.covering_sql(CELL_CENTRE_SQL)}
+          WHERE ST_Intersects(
+            s.geom,
+            ST_SetSRID(ST_MakePoint((c.gx + 0.5) * %<grid>f, (c.gy + 0.5) * %<grid>f), 4326)
+          )
           ORDER BY s.%<code_column>s
           LIMIT 1
         ) m ON TRUE
       ),
-      pts AS (
-        SELECT p."timestamp" AS ts,
-               p.country_id,
-               cc.code,
-               LEAD(p."timestamp") OVER (ORDER BY p."timestamp", p.id) AS next_ts,
-               LEAD(cc.code) OVER (ORDER BY p."timestamp", p.id) AS next_code
+      located AS (
+        SELECT p."timestamp" AS ts, p.id, p.country_id,
+               CASE WHEN cc.near_disputed AND #{DisputedArea.covering_sql('p.lonlat::geometry')}
+                    THEN NULL ELSE cc.code END AS code
         FROM points p
         LEFT JOIN cell_codes cc
           ON cc.gx = FLOOR(ST_X(p.lonlat::geometry) / %<grid>f)::int
@@ -50,6 +48,12 @@ module Achievements
           AND p."timestamp" <= %<through>d
           AND p.lonlat IS NOT NULL
           AND (p.anomaly IS DISTINCT FROM TRUE)
+      ),
+      pts AS (
+        SELECT ts, country_id, code,
+               LEAD(ts) OVER (ORDER BY ts, id) AS next_ts,
+               LEAD(code) OVER (ORDER BY ts, id) AS next_code
+        FROM located
       )
     SQL
 
