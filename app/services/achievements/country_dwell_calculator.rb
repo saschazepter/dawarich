@@ -6,15 +6,18 @@ module Achievements
     PAIR_CAP_SECONDS = 30.minutes.to_i
     COVERAGE_THRESHOLD = 0.9
 
-    POINTS_SQL = <<~SQL
+    UNDISPUTED_CODE_SQL = 'CASE WHEN NOT disputed.hit THEN c.iso_a2 END'
+
+    POINTS_SQL = <<~SQL.freeze
       WITH pts AS MATERIALIZED (
         SELECT p."timestamp" AS ts,
                p.country_id AS country_id,
-               c.iso_a2 AS code,
+               #{UNDISPUTED_CODE_SQL} AS code,
                LEAD(p."timestamp") OVER (ORDER BY p."timestamp", p.id) AS next_ts,
-               LEAD(c.iso_a2) OVER (ORDER BY p."timestamp", p.id) AS next_code
+               LEAD(#{UNDISPUTED_CODE_SQL}) OVER (ORDER BY p."timestamp", p.id) AS next_code
         FROM points p
         LEFT JOIN countries c ON c.id = p.country_id
+        CROSS JOIN LATERAL (SELECT #{DisputedArea.covering_sql('p.lonlat::geometry')} AS hit) disputed
         WHERE p.user_id = %<user_id>d
           AND p."timestamp" >= %<since>d
           AND p."timestamp" <= %<through>d

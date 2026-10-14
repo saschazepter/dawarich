@@ -10,7 +10,9 @@ module Achievements
       'countries' => 'iso_a2'
     }.freeze
 
-    POINTS_SQL = <<~SQL
+    CELL_CENTRE_SQL = 'ST_SetSRID(ST_MakePoint((c.gx + 0.5) * %<grid>f, (c.gy + 0.5) * %<grid>f), 4326)'
+
+    POINTS_SQL = <<~SQL.freeze
       WITH cells AS (
         SELECT DISTINCT FLOOR(ST_X(lonlat::geometry) / %<grid>f)::int AS gx,
                         FLOOR(ST_Y(lonlat::geometry) / %<grid>f)::int AS gy
@@ -27,10 +29,8 @@ module Achievements
         LEFT JOIN LATERAL (
           SELECT s.%<code_column>s AS code
           FROM %<table>s s
-          WHERE ST_Intersects(
-            s.geom,
-            ST_SetSRID(ST_MakePoint((c.gx + 0.5) * %<grid>f, (c.gy + 0.5) * %<grid>f), 4326)
-          )
+          WHERE ST_Intersects(s.geom, #{CELL_CENTRE_SQL})
+            AND NOT #{DisputedArea.covering_sql(CELL_CENTRE_SQL)}
           ORDER BY s.%<code_column>s
           LIMIT 1
         ) m ON TRUE

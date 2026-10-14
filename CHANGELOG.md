@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
-- Country boundaries now include Crimea in Ukraine, matching its subdivisions: the Ukraine achievement card, scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).
+- Country boundaries now include Crimea in Ukraine, matching its subdivisions: the scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).
+- Achievements no longer credit any country or region for time spent in territories claimed by more than one state, and achievement cards leave those areas out. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept.
 - Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
 - Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
 - Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).

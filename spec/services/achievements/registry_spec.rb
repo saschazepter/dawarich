@@ -51,6 +51,21 @@ RSpec.describe Achievements::Registry do
     end
   end
 
+  describe 'disputed subdivisions' do
+    it 'leaves subdivisions lying almost entirely in disputed areas out of their country' do
+      ukraine = described_class.find('country_ua')
+
+      expect(ukraine.region_codes).not_to include('UA-43', 'UA-40')
+      expect(ukraine.total).to eq(25)
+      expect(ukraine.card['description']).to eq('Spend time in all 25 regions of Ukraine.')
+    end
+
+    it 'never resolves them to a parent set' do
+      expect(described_class.subdivision_codes).not_to include('GE-AB', 'IN-JK', 'MD-SN')
+      expect(described_class.subdivision_parent_for('UA-43')).to be_nil
+    end
+  end
+
   describe 'continent definitions' do
     it 'collects the countries of its continent' do
       europe = described_class.find('continent_europe')
