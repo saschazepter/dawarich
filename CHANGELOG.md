@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- Achievements no longer credit any country or region for time spent in territories claimed by more than one state, and achievement cards leave those areas out. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept.
+- Achievements no longer credit any country or region for time spent in territories claimed by more than one state (Natural Earth disputed areas), and achievement cards leave those areas out; statistics, the scratch map and country attribution are unchanged. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept.
 
 ## [1.15.4] - 2026-10-14, Berlin
 

@@ -98,7 +98,7 @@ module Achievements
         SELECT code,
                CASE WHEN mask IS NULL THEN g ELSE (
                  SELECT ST_Collect(part.geom)
-                 FROM ST_Dump(ST_CollectionExtract(ST_Difference(g, mask), 3)) AS part
+                 FROM ST_Dump(ST_CollectionExtract(ST_Difference(ST_MakeValid(g), mask), 3)) AS part
                  WHERE ST_Area(part.geom) >= #{FRAGMENT_SHARE} * ST_Area(g)
                     OR NOT ST_DWithin(part.geom, mask, #{FRAGMENT_REACH})
                ) END AS g0

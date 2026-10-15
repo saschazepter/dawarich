@@ -51,6 +51,17 @@ RSpec.describe Achievements::RegionSilhouettes do
       expect(shapes['DE-BY'][:viewbox].split.map(&:to_f).first).to be > 11.4
     end
 
+    it 'cuts disputed areas out of a self-intersecting outline without failing' do
+      Region.find_by!(code: 'DE-BY').update_columns(
+        geom: 'MULTIPOLYGON (((11.0 48.0, 12.0 49.0, 12.0 48.0, 11.0 49.0, 11.0 48.0)))'
+      )
+      create(:disputed_area, geom: 'POLYGON ((11.0 48.0, 11.0 49.0, 11.3 49.0, 11.3 48.0, 11.0 48.0))')
+
+      shapes = described_class.new(level: :subdivision, codes: %w[DE-BY]).call
+
+      expect(shapes['DE-BY'][:path]).to be_present
+    end
+
     it 'negates the y axis so the viewbox matches SVG orientation' do
       shapes = described_class.new(level: :subdivision, codes: %w[DE-BY]).call
 
