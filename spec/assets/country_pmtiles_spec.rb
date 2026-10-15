@@ -33,17 +33,20 @@ RSpec.describe 'bundled country PMTiles' do
 
   it 'files Crimea under Ukraine, matching its UA-43 and UA-40 subdivisions' do
     source = Rails.root.join('lib/assets/countries.geojson.gz')
-    document = Zlib::GzipReader.open(source) { |gzip| JSON.parse(gzip.read) }
-    factory = RGeo::Geos.factory(srid: 4326)
-    shapes = document.fetch('features').to_h do |feature|
-      [feature.dig('properties', 'ISO3166-1-Alpha-2'),
-       RGeo::GeoJSON.decode(feature['geometry'].to_json, geo_factory: factory)]
+    geojson = Zlib::GzipReader.open(source, &:read)
+    sql = <<~SQL
+      SELECT feature -> 'properties' ->> 'ISO3166-1-Alpha-2'
+      FROM jsonb_array_elements(?::jsonb -> 'features') AS feature
+      WHERE ST_Covers(ST_SetSRID(ST_GeomFromGeoJSON(feature ->> 'geometry'), 4326),
+                      ST_SetSRID(ST_MakePoint(?, ?), 4326))
+    SQL
+    covering = lambda do |longitude, latitude|
+      query = ActiveRecord::Base.sanitize_sql_array([sql, geojson, longitude, latitude])
+      ActiveRecord::Base.connection.select_values(query)
     end
-    simferopol = factory.point(34.10, 44.95)
-    sevastopol = factory.point(33.50, 44.58)
 
-    expect(shapes.select { |_code, shape| shape.contains?(simferopol) }.keys).to eq(['UA'])
-    expect(shapes.select { |_code, shape| shape.contains?(sevastopol) }.keys).to eq(['UA'])
+    expect(covering.call(34.10, 44.95)).to eq(['UA'])
+    expect(covering.call(33.50, 44.58)).to eq(['UA'])
   end
 
   it 'keeps both antimeridian fragments under one canonical country identifier' do
